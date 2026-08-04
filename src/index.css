@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+
+  /*
+   * Identidad visual C.A. Unión de Santa Fe (Fase 15) — reemplaza el verde
+   * "emerald" que se usaba como color de marca/acción primaria en toda la
+   * app (botones, focos, estados activos de nav). El verde/amarillo/rojo de
+   * los badges semafóricos (ACWR, estado médico, comparación objetivo vs.
+   * ejecutado) NO usa estos tokens — sigue siendo `emerald`/`amber`/`rose`
+   * a propósito, por motivos científicos (ver Badge.tsx y los usos
+   * puntuales documentados en el código).
+   */
+  --color-union-red-50: #fef1f1;
+  --color-union-red-100: #fde1e2;
+  --color-union-red-400: #f1666b;
+  --color-union-red-500: #f23a41;
+  --color-union-red-600: #ed1c24;
+  --color-union-red-700: #c4151b;
+  --color-union-charcoal: #1f2937;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}

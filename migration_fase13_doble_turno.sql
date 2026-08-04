@@ -1,0 +1,43 @@
+-- =============================================================================
+-- Fase 13 — "Doble Turno": un día del microciclo puede tener múltiples
+-- `session_plans` (ej. Campo + Gimnasio el mismo día).
+--
+-- HALLAZGO IMPORTANTE (por eso este archivo es casi 100% documentación, no
+-- DDL destructivo): el esquema YA SOPORTABA esto desde Fase 4. Se auditaron
+-- todos los archivos de migración anteriores y:
+--
+--   1) `session_plans` NUNCA tuvo un `unique(season_id, category_id, fecha)`
+--      ni ningún constraint parecido — nada en la base impedía insertar dos
+--      filas con la misma fecha. La restricción de "una sesión por día" era
+--      100% del FRONTEND (`sessionPlans.find(p => p.fecha === fecha)` en vez
+--      de `.filter()`), no de la base de datos.
+--
+--   2) Las 4 tablas que cuelgan de una sesión YA referencian
+--      `session_plan_id`/`plan_id` (una fila puntual), NUNCA "el día" como
+--      concepto genérico:
+--        - daily_tasks.session_plan_id      → on delete cascade (Fase 10)
+--        - strength_assignments.session_plan_id → on delete cascade (Fase 12)
+--        - external_loads.plan_id           → on delete cascade (Fase 6)
+--        - session_executions.plan_id       → on delete set null (Fase 4, nullable)
+--      Es decir: el punto 1 del pedido de Fase 13 ("las tablas pivot de
+--      fuerza apunten a la sesión específica, no al día genérico") YA estaba
+--      resuelto desde que se creó `strength_assignments` en Fase 12 — apunta
+--      a un `session_plan_id` puntual, así que al "doble turno" cada
+--      asignación de plantilla de Fuerza ya queda ligada a la sesión de
+--      Gimnasio específica de ese día, nunca al día completo.
+--
+-- Por lo tanto NO se agrega una columna `session_type` nueva: `session_plans.tipo`
+-- ('Campo'|'Gimnasio'|'Partido'|'Recuperación', desde Fase 6) YA ES el
+-- identificador de tipo de sesión pedido — ahora que un día puede tener N
+-- filas, cada fila simplemente conserva su propio `tipo` ('Campo' o
+-- 'Gimnasio' para el caso de doble turno). Agregar una segunda columna en
+-- inglés con el mismo significado hubiera sido una duplicación del mismo
+-- dato (mismo criterio ya aplicado en Fase 11 con `estado_salud`/`estado_medico`).
+--
+-- Lo único nuevo que este archivo agrega es un índice de performance (antes
+-- no hacía falta con una sola fila por día, ahora sí para no escanear toda
+-- la tabla al agrupar por fecha del lado del cliente).
+-- =============================================================================
+
+create index if not exists session_plans_season_category_fecha_idx
+  on session_plans (season_id, category_id, fecha);
