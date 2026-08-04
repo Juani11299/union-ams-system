@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/useAppStore'
+import { ClubLogo } from '@/components/ClubLogo'
 
 export function TopBar() {
   const club = useAppStore((s) => s.club)
@@ -11,8 +12,8 @@ export function TopBar() {
 
   return (
     <header className="sticky top-0 z-20 flex flex-col gap-2 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between md:px-8 dark:border-slate-800 dark:bg-slate-900/95">
-      <span className="text-sm font-semibold text-slate-700 md:hidden dark:text-slate-200">
-        {club?.nombre ?? 'C.A. Unión'}
+      <span className="flex items-center md:hidden">
+        <ClubLogo logoUrl={club?.logo_url} size="sm" />
       </span>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -143,7 +143,7 @@ interface AppState {
   fetchInitialData: () => Promise<void>
   submitSessionLoad: (input: NuevaCargaInput) => Promise<void>
   submitWellness: (input: NuevoWellnessInput) => Promise<void>
-  updateClub: (nombre: string) => Promise<void>
+  updateClub: (input: { nombre: string; logoUrl?: string }) => Promise<void>
   createSeason: (input: NuevaTemporadaInput) => Promise<void>
   marcarTemporadaActiva: (seasonId: string) => Promise<void>
   createCategory: (input: NuevaCategoriaInput) => Promise<void>
@@ -384,14 +384,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))
   },
 
-  updateClub: async (nombre) => {
+  updateClub: async (input) => {
     exigirSupabase(set)
     const club = get().club
     if (!club) throw new Error('Todavía no se cargó el club.')
 
     const { data, error } = await supabase
       .from('clubs')
-      .update({ nombre })
+      .update({ nombre: input.nombre, logo_url: input.logoUrl || null })
       .eq('id', club.id)
       .select()
       .single()

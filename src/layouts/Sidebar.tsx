@@ -1,17 +1,15 @@
 import { NavLink } from 'react-router-dom'
 import { navItems } from './navConfig'
 import { useAppStore } from '@/store/useAppStore'
+import { ClubLogo } from '@/components/ClubLogo'
 
 export function Sidebar() {
   const club = useAppStore((s) => s.club)
 
   return (
     <aside className="hidden md:flex md:w-60 md:shrink-0 md:flex-col md:border-r md:border-slate-200 md:bg-white md:dark:border-slate-800 md:dark:bg-slate-900">
-      <div className="px-5 py-6">
-        <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-          {club?.nombre ?? 'C.A. Unión'}
-        </h1>
-        <p className="text-xs text-slate-400">Preparación Física</p>
+      <div className="flex items-center px-5 py-6">
+        <ClubLogo logoUrl={club?.logo_url} size="lg" />
       </div>
       <nav className="flex flex-col gap-1 px-3">
         {navItems.map((item) => (

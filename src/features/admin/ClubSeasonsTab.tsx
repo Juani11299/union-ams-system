@@ -15,6 +15,7 @@ export function ClubSeasonsTab() {
   const showToast = useToastStore((s) => s.showToast)
 
   const [nombreClub, setNombreClub] = useState(club?.nombre ?? '')
+  const [logoUrl, setLogoUrl] = useState(club?.logo_url ?? '')
   const [guardandoClub, setGuardandoClub] = useState(false)
   const [errorNombre, setErrorNombre] = useState<string | null>(null)
 
@@ -35,7 +36,7 @@ export function ClubSeasonsTab() {
     setErrorNombre(null)
     setGuardandoClub(true)
     try {
-      await updateClub(nombre)
+      await updateClub({ nombre, logoUrl: logoUrl.trim() || undefined })
       showToast('success', '¡Club actualizado exitosamente!')
     } catch (err) {
       showToast('error', getErrorMessage(err, 'No se pudo actualizar el club.'))
@@ -93,6 +94,30 @@ export function ClubSeasonsTab() {
             onChange={(e) => setNombreClub(e.target.value)}
             placeholder="Ej. Club Atlético Deportivo"
           />
+        </Field>
+        <Field label="URL del logo (opcional)">
+          <div className="flex items-center gap-3">
+            {logoUrl.trim() ? (
+              <img
+                src={logoUrl.trim()}
+                alt="Logo del club"
+                className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-contain dark:border-slate-700"
+                onError={(e) => {
+                  e.currentTarget.style.visibility = 'hidden'
+                }}
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-200 text-lg text-slate-300 dark:border-slate-700">
+                🛡️
+              </div>
+            )}
+            <input
+              className={inputClass}
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              placeholder="https://…/escudo.png"
+            />
+          </div>
         </Field>
         <button
           type="submit"
