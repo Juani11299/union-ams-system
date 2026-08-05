@@ -3,16 +3,22 @@ import { useAppStore } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
 import { Card } from '@/components/Card'
 import { Field, inputClass } from '@/components/FormField'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { getErrorMessage } from '@/utils/errors'
+import type { TeamCategory } from '@/types'
 
 export function CategoriesTab() {
   const categories = useAppStore((s) => s.categories)
   const createCategory = useAppStore((s) => s.createCategory)
+  const deleteCategory = useAppStore((s) => s.deleteCategory)
   const showToast = useToastStore((s) => s.showToast)
 
   const [nombre, setNombre] = useState('')
   const [creando, setCreando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const [categoriaAEliminar, setCategoriaAEliminar] = useState<TeamCategory | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -31,6 +37,20 @@ export function CategoriesTab() {
       showToast('error', getErrorMessage(err, 'No se pudo crear la categoría.'))
     } finally {
       setCreando(false)
+    }
+  }
+
+  async function handleEliminar() {
+    if (!categoriaAEliminar) return
+    setEliminando(true)
+    try {
+      await deleteCategory(categoriaAEliminar.id)
+      showToast('success', `Categoría "${categoriaAEliminar.nombre}" eliminada.`)
+      setCategoriaAEliminar(null)
+    } catch (err) {
+      showToast('error', getErrorMessage(err, 'No se pudo eliminar la categoría.'))
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -67,14 +87,32 @@ export function CategoriesTab() {
             {categories.map((category) => (
               <span
                 key={category.id}
-                className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                className="flex items-center gap-1.5 rounded-full bg-slate-100 py-1.5 pl-3 pr-1.5 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
               >
                 {category.nombre}
+                <button
+                  type="button"
+                  onClick={() => setCategoriaAEliminar(category)}
+                  aria-label={`Eliminar categoría ${category.nombre}`}
+                  className="rounded-full px-1.5 text-slate-400 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                >
+                  ✕
+                </button>
               </span>
             ))}
           </div>
         )}
       </Card>
+
+      {categoriaAEliminar && (
+        <ConfirmDialog
+          titulo="Eliminar categoría"
+          mensaje={`¿Seguro que querés eliminar "${categoriaAEliminar.nombre}"? Esto borra TODO lo cargado en esa categoría, en todas las temporadas: plantel, microciclos, tareas, RPE, wellness, carga externa/GPS, evaluaciones físicas y bloques de fuerza. No se puede deshacer.`}
+          onConfirm={handleEliminar}
+          onCancel={() => setCategoriaAEliminar(null)}
+          confirmando={eliminando}
+        />
+      )}
     </div>
   )
 }

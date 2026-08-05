@@ -146,7 +146,11 @@ interface AppState {
   updateClub: (input: { nombre: string; logoUrl?: string }) => Promise<void>
   createSeason: (input: NuevaTemporadaInput) => Promise<void>
   marcarTemporadaActiva: (seasonId: string) => Promise<void>
+  /** Borra la temporada — cascada real en la base (rosters, sesiones, RPE, wellness, GPS, CMJ, Fuerza de esa temporada). Resincroniza todo el store desde Supabase al terminar. */
+  deleteSeason: (seasonId: string) => Promise<void>
   createCategory: (input: NuevaCategoriaInput) => Promise<void>
+  /** Borra la categoría — misma cascada real que `deleteSeason`, pero por category_id. */
+  deleteCategory: (categoryId: string) => Promise<void>
   createAthlete: (input: AthleteInput) => Promise<void>
   updateAthlete: (id: string, input: AthleteInput) => Promise<void>
   deleteAthlete: (id: string) => Promise<void>
@@ -470,6 +474,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     }))
   },
 
+  deleteSeason: async (seasonId) => {
+    exigirSupabase(set)
+
+    const { error } = await supabase.from('seasons').delete().eq('id', seasonId)
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    // La cascada real (rosters/sesiones/RPE/wellness/GPS/CMJ/Fuerza de esa
+    // temporada) ya la hizo la base — se resincroniza todo el store desde
+    // Supabase en vez de replicar 8 filtros a mano, para no arriesgar que el
+    // estado local quede desincronizado de lo que realmente quedó en la base.
+    await get().fetchInitialData()
+  },
+
   createCategory: async (input) => {
     exigirSupabase(set)
     const club = get().club
@@ -491,6 +511,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       categories: [...state.categories, nueva],
       activeCategoryId: state.activeCategoryId ?? nueva.id,
     }))
+  },
+
+  deleteCategory: async (categoryId) => {
+    exigirSupabase(set)
+
+    const { error } = await supabase.from('team_categories').delete().eq('id', categoryId)
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    await get().fetchInitialData()
   },
 
   createAthlete: async (input) => {

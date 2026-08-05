@@ -4,7 +4,9 @@ import { useToastStore } from '@/store/useToastStore'
 import { Card } from '@/components/Card'
 import { Badge } from '@/components/Badge'
 import { Field, inputClass } from '@/components/FormField'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { getErrorMessage } from '@/utils/errors'
+import type { Season } from '@/types'
 
 export function ClubSeasonsTab() {
   const club = useAppStore((s) => s.club)
@@ -12,6 +14,7 @@ export function ClubSeasonsTab() {
   const updateClub = useAppStore((s) => s.updateClub)
   const createSeason = useAppStore((s) => s.createSeason)
   const marcarTemporadaActiva = useAppStore((s) => s.marcarTemporadaActiva)
+  const deleteSeason = useAppStore((s) => s.deleteSeason)
   const showToast = useToastStore((s) => s.showToast)
 
   const [nombreClub, setNombreClub] = useState(club?.nombre ?? '')
@@ -25,6 +28,8 @@ export function ClubSeasonsTab() {
   const [errorYear, setErrorYear] = useState<string | null>(null)
 
   const [marcandoId, setMarcandoId] = useState<string | null>(null)
+  const [temporadaAEliminar, setTemporadaAEliminar] = useState<Season | null>(null)
+  const [eliminandoSeason, setEliminandoSeason] = useState(false)
 
   async function handleGuardarClub(e: React.FormEvent) {
     e.preventDefault()
@@ -78,6 +83,20 @@ export function ClubSeasonsTab() {
       showToast('error', getErrorMessage(err, 'No se pudo marcar la temporada como activa.'))
     } finally {
       setMarcandoId(null)
+    }
+  }
+
+  async function handleEliminarSeason() {
+    if (!temporadaAEliminar) return
+    setEliminandoSeason(true)
+    try {
+      await deleteSeason(temporadaAEliminar.id)
+      showToast('success', `Temporada ${temporadaAEliminar.year} eliminada.`)
+      setTemporadaAEliminar(null)
+    } catch (err) {
+      showToast('error', getErrorMessage(err, 'No se pudo eliminar la temporada.'))
+    } finally {
+      setEliminandoSeason(false)
     }
   }
 
@@ -173,19 +192,39 @@ export function ClubSeasonsTab() {
                   </span>
                   {season.is_active && <Badge tone="green">Activa</Badge>}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleMarcarActiva(season.id)}
-                  disabled={season.is_active || marcandoId === season.id}
-                  className="rounded-md px-3 py-1 text-xs font-medium text-union-red-700 hover:bg-union-red-50 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-union-red-400 dark:hover:bg-union-red-500/10"
-                >
-                  {marcandoId === season.id ? 'Marcando…' : 'Marcar como activa'}
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleMarcarActiva(season.id)}
+                    disabled={season.is_active || marcandoId === season.id}
+                    className="rounded-md px-3 py-1 text-xs font-medium text-union-red-700 hover:bg-union-red-50 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-union-red-400 dark:hover:bg-union-red-500/10"
+                  >
+                    {marcandoId === season.id ? 'Marcando…' : 'Marcar como activa'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTemporadaAEliminar(season)}
+                    aria-label={`Eliminar temporada ${season.year}`}
+                    className="rounded-md px-2 py-1 text-xs font-medium text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </Card>
+
+      {temporadaAEliminar && (
+        <ConfirmDialog
+          titulo="Eliminar temporada"
+          mensaje={`¿Seguro que querés eliminar la temporada ${temporadaAEliminar.year}? Esto borra TODO lo cargado en esa temporada para todas las categorías: planteles, microciclos, tareas, RPE, wellness, carga externa/GPS, evaluaciones físicas y bloques de fuerza. No se puede deshacer.`}
+          onConfirm={handleEliminarSeason}
+          onCancel={() => setTemporadaAEliminar(null)}
+          confirmando={eliminandoSeason}
+        />
+      )}
     </div>
   )
 }
