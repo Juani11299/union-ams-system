@@ -14,6 +14,7 @@ import { InfoTooltip } from '@/components/InfoTooltip'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { StrengthView } from '@/features/strength/StrengthView'
 import { TacBoard } from '@/features/planificador/TacBoard'
+import { GymSheetEditor } from '@/features/planificador/GymSheetEditor'
 import { GpsObjetivoForm } from '@/features/planificador/GpsObjetivoForm'
 import { TemplateLibraryPanel, DRAG_MIME_PLANTILLA } from '@/features/planificador/TemplateLibraryPanel'
 import { VitaminaAssignmentModal } from '@/features/planificador/VitaminaAssignmentModal'
@@ -1080,6 +1081,7 @@ function SesionDelDiaBlock({ plan, onEliminada }: { plan: SessionPlan; onElimina
   const [expandido, setExpandido] = useState(true)
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
   const [eliminando, setEliminando] = useState(false)
+  const [mostrarPlanilla, setMostrarPlanilla] = useState(false)
 
   async function handleEliminar() {
     setEliminando(true)
@@ -1110,6 +1112,15 @@ function SesionDelDiaBlock({ plan, onEliminada }: { plan: SessionPlan; onElimina
           </span>
           <span className="shrink-0 text-xs text-slate-400">{plan.cargaObjetivo} AU</span>
         </button>
+        {plan.tipo === 'Gimnasio' && (
+          <button
+            type="button"
+            onClick={() => setMostrarPlanilla(true)}
+            className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-500 hover:border-union-red-400 hover:text-union-red-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-union-red-500 dark:hover:text-union-red-400"
+          >
+            🖨️ Planilla PDF
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setConfirmandoEliminar(true)}
@@ -1140,6 +1151,8 @@ function SesionDelDiaBlock({ plan, onEliminada }: { plan: SessionPlan; onElimina
           confirmando={eliminando}
         />
       )}
+
+      {mostrarPlanilla && <GymSheetEditor plan={plan} onClose={() => setMostrarPlanilla(false)} />}
     </div>
   )
 }

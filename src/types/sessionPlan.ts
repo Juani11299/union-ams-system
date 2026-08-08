@@ -1,3 +1,5 @@
+import type { GymSheetData } from './gymSheet'
+
 export type TipoSesion = 'Campo' | 'Gimnasio' | 'Partido' | 'Recuperación'
 
 export type MatchDayTag = 'MD-4' | 'MD-3' | 'MD-2' | 'MD-1' | 'MD' | 'MD+1'
@@ -22,4 +24,6 @@ export interface SessionPlan {
    * no está cargado todavía, el sRPE se muestra como "Falta tiempo".
    */
   duracionRealMin?: number
+  /** Planilla Estética de Gimnasio (Fase 16) — sólo sesiones tipo Gimnasio. */
+  gymSheetData?: GymSheetData
 }

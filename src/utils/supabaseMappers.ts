@@ -7,6 +7,7 @@ import type {
   ExternalLoad,
   FuenteCarga,
   GpsObjetivo,
+  GymSheetData,
   NivelCargaCognitiva,
   PhysicalTest,
   Posicion,
@@ -84,6 +85,7 @@ export interface SessionPlanRow {
   descripcion: string | null
   rpe_esperado: number | null
   duracion_real_min: number | null
+  gym_sheet_data: GymSheetData | null
 }
 
 export function sessionPlanFromRow(row: SessionPlanRow): SessionPlan {
@@ -100,6 +102,7 @@ export function sessionPlanFromRow(row: SessionPlanRow): SessionPlan {
     descripcion: row.descripcion ?? undefined,
     rpeEsperado: row.rpe_esperado ?? undefined,
     duracionRealMin: row.duracion_real_min ?? undefined,
+    gymSheetData: row.gym_sheet_data ?? undefined,
   }
 }
 
@@ -518,6 +521,11 @@ export function dailyTaskEdicionToUpdateRow(input: DailyTaskEdicionInput) {
 /** Guardado del editor táctico 2D (Fase 11) — reemplaza el JSON completo. */
 export function tacboardDataToUpdateRow(data: TacboardData) {
   return { tacboard_data: data }
+}
+
+/** Guardado de la Planilla Estética de Gimnasio (Fase 16) — reemplaza el JSON completo. */
+export function gymSheetDataToUpdateRow(data: GymSheetData) {
+  return { gym_sheet_data: data }
 }
 
 /** Objetivos GPS de una tarea Físico de Campo (Fase 11) — todos opcionales. */

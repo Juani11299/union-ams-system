@@ -16,6 +16,7 @@ import type {
   DailyTask,
   GpsObjetivo,
   TacboardData,
+  GymSheetData,
   StrengthTemplate,
   StrengthTemplateExercise,
   StrengthAssignment,
@@ -44,6 +45,7 @@ import {
   dailyTaskToInsertRow,
   dailyTaskEdicionToUpdateRow,
   tacboardDataToUpdateRow,
+  gymSheetDataToUpdateRow,
   gpsObjetivoToUpdateRow,
   resultadoPartidoToUpsertRow,
   strengthTemplateFromRow,
@@ -160,6 +162,7 @@ interface AppState {
   createSessionPlan: (input: NuevoSessionPlanInput) => Promise<SessionPlan>
   updateSessionPlanConfig: (planId: string, input: SessionPlanConfigInput) => Promise<void>
   deleteSessionPlan: (id: string) => Promise<void>
+  updateSessionPlanGymSheet: (id: string, data: GymSheetData) => Promise<void>
   submitExternalLoadsBulk: (inputs: NuevaCargaExternaInput[]) => Promise<void>
   submitPhysicalTest: (input: NuevoPhysicalTestInput) => Promise<void>
   createStrengthBlock: (input: NuevoStrengthBlockInput) => Promise<void>
@@ -687,6 +690,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       }),
       externalLoads: state.externalLoads.filter((e) => e.planId !== id),
       sessionExecutions: state.sessionExecutions.map((e) => (e.planId === id ? { ...e, planId: '' } : e)),
+    }))
+  },
+
+  updateSessionPlanGymSheet: async (id, data) => {
+    exigirSupabase(set)
+
+    const { data: fila, error } = await supabase
+      .from('session_plans')
+      .update(gymSheetDataToUpdateRow(data))
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const actualizado = sessionPlanFromRow(fila as SessionPlanRow)
+    set((state) => ({
+      sessionPlans: state.sessionPlans.map((p) => (p.id === id ? actualizado : p)),
     }))
   },
 

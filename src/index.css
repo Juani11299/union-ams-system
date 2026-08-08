@@ -31,3 +31,37 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
 }
+
+/*
+ * Impresión de la Planilla Estética de Gimnasio (Fase 16) — trick clásico de
+ * "imprimir sólo este elemento": se oculta todo el `body` con visibility
+ * (no display:none, así no se rompe el layout del resto de la app que sigue
+ * montada detrás del modal) y sólo se hace visible de nuevo el árbol de
+ * #gym-sheet-print-area, que se saca del flujo con position:absolute para que
+ * ocupe toda la hoja impresa desde el borde superior. `print:hidden` (variant
+ * nativo de Tailwind) se usa en los botones de edición para que no aparezcan
+ * ni siquiera dentro del área impresa.
+ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #gym-sheet-print-area,
+  #gym-sheet-print-area * {
+    visibility: visible;
+  }
+  #gym-sheet-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
