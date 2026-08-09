@@ -33,24 +33,28 @@ body {
 }
 
 /*
- * Impresión de la Planilla Estética de Gimnasio (Fase 16) — trick clásico de
- * "imprimir sólo este elemento": se oculta todo el `body` con visibility
- * (no display:none, así no se rompe el layout del resto de la app que sigue
- * montada detrás del modal) y sólo se hace visible de nuevo el árbol de
- * #gym-sheet-print-area, que se saca del flujo con position:absolute para que
- * ocupe toda la hoja impresa desde el borde superior. `print:hidden` (variant
- * nativo de Tailwind) se usa en los botones de edición para que no aparezcan
- * ni siquiera dentro del área impresa.
+ * Impresión de documentos "hoja A4" (Fase 16, extendido en el Manual
+ * Metodológico) — trick clásico de "imprimir sólo este elemento": se oculta
+ * todo el `body` con visibility (no display:none, así no se rompe el layout
+ * del resto de la app que sigue montada detrás) y sólo se hace visible de
+ * nuevo el árbol de `.print-area`, que se saca del flujo con
+ * position:absolute para que ocupe toda la hoja impresa desde el borde
+ * superior. Sólo debe existir UN `.print-area` por vista (es el contenedor
+ * que se posiciona sobre toda la página); si el documento tiene varias hojas
+ * A4, van todas DENTRO de ese único wrapper, separadas con
+ * `print:break-after-page` en cada una. `print:hidden` (variant nativo de
+ * Tailwind) se usa en los controles de edición/descarga para que no
+ * aparezcan ni siquiera dentro del área impresa.
  */
 @media print {
   body * {
     visibility: hidden;
   }
-  #gym-sheet-print-area,
-  #gym-sheet-print-area * {
+  .print-area,
+  .print-area * {
     visibility: visible;
   }
-  #gym-sheet-print-area {
+  .print-area {
     position: absolute;
     inset: 0;
     width: 100%;

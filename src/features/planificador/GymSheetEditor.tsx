@@ -46,7 +46,7 @@ interface GymSheetEditorProps {
  * Editor de Planilla Estética de Gimnasio (Fase 16) — simula una hoja A4
  * impresa (estilo europeo) editable inline, con copiar/pegar entre sesiones y
  * exportación a PDF vía `window.print()` (sin librerías nuevas: el trick de
- * imprimir sólo `#gym-sheet-print-area` vive en `src/index.css`).
+ * imprimir sólo `.print-area` vive en `src/index.css`).
  */
 export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
   const updateSessionPlanGymSheet = useAppStore((s) => s.updateSessionPlanGymSheet)
@@ -206,7 +206,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
 
         <div
           id="gym-sheet-print-area"
-          className="mx-auto w-full max-w-[794px] rounded-lg bg-white p-8 shadow-2xl print:m-0 print:w-full print:max-w-none print:rounded-none print:p-0 print:shadow-none"
+          className="print-area mx-auto w-full max-w-[794px] rounded-lg bg-white p-8 shadow-2xl print:m-0 print:w-full print:max-w-none print:rounded-none print:p-0 print:shadow-none"
         >
           <div className="flex items-start justify-between gap-4 border-b-4 border-union-red-600 pb-4">
             <div className="flex items-center gap-3">

@@ -7,6 +7,7 @@ import { AdminView } from '@/features/admin/AdminView'
 import { ExternalLoadView } from '@/features/external-load/ExternalLoadView'
 import { MatchDayView } from '@/features/match-day/MatchDayView'
 import { MedicalView } from '@/features/medical/MedicalView'
+import { MetodologiaIsometriaView } from '@/features/metodologia/MetodologiaIsometriaView'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/match-day" element={<MatchDayView />} />
         <Route path="/carga-externa" element={<ExternalLoadView />} />
         <Route path="/medical" element={<MedicalView />} />
+        <Route path="/metodologia/isometria" element={<MetodologiaIsometriaView />} />
         <Route path="/admin" element={<AdminView />} />
       </Route>
     </Routes>
