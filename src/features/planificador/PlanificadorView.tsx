@@ -6,7 +6,7 @@ import {
   useAthletesActivos,
   useStrengthAssignmentsActivas,
 } from '@/store/useAppStore'
-import { WeeklyPdfExport } from '@/features/planificador/WeeklyPdfExport'
+import { DetailedWeeklyPdfExport } from '@/features/planificador/DetailedWeeklyPdfExport'
 import { useToastStore } from '@/store/useToastStore'
 import { Card } from '@/components/Card'
 import { Badge, type BadgeTone } from '@/components/Badge'
@@ -1455,7 +1455,7 @@ export function PlanificadorView() {
       )}
 
       {exportandoSemana && activeSeasonId && activeCategoryId && (
-        <WeeklyPdfExport
+        <DetailedWeeklyPdfExport
           dias={dias}
           categoriaNombre={categoriaActiva?.nombre ?? 'Sin categoría'}
           clubNombre={club?.nombre ?? 'C.A. Unión'}
