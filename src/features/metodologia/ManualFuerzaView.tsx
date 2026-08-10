@@ -154,21 +154,21 @@ const ESTACIONES: Estacion[] = [
   {
     icono: '🏋️',
     titulo: 'Racks Internos',
-    capacidad: '15 barras · ~13-14 atletas',
+    capacidad: 'Fuerza Máxima · Tensión Mecánica',
     texto:
-      'Fuerza máxima y tensión mecánica bajo carga externa (sentadilla, peso muerto, press, tracción). La estación de mayor demanda de espacio e implementos — organiza al resto de la sala alrededor de su rotación.',
+      'Fuerza máxima y tensión mecánica bajo carga externa (sentadilla, peso muerto, press, tracción). La estación de mayor especificidad técnica — su rotación organiza el resto de la sesión.',
   },
   {
     icono: '🧘',
     titulo: 'Espacio Libre — Isometría / Vitamina',
-    capacidad: 'Sin implementos pesados · mayor densidad',
+    capacidad: 'Activación Neuromuscular · Prevención',
     texto:
-      'Isometría de Natera (Overcoming/Yielding) y planes "Vitamina" individualizados de prevención puntual. Al no depender de barras ni discos, es la estación que más atletas puede absorber en simultáneo.',
+      'Isometría de Natera (Overcoming/Yielding) y planes "Vitamina" individualizados de prevención puntual. Al no depender de carga externa pesada, es la estación de mayor densidad y trabajo individualizado sin interrumpir el flujo del grupo.',
   },
   {
     icono: '🌱',
     titulo: 'Pasto / Jaula Exterior',
-    capacidad: '~12 atletas · trabajo a cielo abierto',
+    capacidad: 'Transferencia · Trabajo a Cielo Abierto',
     texto:
       'Pliometría, sprints resistidos y ejercicios de transferencia directa al gesto de carrera. La estación que conecta físicamente la sala de fuerza con el campo de juego.',
   },
@@ -178,23 +178,13 @@ function Logistica() {
   return (
     <section>
       <h2 className="mb-1 text-lg font-bold text-union-charcoal">
-        Logística — 40 Atletas Simultáneos, 3 Estaciones
+        Modelo de Estaciones — Organización del Entrenamiento Grupal
       </h2>
-      <p className="mb-3 text-[13px] leading-relaxed text-slate-600">
-        Con un plantel completo entrenando a la vez, la sala se organiza en 3 estaciones
-        rotativas para maximizar el uso del espacio y los implementos disponibles.
+      <p className="mb-4 text-[13px] leading-relaxed text-slate-600">
+        Con el plantel completo entrenando a la vez, el trabajo se organiza en 3 estaciones
+        rotativas que garantizan densidad de carga y trabajo individualizado sin tiempos
+        muertos.
       </p>
-      <div className="mb-4 flex items-center justify-center gap-6 rounded-lg bg-union-charcoal py-2.5 text-center text-white">
-        <p className="text-xs font-semibold">
-          <span className="text-sm font-black">96 m²</span> de sala
-        </p>
-        <p className="text-xs font-semibold">
-          <span className="text-sm font-black">15</span> barras
-        </p>
-        <p className="text-xs font-semibold">
-          <span className="text-sm font-black">1.000 kg</span> en discos
-        </p>
-      </div>
       <div className="grid grid-cols-3 gap-3">
         {ESTACIONES.map((e) => (
           <div key={e.titulo} className="rounded-lg border border-slate-200 p-3 break-inside-avoid">
