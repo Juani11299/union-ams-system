@@ -6,6 +6,7 @@ import {
   useAthletesActivos,
   useStrengthAssignmentsActivas,
 } from '@/store/useAppStore'
+import { WeeklyPdfExport } from '@/features/planificador/WeeklyPdfExport'
 import { useToastStore } from '@/store/useToastStore'
 import { Card } from '@/components/Card'
 import { Badge, type BadgeTone } from '@/components/Badge'
@@ -1237,13 +1238,15 @@ export function PlanificadorView() {
   const sessionExecutions = useSessionExecutionsActivas()
   const dailyTasks = useAppStore((s) => s.dailyTasks)
   const strengthTemplates = useAppStore((s) => s.strengthTemplates)
+  const strengthAssignments = useStrengthAssignmentsActivas()
   const assignTemplateToDay = useAppStore((s) => s.assignTemplateToDay)
   const createSessionPlan = useAppStore((s) => s.createSessionPlan)
   const athletes = useAthletesActivos()
-  useStrengthAssignmentsActivas() // suscribe a la vista para que se re-renderice al asignar/quitar plantillas
   const showToast = useToastStore((s) => s.showToast)
   const activeSeasonId = useAppStore((s) => s.activeSeasonId)
   const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+  const categories = useAppStore((s) => s.categories)
+  const club = useAppStore((s) => s.club)
 
   const [semanaOffset, setSemanaOffset] = useState(0)
   const referenciaSemana = useMemo(() => {
@@ -1254,6 +1257,8 @@ export function PlanificadorView() {
   const dias = useMemo(() => diasDeLaSemanaActual(referenciaSemana), [referenciaSemana])
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
   const [bibliotecaAbierta, setBibliotecaAbierta] = useState(false)
+  const [exportandoSemana, setExportandoSemana] = useState(false)
+  const categoriaActiva = categories.find((c) => c.id === activeCategoryId)
   const [vitaminaPendiente, setVitaminaPendiente] = useState<{
     templateId: string
     templateNombre: string
@@ -1341,34 +1346,45 @@ export function PlanificadorView() {
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setSemanaOffset((s) => s - 1)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-        >
-          ‹ Semana anterior
-        </button>
-        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <span className="capitalize">
-            {formatFechaCorta(dias[0])} — {formatFechaCorta(dias[6])}
-          </span>
-          {semanaOffset !== 0 && (
-            <button
-              type="button"
-              onClick={() => setSemanaOffset(0)}
-              className="rounded-md bg-union-red-50 px-2 py-0.5 text-xs font-medium text-union-red-700 hover:bg-union-red-100 dark:bg-union-red-500/10 dark:text-union-red-400"
-            >
-              Volver a hoy
-            </button>
-          )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSemanaOffset((s) => s - 1)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            ‹ Semana anterior
+          </button>
+          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            <span className="capitalize">
+              {formatFechaCorta(dias[0])} — {formatFechaCorta(dias[6])}
+            </span>
+            {semanaOffset !== 0 && (
+              <button
+                type="button"
+                onClick={() => setSemanaOffset(0)}
+                className="rounded-md bg-union-red-50 px-2 py-0.5 text-xs font-medium text-union-red-700 hover:bg-union-red-100 dark:bg-union-red-500/10 dark:text-union-red-400"
+              >
+                Volver a hoy
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSemanaOffset((s) => s + 1)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            Semana siguiente ›
+          </button>
         </div>
+
         <button
           type="button"
-          onClick={() => setSemanaOffset((s) => s + 1)}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          onClick={() => setExportandoSemana(true)}
+          disabled={!activeSeasonId || !activeCategoryId}
+          className="rounded-lg bg-union-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-union-red-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Semana siguiente ›
+          🖨️ Exportar Semana a PDF
         </button>
       </div>
 
@@ -1435,6 +1451,19 @@ export function PlanificadorView() {
           templateNombre={vitaminaPendiente.templateNombre}
           sessionPlanId={vitaminaPendiente.sessionPlanId}
           onClose={() => setVitaminaPendiente(null)}
+        />
+      )}
+
+      {exportandoSemana && activeSeasonId && activeCategoryId && (
+        <WeeklyPdfExport
+          dias={dias}
+          categoriaNombre={categoriaActiva?.nombre ?? 'Sin categoría'}
+          clubNombre={club?.nombre ?? 'C.A. Unión'}
+          sessionPlans={sessionPlans}
+          dailyTasks={dailyTasks}
+          strengthAssignments={strengthAssignments}
+          strengthTemplates={strengthTemplates}
+          onClose={() => setExportandoSemana(false)}
         />
       )}
     </div>

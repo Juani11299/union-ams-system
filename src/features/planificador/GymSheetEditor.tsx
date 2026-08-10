@@ -3,6 +3,8 @@ import { useAppStore } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
 import { formatFechaCorta } from '@/utils/fecha'
+import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { AiPlanModal } from './AiPlanModal'
 import type { SessionPlan, GymSheetData, GymSheetBloque } from '@/types'
 
 function nuevoId(): string {
@@ -56,6 +58,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
 
   const [sheet, setSheet] = useState<GymSheetData>(() => sheetInicial(plan))
   const [guardando, setGuardando] = useState(false)
+  const [mostrarModalIA, setMostrarModalIA] = useState(false)
 
   const categoria = categories.find((c) => c.id === plan.category_id)
 
@@ -176,6 +179,13 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
               className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
             >
               📥 Pegar Planilla
+            </button>
+            <button
+              type="button"
+              onClick={() => setMostrarModalIA(true)}
+              className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-1.5 text-xs font-semibold hover:from-indigo-600 hover:to-violet-700"
+            >
+              🪄 Generar con IA
             </button>
             <button
               type="button"
@@ -359,8 +369,24 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
           >
             + Agregar Bloque
           </button>
+
+          <div className="mt-8 flex items-end justify-between border-t border-slate-200 pt-3">
+            <p className="text-[10px] text-slate-400">
+              {club?.nombre ?? 'C.A. Unión'} — {NOMBRE_AREA}.
+            </p>
+            <p className="text-[10px] font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
+          </div>
         </div>
       </div>
+
+      {mostrarModalIA && (
+        <AiPlanModal
+          categoryId={plan.category_id}
+          categoriaNombre={categoria?.nombre ?? 'Sin categoría'}
+          onGenerado={(data) => setSheet(data)}
+          onClose={() => setMostrarModalIA(false)}
+        />
+      )}
     </div>
   )
 }

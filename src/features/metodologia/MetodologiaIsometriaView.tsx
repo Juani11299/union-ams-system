@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
 
 /**
  * Manual Metodológico Institucional — Entrenamiento Isométrico (clasificación
@@ -87,9 +88,7 @@ function Portada() {
       <div className="flex items-start justify-between border-b-4 border-union-red-600 pb-6">
         <img src="/logo-union.png" alt="" className="h-20 w-20 shrink-0 object-contain" />
         <p className="text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-          Departamento de
-          <br />
-          Rendimiento Físico
+          {NOMBRE_AREA}
         </p>
       </div>
 
@@ -108,9 +107,12 @@ function Portada() {
         </p>
       </div>
 
-      <div className="flex items-end justify-between border-t border-slate-200 pt-4 text-[11px] text-slate-400">
-        <p>Club Atlético Unión de Santa Fe</p>
-        <p>Documento interno de uso metodológico</p>
+      <div className="flex items-end justify-between border-t border-slate-200 pt-4">
+        <p className="text-[11px] text-slate-400">Club Atlético Unión de Santa Fe</p>
+        <div className="text-right">
+          <p className="text-[11px] font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
+          <p className="text-[10px] text-slate-400">{NOMBRE_AREA} — Documento interno de uso metodológico</p>
+        </div>
       </div>
     </div>
   )
@@ -298,9 +300,11 @@ function AplicacionPractica() {
 
 function Pie() {
   return (
-    <p className="border-t border-slate-200 pt-3 text-[10px] text-slate-400">
-      Club Atlético Unión de Santa Fe — Departamento de Rendimiento Físico. Documento
-      metodológico interno.
-    </p>
+    <div className="flex items-end justify-between border-t border-slate-200 pt-3">
+      <p className="text-[10px] text-slate-400">
+        Club Atlético Unión de Santa Fe — {NOMBRE_AREA}. Documento metodológico interno.
+      </p>
+      <p className="text-[10px] font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
+    </div>
   )
 }
