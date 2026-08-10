@@ -1,5 +1,7 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { idbStorage } from '@/utils/idbStorage'
 import type {
   Athlete,
   SessionPlan,
@@ -189,7 +191,9 @@ function exigirSupabase(set: (partial: Partial<AppState>) => void): void {
   throw new Error(SUPABASE_NO_CONFIGURADO)
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
   club: null,
   seasons: [],
   categories: [],
@@ -1071,7 +1075,39 @@ export const useAppStore = create<AppState>((set, get) => ({
       strengthAssignmentAthletes: state.strengthAssignmentAthletes.filter((a) => a.assignmentId !== id),
     }))
   },
-}))
+    }),
+    {
+      name: 'soma-app-store',
+      storage: createJSONStorage(() => idbStorage),
+      // Sólo se persisten los DATOS (para que el profe vea la última semana
+      // sincronizada sin señal) — nunca `isLoading`/`error` (arrancarían la
+      // próxima sesión en un estado de carga/error viejo que ya no aplica) ni
+      // los filtros/estado de modales (son de la sesión de UI actual, no del
+      // club). Las funciones ni hace falta excluirlas: no sobreviven el
+      // `JSON.stringify` que hace `persist` por debajo.
+      partialize: (state) => ({
+        club: state.club,
+        seasons: state.seasons,
+        categories: state.categories,
+        rosters: state.rosters,
+        athletes: state.athletes,
+        sessionPlans: state.sessionPlans,
+        sessionExecutions: state.sessionExecutions,
+        externalLoads: state.externalLoads,
+        wellnessEntries: state.wellnessEntries,
+        physicalTests: state.physicalTests,
+        strengthBlocks: state.strengthBlocks,
+        dailyTasks: state.dailyTasks,
+        strengthTemplates: state.strengthTemplates,
+        strengthTemplateExercises: state.strengthTemplateExercises,
+        strengthAssignments: state.strengthAssignments,
+        strengthAssignmentAthletes: state.strengthAssignmentAthletes,
+        activeSeasonId: state.activeSeasonId,
+        activeCategoryId: state.activeCategoryId,
+      }),
+    },
+  ),
+)
 
 /** Atletas de la categoría/temporada activa (vía Roster). */
 export function useAthletesActivos(): Athlete[] {
