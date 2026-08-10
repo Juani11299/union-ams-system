@@ -41,6 +41,7 @@ export function ManualFuerzaView() {
           <Encabezado eyebrow="01 — Cultura & Infraestructura" />
           <Filosofia />
           <Logistica />
+          <RespaldoCientifico />
         </Hoja>
         <Hoja>
           <Encabezado eyebrow="02 — Proyección Anual" />
@@ -209,6 +210,23 @@ function Logistica() {
         ))}
       </div>
     </section>
+  )
+}
+
+function RespaldoCientifico() {
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 break-inside-avoid">
+      <p className="text-[9px] font-semibold uppercase tracking-wide text-union-red-600">
+        Respaldo Metodológico
+      </p>
+      <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+        Modelo de estaciones fundamentado en los principios de densidad y frecuencia de
+        carga y en el mapeo de bloques de sesión (Meder, "Componentes de la Carga" /
+        "Organización de la Sesión"). Plan General y Ejercicios Vitamina, basados en Robles,
+        J.I., "Periodización del Entrenamiento de Fuerza: Lineal vs. Ondulante" — desarrollo
+        completo en <span className="italic">docs/respaldo_cientifico_union.md</span>.
+      </p>
+    </div>
   )
 }
 
