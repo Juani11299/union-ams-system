@@ -7,6 +7,8 @@ import type {
   ExternalLoad,
   FuenteCarga,
   GpsObjetivo,
+  GymExternalLoad,
+  GymSet,
   GymSheetData,
   NivelCargaCognitiva,
   PhysicalTest,
@@ -701,5 +703,49 @@ export function strengthAssignmentToInsertRow(input: NuevaStrengthAssignmentInpu
     template_id: input.templateId,
     session_plan_id: input.sessionPlanId,
     tipo: input.tipo,
+  }
+}
+
+// -----------------------------------------------------------------------------
+// gym_external_loads (Fase 17 — Terminal de Fuerza / Registro de Carga Externa)
+// -----------------------------------------------------------------------------
+
+export interface GymExternalLoadRow {
+  id: string
+  athlete_id: string
+  session_id: string
+  exercise_name: string
+  sets_data: { reps: number; weight_kg: number }[]
+  total_tonnage: number
+  created_at: string
+}
+
+export function gymExternalLoadFromRow(row: GymExternalLoadRow): GymExternalLoad {
+  return {
+    id: row.id,
+    athleteId: row.athlete_id,
+    sessionId: row.session_id,
+    exerciseName: row.exercise_name,
+    setsData: row.sets_data.map((s) => ({ reps: s.reps, weightKg: s.weight_kg })),
+    totalTonnage: Number(row.total_tonnage),
+    createdAt: row.created_at,
+  }
+}
+
+export interface NuevoGymExternalLoadInput {
+  athleteId: string
+  sessionId: string
+  exerciseName: string
+  setsData: GymSet[]
+  totalTonnage: number
+}
+
+export function gymExternalLoadToUpsertRow(input: NuevoGymExternalLoadInput) {
+  return {
+    athlete_id: input.athleteId,
+    session_id: input.sessionId,
+    exercise_name: input.exerciseName,
+    sets_data: input.setsData.map((s) => ({ reps: s.reps, weight_kg: s.weightKg })),
+    total_tonnage: input.totalTonnage,
   }
 }

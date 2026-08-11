@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Tabs, type TabItem } from '@/components/Tabs'
 import { CsvImportTab } from './CsvImportTab'
 import { CmjTab } from './CmjTab'
+import { GymLoadHistoryTab } from './GymLoadHistoryTab'
 import { DashboardIntegrado } from './DashboardIntegrado'
 
 const TABS: TabItem[] = [
   { id: 'csv', label: 'Importar CSV (GPS)', icon: '📄' },
   { id: 'cmj', label: 'Carga Manual (Métricas)', icon: '🦵' },
+  { id: 'gym', label: 'Registro de Carga Externa', icon: '🏋️' },
 ]
 
 export function ExternalLoadView() {
@@ -27,6 +29,7 @@ export function ExternalLoadView() {
 
       {tabActiva === 'csv' && <CsvImportTab />}
       {tabActiva === 'cmj' && <CmjTab />}
+      {tabActiva === 'gym' && <GymLoadHistoryTab />}
 
       <div>
         <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-200">

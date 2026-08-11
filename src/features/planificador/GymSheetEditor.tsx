@@ -24,6 +24,7 @@ function ejercicioVacio() {
     cargaKg: '',
     descanso: '',
     notas: '',
+    isTracked: false,
   }
 }
 
@@ -83,6 +84,25 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
       bloques: s.bloques.map((b) =>
         b.id === bloqueId ? { ...b, ejercicios: [...b.ejercicios, ejercicioVacio()] } : b,
       ),
+    }))
+  }
+
+  /**
+   * Marca cuál es el ejercicio troncal a medir en la Terminal de Fuerza
+   * (Fase 17) — sólo puede haber uno `isTracked` en TODA la planilla (no por
+   * bloque), así la Terminal no tiene ambigüedad sobre qué pedirle al
+   * jugador. Tocar el 🎯 del que ya está marcado lo desmarca.
+   */
+  function marcarTrackeado(bloqueId: string, ejercicioId: string) {
+    setSheet((s) => ({
+      ...s,
+      bloques: s.bloques.map((b) => ({
+        ...b,
+        ejercicios: b.ejercicios.map((e) => ({
+          ...e,
+          isTracked: b.id === bloqueId && e.id === ejercicioId ? !e.isTracked : false,
+        })),
+      })),
     }))
   }
 
@@ -280,6 +300,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                       <th className="w-20 px-2 py-1.5">Carga (Kg)</th>
                       <th className="w-20 px-2 py-1.5">Descanso</th>
                       <th className="w-32 py-1.5 pl-2">Notas / RIR-RPE</th>
+                      <th className="w-6 print:hidden" title="Ejercicio a medir en la Terminal de Fuerza" />
                       <th className="w-6 print:hidden" />
                     </tr>
                   </thead>
@@ -287,12 +308,23 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                     {bloque.ejercicios.map((ej) => (
                       <tr key={ej.id} className="border-b border-slate-100">
                         <td>
-                          <input
-                            value={ej.nombre}
-                            onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'nombre', e.target.value)}
-                            placeholder="Ej. Sentadilla trasera"
-                            className={`${inputPlanilla} placeholder:text-slate-300`}
-                          />
+                          <div className="flex items-center gap-1">
+                            {ej.isTracked && (
+                              <span
+                                className="shrink-0 text-xs"
+                                title="Ejercicio trackeado en la Terminal de Fuerza"
+                                aria-hidden
+                              >
+                                🎯
+                              </span>
+                            )}
+                            <input
+                              value={ej.nombre}
+                              onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'nombre', e.target.value)}
+                              placeholder="Ej. Sentadilla trasera"
+                              className={`${inputPlanilla} placeholder:text-slate-300`}
+                            />
+                          </div>
                         </td>
                         <td>
                           <input
@@ -335,6 +367,23 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                             placeholder="RIR 2"
                             className={`${inputPlanilla} placeholder:text-slate-300`}
                           />
+                        </td>
+                        <td className="print:hidden">
+                          <button
+                            type="button"
+                            onClick={() => marcarTrackeado(bloque.id, ej.id)}
+                            aria-label={
+                              ej.isTracked
+                                ? 'Ejercicio trackeado en la Terminal de Fuerza — tocar para desmarcar'
+                                : 'Marcar como ejercicio a trackear en la Terminal de Fuerza'
+                            }
+                            title="Ejercicio a medir en la Terminal de Fuerza"
+                            className={`px-1 text-sm ${
+                              ej.isTracked ? 'text-union-red-600' : 'text-slate-300 hover:text-union-red-500'
+                            }`}
+                          >
+                            🎯
+                          </button>
                         </td>
                         <td className="print:hidden">
                           <button

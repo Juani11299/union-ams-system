@@ -23,6 +23,7 @@ import type {
   StrengthTemplateExercise,
   StrengthAssignment,
   StrengthAssignmentAthlete,
+  GymExternalLoad,
 } from '@/types'
 import type { GrupoPosicion } from '@/utils/posicion'
 import { supabase, isSupabaseConfigured } from '@/utils/supabase'
@@ -57,6 +58,8 @@ import {
   strengthAssignmentFromRow,
   strengthAssignmentToInsertRow,
   strengthAssignmentAthleteFromRow,
+  gymExternalLoadFromRow,
+  gymExternalLoadToUpsertRow,
   type AthleteRow,
   type AthleteInput,
   type SessionPlanRow,
@@ -82,6 +85,8 @@ import {
   type NuevoStrengthTemplateExerciseInput,
   type StrengthAssignmentRow,
   type StrengthAssignmentAthleteRow,
+  type GymExternalLoadRow,
+  type NuevoGymExternalLoadInput,
 } from '@/utils/supabaseMappers'
 
 const SUPABASE_NO_CONFIGURADO =
@@ -127,6 +132,7 @@ interface AppState {
   strengthTemplateExercises: StrengthTemplateExercise[]
   strengthAssignments: StrengthAssignment[]
   strengthAssignmentAthletes: StrengthAssignmentAthlete[]
+  gymExternalLoads: GymExternalLoad[]
   activeSeasonId: string | null
   activeCategoryId: string | null
   isLoading: boolean
@@ -182,6 +188,8 @@ interface AppState {
   deleteStrengthTemplateExercise: (id: string) => Promise<void>
   assignTemplateToDay: (input: AsignarStrengthTemplateInput) => Promise<void>
   deleteStrengthAssignment: (id: string) => Promise<void>
+  /** Alta/corrección del registro de la Terminal de Fuerza (Fase 17) — upsert por `(athleteId, sessionId)`. */
+  submitGymExternalLoad: (input: NuevoGymExternalLoadInput) => Promise<void>
 }
 
 /** Lanza y deja el mensaje en `error` del store si Supabase no está configurado. */
@@ -210,6 +218,7 @@ export const useAppStore = create<AppState>()(
   strengthTemplateExercises: [],
   strengthAssignments: [],
   strengthAssignmentAthletes: [],
+  gymExternalLoads: [],
   activeSeasonId: null,
   activeCategoryId: null,
   isLoading: true,
@@ -260,6 +269,7 @@ export const useAppStore = create<AppState>()(
           supabase.from('strength_template_exercises').select('*').order('orden'),
           supabase.from('strength_assignments').select('*'),
           supabase.from('strength_assignment_athletes').select('*'),
+          supabase.from('gym_external_loads').select('*'),
         ]),
         timeout,
       ])
@@ -281,6 +291,7 @@ export const useAppStore = create<AppState>()(
         strengthTemplateExercisesRes,
         strengthAssignmentsRes,
         strengthAssignmentAthletesRes,
+        gymExternalLoadsRes,
       ] = resultados
 
       // Resiliente a fallas parciales: una tabla que falle (RLS mal configurada, tabla
@@ -303,6 +314,7 @@ export const useAppStore = create<AppState>()(
         strengthTemplateExercisesRes,
         strengthAssignmentsRes,
         strengthAssignmentAthletesRes,
+        gymExternalLoadsRes,
       ].find((r) => r.error)?.error
 
       const seasons = (seasonsRes.data ?? []) as Season[]
@@ -336,6 +348,9 @@ export const useAppStore = create<AppState>()(
         strengthAssignmentAthletes: (
           (strengthAssignmentAthletesRes.data ?? []) as StrengthAssignmentAthleteRow[]
         ).map(strengthAssignmentAthleteFromRow),
+        gymExternalLoads: ((gymExternalLoadsRes.data ?? []) as GymExternalLoadRow[]).map(
+          gymExternalLoadFromRow,
+        ),
         activeSeasonId: temporadaActiva?.id ?? null,
         activeCategoryId: categories[0]?.id ?? null,
         isLoading: false,
@@ -1075,6 +1090,26 @@ export const useAppStore = create<AppState>()(
       strengthAssignmentAthletes: state.strengthAssignmentAthletes.filter((a) => a.assignmentId !== id),
     }))
   },
+
+  submitGymExternalLoad: async (input) => {
+    exigirSupabase(set)
+
+    const { data, error } = await supabase
+      .from('gym_external_loads')
+      .upsert(gymExternalLoadToUpsertRow(input), { onConflict: 'athlete_id,session_id' })
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const guardado = gymExternalLoadFromRow(data as GymExternalLoadRow)
+    set((state) => ({
+      gymExternalLoads: [...state.gymExternalLoads.filter((g) => g.id !== guardado.id), guardado],
+    }))
+  },
     }),
     {
       name: 'soma-app-store',
@@ -1102,6 +1137,7 @@ export const useAppStore = create<AppState>()(
         strengthTemplateExercises: state.strengthTemplateExercises,
         strengthAssignments: state.strengthAssignments,
         strengthAssignmentAthletes: state.strengthAssignmentAthletes,
+        gymExternalLoads: state.gymExternalLoads,
         activeSeasonId: state.activeSeasonId,
         activeCategoryId: state.activeCategoryId,
       }),

@@ -9,11 +9,13 @@ import { MatchDayView } from '@/features/match-day/MatchDayView'
 import { MedicalView } from '@/features/medical/MedicalView'
 import { MetodologiaIsometriaView } from '@/features/metodologia/MetodologiaIsometriaView'
 import { ManualFuerzaView } from '@/features/metodologia/ManualFuerzaView'
+import { TerminalFuerzaView } from '@/features/terminal-fuerza/TerminalFuerzaView'
 
 function App() {
   return (
     <Routes>
       <Route path="/ingreso-rapido" element={<MagicLinkView />} />
+      <Route path="/terminal-fuerza" element={<TerminalFuerzaView />} />
       <Route element={<MainLayout />}>
         <Route path="/" element={<DashboardEquipo />} />
         <Route path="/planificador" element={<PlanificadorView />} />
