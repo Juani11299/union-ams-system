@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { DiagramaBiomecanico, type TipoDiagramaBiomecanico } from '@/components/ui/DiagramaBiomecanico'
 
 /**
- * Manual de Isometría Avanzada — Escuela de Movimiento e Isometría. Versión
- * maquetada 1-a-1 sobre el contenido académico redactado en
- * `docs/Manual_Isometria_Avanzada.md` (no es un resumen — es ese texto
- * distribuido en hojas A4). Documento digital exportable a PDF vía
- * `window.print()`, reutilizando estrictamente la arquitectura de impresión
- * A4 de `ManualFuerzaView.tsx` / la colección de manuales LTAD.
+ * Manual de Isometría Avanzada — Escuela de Movimiento e Isometría. Libro de
+ * texto interno maquetado 1-a-1 sobre `docs/Manual_Isometria_Avanzada.md`
+ * (no es un resumen — es ese texto distribuido en hojas A4). Las figuras
+ * biomecánicas del documento (marcadas `[IMAGEN: ...]` en el Markdown, por
+ * no depender de imágenes externas ni de derechos de autor de terceros) se
+ * renderizan acá como `<DiagramaBiomecanico>`, un SVG dibujado a mano.
+ * Documento exportable a PDF vía `window.print()`, reutilizando la
+ * arquitectura de impresión A4 del resto de los manuales del club.
  */
 export function MetodologiaIsometriaView() {
   function handleDescargarPdf() {
@@ -41,319 +44,534 @@ export function MetodologiaIsometriaView() {
         <Hoja>
           <Encabezado eyebrow="Índice y Nota Metodológica" />
           <Indice />
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="Nota Metodológica sobre las Fuentes Citadas" />
           <NotaFuentes />
         </Hoja>
 
-        <Hoja>
-          <Encabezado eyebrow="01 — Fundamentos Fisiológicos y Neurales (El Motor Interno)" />
-          <Titulo>1.1 Adaptaciones arquitectónicas</Titulo>
-          <P>
-            La isometría no es un estímulo neutro para el tejido: modifica de forma medible la
-            arquitectura del músculo y la rigidez del tendón, y lo hace de forma específica al
-            ángulo y a la longitud muscular en la que se entrena (Oranchuk et al., 2019). Dos
-            variables concentran la mayor parte de esa adaptación.
-          </P>
-          <Subtitulo>Ángulo de penación</Subtitulo>
-          <P>
-            El ángulo con el que las fibras musculares se insertan en la aponeurosis tiende a
-            aumentar con el entrenamiento isométrico de alta tensión, empaquetando más sarcómeros
-            en paralelo dentro de la misma sección transversal — favorece la producción de
-            fuerza máxima, a costa de una velocidad de acortamiento levemente menor.
-          </P>
-          <Subtitulo>Longitud del fascículo muscular</Subtitulo>
-          <P>
-            La dirección de esta adaptación depende de la longitud en la que se entrena. El
-            trabajo isométrico en posiciones de <span className="font-semibold text-union-charcoal">elongación</span>{' '}
-            (ángulos abiertos, músculo estirado) tiende a aumentar la longitud del fascículo
-            —adición de sarcómeros en serie, emparentado con el entrenamiento excéntrico—
-            mejorando la tolerancia del tejido en posiciones de riesgo (relevante, por ejemplo,
-            para isquiotibiales). El trabajo en posiciones de{' '}
-            <span className="font-semibold text-union-charcoal">acortamiento</span> (ángulos
-            cerrados) produce, en cambio, adaptaciones orientadas a la rigidez tendinosa y a una
-            ganancia de fuerza marcadamente específica al ángulo entrenado, con menor
-            transferencia a otros rangos articulares (Oranchuk et al., 2019).
-          </P>
-          <Nota>
-            Esta dependencia de la longitud/ángulo de entrenamiento es la base fisiológica de
-            por qué en este manual no existe una isometría genérica: cada ejercicio se prescribe
-            en un ángulo articular específico, elegido en función del gesto deportivo que se
-            busca transferir (desarrollado en la Sección 2).
-          </Nota>
-        </Hoja>
+        {/* ================= CAPÍTULO 1 — FISIOLOGÍA Y ARQUITECTURA MUSCULAR ================= */}
 
         <Hoja>
-          <Encabezado eyebrow="01 — Fundamentos Fisiológicos y Neurales (El Motor Interno)" />
-          <Titulo>1.2 Rigidez tendinosa (stiffness)</Titulo>
+          <Encabezado eyebrow="01 — Fisiología y Arquitectura Muscular" />
+          <Titulo>1.1 La isometría como estímulo arquitectónico específico</Titulo>
           <P>
-            En paralelo a la adaptación muscular, el tendón incrementa su rigidez con el
-            entrenamiento isométrico de alta tensión sostenida: mayor densidad de
-            entrecruzamientos de colágeno y, con el tiempo, mayor área de sección transversal
-            del tendón. Un tendón más rígido transmite la fuerza generada por el músculo hacia
-            el hueso con menor retardo electromecánico — mejora directamente la Tasa de
-            Desarrollo de la Fuerza (RFD, Manual Metodológico Oficial, Sección 1.2), porque una
-            unidad músculo-tendón más rígida "pierde" menos tiempo estirando el componente
-            elástico en serie antes de que esa fuerza se traduzca en movimiento.
+            El error conceptual más extendido sobre la isometría es tratarla como un estímulo
+            neuromuscular homogéneo —"hacer fuerza sin moverse"— como si toda contracción
+            isométrica produjera el mismo tipo de adaptación independientemente del ángulo, la
+            longitud muscular o la intención con la que se ejecuta. La evidencia contemporánea
+            contradice esa simplificación: la isometría es, en rigor, una familia de estímulos
+            que produce adaptaciones arquitectónicas distintas —y a veces opuestas— según tres
+            variables de programación: el ángulo articular en el que se entrena, la longitud
+            muscular relativa (elongada o acortada) en ese ángulo, y la intención neuromuscular
+            con la que se ejecuta la contracción (Oranchuk et al., 2019). Este capítulo desarrolla,
+            célula por célula y reflejo por reflejo, por qué esas tres variables importan.
           </P>
-          <Titulo>1.3 Adaptaciones neurales</Titulo>
-          <Subtitulo>Reclutamiento de unidades motoras de alto umbral</Subtitulo>
+          <Titulo>1.2 Sarcomerogénesis y longitud del fascículo muscular</Titulo>
           <P>
-            Según el principio de tamaño de Henneman, las unidades motoras se reclutan en orden
-            creciente de umbral a medida que aumenta la demanda de fuerza. Las contracciones
-            isométricas de intención máxima son, precisamente, el estímulo que exige reclutar el
-            extremo superior de ese espectro — las unidades de fibras rápidas (Tipo II), de mayor
-            umbral y capacidad de fuerza y potencia, que en un gesto dinámico submáximo pueden no
-            llegar a activarse plenamente.
+            El sarcómero es la unidad contráctil fundamental del músculo esquelético: la porción
+            del miofilamento comprendida entre dos líneas Z consecutivas, donde los filamentos
+            gruesos de miosina y los delgados de actina se interdigitan y generan fuerza mediante
+            el ciclo de puentes cruzados. Un fascículo muscular —el haz de fibras agrupado por el
+            perimisio— está compuesto, en su eje longitudinal, por sarcómeros dispuestos en
+            serie. La longitud total del fascículo es, entonces, directamente proporcional a la
+            cantidad de sarcómeros en serie que lo componen.
           </P>
-          <Subtitulo>Cortical drive</Subtitulo>
           <P>
-            El entrenamiento isométrico de alta intensidad sostenido se asocia con un incremento
-            de la activación voluntaria — la eficiencia con la que la corteza motora logra
-            reclutar el potencial contráctil total del músculo. En la práctica, reduce la brecha
-            entre la fuerza que un músculo puede producir y la que el atleta logra expresar de
-            forma voluntaria: el jugador aprende a "encender" una proporción mayor de su propio
-            potencial contráctil.
+            Este dato anatómico es la clave para entender una de las adaptaciones más relevantes
+            del entrenamiento isométrico: el músculo puede responder agregando sarcómeros en
+            serie —sarcomerogénesis—, lo que alarga el fascículo. Esta adaptación depende de la
+            longitud muscular relativa en la que se aplica la tensión: el entrenamiento
+            isométrico en posiciones de elongación muscular (ángulo articular abierto) es el que
+            tiende a estimular la adición de sarcómeros en serie, un fenómeno emparentado con el
+            del entrenamiento excéntrico en longitud larga (Oranchuk et al., 2019).
           </P>
         </Hoja>
 
         <Hoja>
-          <Encabezado eyebrow="01 — Fundamentos Fisiológicos y Neurales (El Motor Interno)" />
-          <Subtitulo>Órgano Tendinoso de Golgi (OTG) y su rol inhibitorio</Subtitulo>
+          <Encabezado eyebrow="01 — Fisiología y Arquitectura Muscular" />
           <P>
-            El OTG es un propioceptor ubicado en la unión miotendinosa que detecta la tensión
-            activa del músculo y, ante niveles que interpreta como potencialmente lesivos,
-            dispara un reflejo de inhibición autogénica —relaja el agonista para proteger al
-            tendón de una sobrecarga mecánica. Se postula que la exposición crónica y progresiva
-            a tensión isométrica elevada puede elevar el umbral de disparo de este reflejo,
-            permitiendo expresar picos de fuerza voluntaria mayores sin que el sistema nervioso
-            "frene" la contracción de forma prematura.
+            El resultado funcional de un fascículo más largo es doble: primero, desplaza hacia la
+            derecha el ángulo de pico de fuerza del músculo —puede producir su fuerza máxima en
+            una posición más elongada—; segundo, mejora la tolerancia mecánica del tejido en esas
+            posiciones de riesgo, base fisiológica de por qué se recomienda el trabajo isométrico
+            en longitud larga para grupos musculares con alta incidencia de lesión por elongación.
+          </P>
+          <P>
+            En el extremo opuesto, el entrenamiento isométrico en posiciones de acortamiento
+            (ángulo articular cerrado) no estimula de la misma manera la adición de sarcómeros en
+            serie: produce una ganancia de fuerza marcadamente específica al ángulo entrenado, con
+            escasa transferencia a otros rangos articulares (Oranchuk et al., 2019) — el mecanismo
+            que explica, en última instancia, por qué la Teoría de Vectores de Fuerza (Capítulo 2)
+            insiste en prescribir cada ejercicio en el ángulo exacto del gesto que se busca
+            mejorar.
+          </P>
+          <Titulo>1.3 Ángulo de penación y el compromiso fuerza-velocidad</Titulo>
+          <P>
+            El ángulo de penación es el ángulo formado entre la orientación de las fibras
+            musculares y el eje de la aponeurosis. Un músculo con fibras penadas puede empaquetar
+            más sarcómeros en paralelo dentro de la misma sección transversal, comparado con un
+            músculo de fibras paralelas al eje de tracción. El entrenamiento isométrico de alta
+            tensión sostenida tiende a incrementar este ángulo.
+          </P>
+          <P>
+            La consecuencia es un compromiso clásico en fisiología muscular: a mayor ángulo de
+            penación, mayor la cantidad de sarcómeros en paralelo —favorece la fuerza máxima—
+            pero menor la proporción de fuerza de cada fibra transmitida en línea recta al
+            tendón, y menor la velocidad de acortamiento efectiva. Un ángulo de penación mayor
+            construye un músculo más orientado a la fuerza máxima y menos a la velocidad de
+            contracción pura — por eso el trabajo isométrico de fuerza máxima (Capítulo 3) y el
+            trabajo de velocidad pura no son estímulos intercambiables, sino complementarios.
+          </P>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="01 — Fisiología y Arquitectura Muscular" />
+          <Titulo>1.4 Rigidez tendinosa (stiffness): colágeno, entrecruzamientos y transmisión de fuerza</Titulo>
+          <P>
+            El tendón no es un cable inerte: es tejido conectivo dinámico compuesto
+            mayoritariamente por fibras de colágeno tipo I organizadas en haces paralelos,
+            embebidas en una matriz de proteoglicanos. Su rigidez —cuánto se deforma por unidad
+            de fuerza aplicada— es una propiedad mecánica entrenable. La tensión isométrica alta
+            y sostenida promueve, con el tiempo, mayor densidad de entrecruzamientos entre las
+            fibrillas de colágeno y, en adaptaciones más crónicas, mayor área de sección
+            transversal del tendón.
+          </P>
+          <P>
+            La unidad músculo-tendón funciona como un sistema de resortes en serie: cuando el
+            músculo se contrae, parte de esa contracción se invierte en estirar el componente
+            elástico en serie (el tendón) antes de que la fuerza se transmita al hueso. Un tendón
+            más rígido "pierde" menos tiempo en esa fase — se traduce en un menor retardo
+            electromecánico, una mejora directa de la Tasa de Desarrollo de la Fuerza (RFD) que
+            desarrolla la Sección 1.2 del Manual Metodológico Oficial: producir fuerza más rápido,
+            la cualidad que determina el resultado de acciones que duran menos de 300ms de
+            contacto con el suelo.
+          </P>
+          <Titulo>1.5 Reclutamiento de unidades motoras de alto umbral (principio de Henneman)</Titulo>
+          <P>
+            Una unidad motora es el conjunto formado por una motoneurona alfa y todas las fibras
+            que inerva. El principio de tamaño de Henneman establece que, ante demanda creciente
+            de fuerza, las unidades motoras se reclutan en orden predecible: primero las de menor
+            umbral (fibras Tipo I, lentas), y progresivamente las de mayor umbral (fibras Tipo II,
+            rápidas, mayor capacidad de fuerza y potencia).
           </P>
           <Nota>
-            Es importante remarcar que este mecanismo de desensibilización del OTG es, en gran
-            medida, una hipótesis mecanicista discutida en el campo del entrenamiento de fuerza
-            máxima — no una medición directa e inequívoca en humanos entrenados — y se presenta
-            aquí con esa salvedad.
+            Un gesto dinámico submáximo puede no reclutar plenamente las unidades de alto umbral.
+            La contracción isométrica de intención voluntaria máxima es, en cambio, el tipo de
+            estímulo que exige ese reclutamiento completo: al no existir movimiento articular ni
+            límite de velocidad, el sistema nervioso puede sostener la demanda de máxima fuerza
+            durante varios segundos — la base fisiológica del bloque de Overcoming Isometrics de
+            máxima intención del Capítulo 3.
           </Nota>
-          <Titulo>1.4 Metabolismo y oclusión</Titulo>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="01 — Fisiología y Arquitectura Muscular" />
+          <Titulo>1.6 Cortical drive y activación voluntaria</Titulo>
           <P>
-            Las isometrías de larga duración a intensidades submáximas generan un fenómeno
-            mecánico particular: la tensión sostenida puede superar la presión intramuscular
-            necesaria para mantener el flujo sanguíneo normal, generando hipoxia local
-            transitoria —un mecanismo emparentado con el entrenamiento con restricción de flujo
-            sanguíneo (BFR). Esa hipoxia se asocia con mayor acumulación de metabolitos y con la
-            liberación de factores de crecimiento sistémicos que participan en la señalización
-            anabólica del tejido.
+            Existe una brecha entre la fuerza que un músculo es fisiológicamente capaz de producir
+            (medible mediante estimulación eléctrica externa superpuesta a una contracción
+            voluntaria máxima) y la fuerza que ese sujeto logra expresar de forma voluntaria. Esa
+            brecha se explica en gran parte por la eficiencia del cortical drive — la capacidad de
+            la corteza motora y las vías descendentes de reclutar y sincronizar el conjunto
+            completo de unidades motoras disponibles.
+          </P>
+          <P>
+            El entrenamiento isométrico de alta intensidad sostenido se asocia con una mejora de
+            esta activación voluntaria: el sistema nervioso central "aprende" a reclutar una
+            proporción mayor de su propio potencial contráctil disponible, sin que
+            necesariamente haya cambiado el tamaño del tejido. Es una adaptación puramente
+            neural, y explica por qué las primeras semanas de un bloque de Overcoming de
+            intención máxima suelen producir ganancias de fuerza rápidas — no porque el músculo
+            haya crecido, sino porque el jugador aprendió a "encender" una porción mayor de la
+            maquinaria contráctil que ya tenía.
+          </P>
+          <Titulo>1.7 El Órgano Tendinoso de Golgi: anatomía, reflejo Ib y la hipótesis de desensibilización</Titulo>
+          <P>
+            El Órgano Tendinoso de Golgi (OTG) es un receptor sensorial ubicado en la unión
+            miotendinosa, intercalado en serie con un pequeño grupo de fibras. A diferencia del
+            huso muscular —que detecta longitud y velocidad de estiramiento del vientre
+            muscular— el OTG está ubicado para detectar tensión activa: la fuerza real que el
+            músculo transmite a través del tendón en un momento dado.
+          </P>
+          <P>
+            Cuando el OTG detecta tensión que su umbral interpreta como potencialmente lesiva,
+            dispara señales aferentes Ib que, vía una interneurona inhibitoria en la médula
+            espinal, producen un reflejo de inhibición autogénica: la motoneurona alfa del propio
+            músculo agonista recibe una señal que reduce su activación, relajando la contracción
+            para proteger al tendón.
+          </P>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="01 — Fisiología y Arquitectura Muscular" />
+          <P>
+            En el campo del entrenamiento de fuerza máxima se postula —y este manual lo presenta
+            explícitamente como hipótesis mecanicista discutida, no como hallazgo cerrado— que la
+            exposición crónica y progresiva a tensión isométrica elevada puede elevar el umbral
+            de disparo de este reflejo protector, permitiendo expresar picos de fuerza voluntaria
+            mayores sin que la contracción se interrumpa de forma prematura.
+          </P>
+          <Nota>
+            La evidencia directa de desensibilización del OTG en humanos entrenados es indirecta
+            —se infiere de las mejoras de fuerza voluntaria observadas tras entrenamiento de
+            intención máxima, no de una medición directa del umbral del reflejo— y se presenta
+            aquí con esa salvedad explícita.
+          </Nota>
+          <Titulo>1.8 Metabolismo, hipoxia local y señalización del tejido conectivo</Titulo>
+          <P>
+            Las isometrías de larga duración a intensidades submáximas —el estímulo que
+            caracteriza al bloque Yielding del Capítulo 4— generan un fenómeno distinto al
+            reclutamiento de alto umbral del bloque Overcoming: la tensión sostenida puede superar
+            la presión intramuscular necesaria para mantener el flujo sanguíneo capilar normal,
+            generando hipoxia local transitoria — un mecanismo emparentado con el entrenamiento
+            con restricción de flujo sanguíneo (BFR), aunque acá la oclusión es producto de la
+            propia tensión muscular, no de un manguito externo.
+          </P>
+          <P>
+            Esa hipoxia se asocia con mayor acumulación de metabolitos (lactato, fosfato
+            inorgánico, iones de hidrógeno) y con la liberación de factores de crecimiento que
+            participan en la señalización anabólica del tejido.
           </P>
           <Nota>
             El cuerpo de investigación sobre hipoxia/BFR está mayoritariamente centrado en la
-            hipertrofia muscular; su extensión al fortalecimiento específico del tendón y el
-            ligamento es un mecanismo plausible, pero se presenta como una vía complementaria
-            emergente, no como un hallazgo cerrado y unánime.
+            hipertrofia del tejido muscular; su extensión al fortalecimiento específico del
+            tendón y el ligamento es un mecanismo plausible, pero se presenta como una vía
+            complementaria emergente, no como un hallazgo cerrado y unánime.
+          </Nota>
+        </Hoja>
+
+        {/* ================= CAPÍTULO 2 — BIOMECÁNICA Y TEORÍA DE VECTORES DE FUERZA ================= */}
+
+        <Hoja>
+          <Encabezado eyebrow="02 — Biomecánica y Teoría de Vectores de Fuerza" />
+          <Titulo>2.1 El principio de especificidad angular: la física de la transferencia (±15°)</Titulo>
+          <P>
+            El Capítulo 1 estableció, a partir de Oranchuk et al. (2019), que la ganancia de
+            fuerza producida por el entrenamiento isométrico depende del ángulo y de la longitud
+            muscular en la que se entrena. Este capítulo traduce esa evidencia fisiológica en una
+            regla de aplicación práctica: la Teoría de Vectores de Fuerza, el estándar
+            biomecánico propio de la Metodología UNIÓN.
+          </P>
+          <P>
+            El principio central es la especificidad angular: la ganancia de fuerza se expresa
+            con su magnitud máxima en el ángulo articular exacto en el que fue entrenada, y decae
+            progresivamente a medida que el ángulo se aleja de ese punto. La Metodología UNIÓN
+            adopta, como estándar de aplicación práctica, una ventana de transferencia de
+            aproximadamente <span className="font-semibold text-union-charcoal">±15°</span>{' '}
+            alrededor del ángulo entrenado: dentro de esa ventana se asume transferencia
+            relevante; fuera de ella, la transferencia cae de forma marcada.
+          </P>
+          <Nota>
+            Elegir el ángulo de un ejercicio isométrico no es un detalle técnico menor — es la
+            decisión que determina si ese ejercicio transfiere o no transfiere al gesto que se
+            busca mejorar. Un Overcoming Isometric con intención máxima, técnica perfecta y
+            dosificación ideal, pero en el ángulo equivocado, puede producir ganancias de fuerza
+            reales en un test de laboratorio y, sin embargo, aportar poco o nada al sprint o al
+            frenado que motivó su inclusión en el programa.
           </Nota>
         </Hoja>
 
         <Hoja>
           <Encabezado eyebrow="02 — Biomecánica y Teoría de Vectores de Fuerza" />
-          <Titulo>2.1 Por qué el ángulo articular es innegociable</Titulo>
-          <P>
-            El principio central que organiza la prescripción de isometría en este manual es la
-            especificidad angular: la ganancia de fuerza producida por un entrenamiento
-            isométrico se expresa con su magnitud máxima en el ángulo articular exacto en el que
-            fue entrenada, y decae progresivamente a medida que el ángulo se aleja de ese punto.
-            La Metodología UNIÓN adopta como estándar de aplicación práctica una ventana de
-            transferencia de aproximadamente <span className="font-semibold text-union-charcoal">±15°</span>{' '}
-            alrededor del ángulo entrenado: fuera de esa ventana, la transferencia al gesto
-            deportivo real cae de forma marcada.
-          </P>
-          <Nota>
-            Elegir el ángulo de un ejercicio isométrico no es un detalle técnico menor, es la
-            decisión que determina si ese ejercicio transfiere o no transfiere al gesto que se
-            busca mejorar — un Overcoming Isometric ejecutado en el ángulo equivocado puede
-            producir ganancias de fuerza reales y, sin embargo, aportar poco o nada al sprint o
-            al frenado que motivó su inclusión en el programa.
-          </Nota>
-          <Titulo>2.2 Vectores horizontales vs. vectores verticales</Titulo>
+          <Titulo>2.2 Vectores horizontales vs. verticales</Titulo>
           <P>
             La segunda decisión biomecánica central es la dirección del vector de fuerza que el
             ejercicio reproduce, porque distintas fases de la carrera exigen producir fuerza en
-            direcciones distintas.
+            direcciones mecánicamente distintas.
           </P>
-          <Tabla
-            columnas={['Vector', 'Fase de carrera', 'Angulación de referencia']}
-            filas={[
-              [
-                'Horizontal',
-                'Aceleración (primeros pasos): cuerpo inclinado hacia adelante, proyección horizontal del centro de masa.',
-                'Cadera y rodilla ~90°-100° (posición del primer y segundo apoyo)',
-              ],
-              [
-                'Vertical',
-                'Velocidad máxima (Top Speed): posición erguida, fuerza vertical en tiempo de contacto brevísimo (80-100ms).',
-                'Rodilla ~135°-145° (emulando el touchdown)',
-              ],
-            ]}
-          />
+          <P>
+            <span className="font-semibold text-union-charcoal">Vectores horizontales — aceleración.</span>{' '}
+            En los primeros pasos, el cuerpo está marcadamente inclinado hacia adelante y el
+            objetivo es proyectar el centro de masa horizontalmente. Se prescriben angulaciones
+            de cadera y rodilla relativamente cerradas (~90°), emulando la posición del primer y
+            segundo apoyo.
+          </P>
+          <P>
+            <span className="font-semibold text-union-charcoal">Vectores verticales — velocidad máxima.</span>{' '}
+            El cuerpo adopta una posición erguida y la demanda dominante es la fuerza vertical en
+            un tiempo de contacto brevísimo (80-100ms). Se prescriben angulaciones de rodilla más
+            abiertas (~140°), emulando el touchdown del sprint a máxima velocidad.
+          </P>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Figura tipo="aceleracion" caption="Vector horizontal — postura de aceleración, cadera y rodilla ~90°." />
+            <Figura tipo="top-speed" caption="Vector vertical — postura de top speed, rodilla de apoyo ~140° (touchdown)." />
+          </div>
+          <Titulo>2.3 Consecuencias metodológicas</Titulo>
+          <P>
+            La combinación de ambos ejes —ángulo específico y dirección del vector— convierte a
+            la prescripción de cualquier ejercicio isométrico en la respuesta a una pregunta
+            siempre igual: ¿qué fase del gesto, en qué ángulo exacto y en qué dirección de
+            fuerza, estoy tratando de mejorar? Nunca se prescribe isometría como estímulo
+            genérico indiferenciado.
+          </P>
         </Hoja>
+
+        {/* ================= CAPÍTULO 3 — OVERCOMING ISOMETRICS ================= */}
 
         <Hoja>
           <Encabezado eyebrow="03 — Overcoming Isometrics: Aceleración y Sprint" />
-          <Titulo>3.1 Definición fisiológica</Titulo>
+          <Titulo>3.1 Definición fisiológica y sesgo concéntrico</Titulo>
           <P>
-            La isometría de superación (Overcoming) es la acción en la que el atleta empuja con
-            máxima intención voluntaria contra una resistencia inamovible, sin lograr —ni
-            buscar— desplazamiento articular. Fisiológicamente tiene un sesgo concéntrico: la
-            intención motora es la misma que la de un movimiento concéntrico de superación de
-            carga, solo que la resistencia externa impide que ese intento se traduzca en
-            acortamiento muscular real. Es el opuesto biomecánico de la isometría de sostén
-            (Manual Metodológico Oficial, Sección 3.2).
+            La isometría de superación (Overcoming, en la clasificación de Natera) es la acción
+            en la que el atleta empuja con máxima intención voluntaria contra una resistencia
+            inamovible, sin lograr —ni buscar— desplazamiento articular. Fisiológicamente tiene
+            un sesgo concéntrico: la intención motora es idéntica a la de un movimiento
+            concéntrico de superación de carga, solo que la resistencia externa impide que ese
+            intento se traduzca en acortamiento real. Es el opuesto biomecánico exacto de la
+            isometría de sostén (Manual Metodológico Oficial, Sección 3.2).
           </P>
-          <Titulo>3.2 Aplicación — Aceleración (primeros pasos)</Titulo>
+          <P>
+            Esta definición determina el objetivo neuromuscular completo del bloque: reclutamiento
+            de unidades motoras de alto umbral (Sección 1.5), mejora del cortical drive (Sección
+            1.6) y, según la hipótesis discutida en la Sección 1.7, una eventual
+            desensibilización progresiva del reflejo inhibitorio del OTG.
+          </P>
+          <Titulo>3.2 Postura de Aceleración</Titulo>
           <P>
             Siguiendo el criterio de vectores horizontales (Sección 2.2), el trabajo Overcoming
-            orientado a la aceleración se prescribe en angulaciones de cadera y rodilla de
-            aproximadamente 90°-100°, reproduciendo la posición corporal de los primeros apoyos
-            de la arrancada. El objetivo neuromuscular es la producción de fuerza horizontal
-            máxima en el umbral de reclutamiento más alto posible (Sección 1.3), sin el
-            componente de fatiga técnica ni el riesgo articular de repetir el gesto dinámico
-            completo bajo carga máxima.
-          </P>
-          <Titulo>3.3 Aplicación — Velocidad máxima (Top Speed)</Titulo>
-          <P>
-            Siguiendo el criterio de vectores verticales, el trabajo Overcoming orientado a la
-            velocidad máxima se prescribe en angulaciones de rodilla de aproximadamente
-            135°-145°, emulando el touchdown del sprint a máxima velocidad. Aquí el objetivo
-            neuromuscular se desplaza de la fuerza horizontal pura hacia la capacidad de producir
-            fuerza vertical con una RFD muy elevada — coherente con que, en esta fase, el tiempo
-            de contacto real con el suelo es de apenas 80-100ms, un margen en el que la fuerza
-            máxima absoluta nunca llega a expresarse por completo.
+            orientado a la aceleración se prescribe reproduciendo, milimétricamente, la posición
+            corporal del primer y segundo apoyo de la arrancada: cadera en flexión ~90°, rodilla
+            en flexión ~90°, y tronco inclinado hacia adelante ~45° respecto a la vertical,
+            manteniendo la línea hombro-cadera-tobillo del apoyo trasero lo más recta posible.
           </P>
         </Hoja>
 
         <Hoja>
           <Encabezado eyebrow="03 — Overcoming Isometrics: Aceleración y Sprint" />
-          <Titulo>3.4 Dosificación de carga</Titulo>
+          <Figura tipo="aceleracion" caption="Postura de Overcoming Isometric para aceleración — tronco inclinado ~45°, cadera y rodilla de la pierna motriz a ~90°, vector de fuerza horizontal hacia adelante y abajo." grande />
+          <P>
+            El objetivo neuromuscular de esta postura es la producción de fuerza horizontal
+            máxima en el umbral de reclutamiento más alto posible (Sección 1.5), sin el
+            componente de fatiga técnica del sprint completo ni el riesgo articular de repetir
+            esa acción dinámica bajo carga máxima de forma reiterada.
+          </P>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="03 — Overcoming Isometrics: Aceleración y Sprint" />
+          <Titulo>3.3 Postura de Velocidad Máxima (Top Speed)</Titulo>
+          <P>
+            Siguiendo el criterio de vectores verticales, el trabajo Overcoming orientado a la
+            velocidad máxima reproduce la posición articular del instante de touchdown: rodilla de
+            apoyo en ~140° (rango 135°-145°), notablemente más extendida que en la postura de
+            aceleración, y tronco casi vertical, con inclinación mínima hacia adelante — muy
+            distinta de la inclinación marcada de la postura de aceleración, porque a velocidad
+            máxima el cuerpo ya no proyecta el centro de masa hacia adelante con la misma
+            agresividad, sino que lo mantiene estable sobre un apoyo de apenas 80-100ms.
+          </P>
+          <Figura tipo="top-speed" caption="Postura de Overcoming Isometric para velocidad máxima (Top Speed) — tronco casi vertical, rodilla de apoyo ~140° emulando el touchdown, vector de fuerza vertical hacia abajo." grande />
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="03 — Overcoming Isometrics: Aceleración y Sprint" />
+          <P>
+            Aquí el objetivo neuromuscular se desplaza de la fuerza horizontal pura hacia la
+            capacidad de producir fuerza vertical con una Tasa de Desarrollo de la Fuerza (RFD)
+            muy elevada — coherente con que, en esta fase, el tiempo de contacto real con el
+            suelo es tan breve que la fuerza máxima absoluta nunca llega a expresarse por
+            completo: lo que determina el resultado del apoyo no es cuánta fuerza puede producir
+            el jugador eventualmente, sino cuánta logra producir en esa ventana brevísima.
+          </P>
+          <Titulo>3.4 Dosificación exhaustiva de carga</Titulo>
           <Tabla
-            columnas={['Variable', 'Prescripción']}
+            columnas={['Variable', 'Prescripción', 'Fundamento fisiológico']}
             filas={[
-              ['Intensidad', '100% de Máxima Contracción Voluntaria Isométrica (MVCI) — intención máxima'],
-              ['Duración del esfuerzo', '3 a 5 segundos por repetición'],
-              ['Series', '3 a 5 series'],
-              ['Pausa entre series', 'Completa, mayor a 2 minutos'],
-              ['Intención neuromuscular', 'Explosiva desde el inicio de la contracción (RFD), no una rampa gradual hacia el pico'],
+              ['Intensidad', '100% de Máxima Contracción Voluntaria Isométrica (MVCI) — intención máxima', 'Solo la intención máxima recluta el extremo superior del pool de unidades motoras (1.5)'],
+              ['Duración del esfuerzo', '3 a 5 segundos por repetición', 'Expresa el pico de fuerza voluntaria sin fatiga metabólica que degrade el reclutamiento'],
+              ['Series', '3 a 5 series', 'Volumen suficiente para consolidar el patrón de reclutamiento sin perder calidad'],
+              ['Pausa entre series', 'Completa, mayor a 2 minutos', 'Recuperación neural completa entre esfuerzos de alto umbral (1.5)'],
+              ['Intención neuromuscular', 'Explosiva desde el inicio (RFD), no una rampa gradual', 'El objetivo es la tasa de desarrollo de la fuerza, no solo el pico eventual (1.4)'],
             ]}
           />
           <Nota>
-            La pausa completa (mayor a 2 min) no es un detalle conservador: dado que el objetivo
-            es reclutamiento de alto umbral y RFD (Sección 1.3), una recuperación incompleta
-            entre series compromete exactamente la cualidad neural que el ejercicio busca
-            entrenar, degradando el estímulo hacia una demanda metabólica que no es el objetivo
-            de este bloque.
+            La pausa completa de más de dos minutos no es un detalle conservador: dado que el
+            objetivo fisiológico es el reclutamiento de alto umbral y la RFD, una recuperación
+            incompleta introduce fatiga metabólica periférica que compromete exactamente la
+            cualidad neural que el ejercicio busca entrenar.
           </Nota>
+        </Hoja>
+
+        {/* ================= CAPÍTULO 4 — YIELDING ISOMETRICS ================= */}
+
+        <Hoja>
+          <Encabezado eyebrow="04 — Yielding Isometrics: Frenado y Cambio de Dirección" />
+          <Titulo>4.1 Definición fisiológica y sesgo excéntrico</Titulo>
+          <P>
+            La isometría de sostén (Yielding, en la clasificación de Natera) es la acción en la
+            que el atleta resiste una carga externa —o su propio peso corporal— sin ceder,
+            absorbiendo fuerza durante un tiempo determinado sin desplazamiento articular
+            visible. Fisiológicamente tiene un sesgo excéntrico: el músculo trabaja de forma
+            activa para no ser vencido por una fuerza externa que tiende constantemente a
+            estirarlo — la misma demanda mecánica que enfrenta el sistema neuromuscular durante
+            la fase de frenado de una deceleración real.
+          </P>
+          <Titulo>4.2 El rol de la titina</Titulo>
+          <P>
+            La titina es una proteína estructural gigante —la más grande conocida en el cuerpo
+            humano— que se extiende a lo largo de medio sarcómero, conectando la línea Z con la
+            banda M. Funciona como un resorte molecular incorporado en la propia estructura
+            contráctil: durante el estiramiento activo del músculo bajo tensión —exactamente la
+            condición de la isometría Yielding, y de la fase de frenado real— los segmentos
+            elásticos de la titina se despliegan y rigidizan, almacenando energía elástica y
+            aportando fuerza pasiva adicional y estabilidad estructural al sarcómero bajo cargas
+            de estiramiento elevadas.
+          </P>
         </Hoja>
 
         <Hoja>
           <Encabezado eyebrow="04 — Yielding Isometrics: Frenado y Cambio de Dirección" />
-          <Titulo>4.1 Definición fisiológica</Titulo>
           <P>
-            La isometría de sostén (Yielding) es la acción en la que el atleta resiste una carga
-            externa —o su propio peso corporal— sin ceder, absorbiendo fuerza durante un tiempo
-            determinado sin desplazamiento articular visible. Fisiológicamente tiene un sesgo
-            excéntrico: el músculo trabaja activamente para no ser vencido por una fuerza externa
-            que tiende constantemente a estirarlo, la misma demanda mecánica que enfrenta el
-            sistema neuromuscular durante la fase de frenado de una deceleración real.
+            Este mecanismo es una de las explicaciones fisiológicas propuestas en la literatura
+            de fisiología muscular para la potenciación por estiramiento residual (residual force
+            enhancement): el hallazgo, observado en contracciones excéntricas e isométricas en
+            longitud alargada, de que el músculo sostiene niveles de fuerza mayores a los que
+            predeciría solo la relación longitud-tensión del sarcómero. Es parte de por qué el
+            trabajo Yielding en ángulos de elongación entrena, específicamente, la capacidad de
+            absorber energía cinética sin que la estructura articular colapse.
           </P>
-          <Subtitulo>El rol de la titina</Subtitulo>
+          <Titulo>4.3 Biomecánica del cambio de dirección</Titulo>
           <P>
-            La titina es una proteína estructural gigante que conecta la línea Z con la banda M
-            del sarcómero y actúa como un resorte molecular: durante el estiramiento activo del
-            músculo bajo tensión —exactamente la condición de la isometría Yielding— la titina
-            se rigidiza y almacena energía elástica, contribuyendo a la producción de fuerza
-            pasiva adicional y a la estabilidad del sarcómero bajo cargas de estiramiento
-            elevadas. Este mecanismo es una de las explicaciones fisiológicas propuestas para el
-            fenómeno de potenciación por estiramiento residual observado en contracciones
-            excéntricas e isométricas en longitud alargada.
+            El cambio de dirección (COD) exige una secuencia biomecánica precisa, que la Teoría
+            de Vectores de Fuerza reproduce de forma deliberada en el ejercicio de Yielding
+            correspondiente:
           </P>
-          <Titulo>4.2 Biomecánica del cambio de dirección (COD)</Titulo>
-          <P>
-            El cambio de dirección exige una secuencia biomecánica precisa: plantado del pie
-            externo (el pie contrario a la dirección hacia la que se va a girar, que se convierte
-            en el punto de apoyo que debe absorber y redirigir la fuerza), hundimiento del centro
-            de masa (flexión de cadera, rodilla y tobillo que baja el centro de gravedad y genera
-            un mayor recorrido de absorción), y absorción de las fuerzas de frenado en un plano
-            que combina componentes lineales y laterales. El trabajo Yielding orientado al COD se
-            prescribe en ángulos de cadera, rodilla y tobillo que reproducen específicamente esa
-            posición de plantado — no en la sentadilla genérica de dos piernas, apropiada para el
-            frenado lineal.
-          </P>
+          <Lista
+            items={[
+              'Plantado del pie externo: el pie contrario a la dirección hacia la que se va a girar absorbe la totalidad de la fuerza de frenado y luego la redirige.',
+              'Hundimiento del centro de masa: flexión coordinada de cadera, rodilla y tobillo que baja el centro de gravedad y genera mayor recorrido articular para absorber la energía de forma progresiva.',
+              'Absorción en un plano combinado: a diferencia de una deceleración lineal, el COD exige absorber fuerza en un plano que combina componentes lineales y laterales — una demanda que la sentadilla genérica de dos piernas no reproduce.',
+            ]}
+          />
         </Hoja>
 
         <Hoja>
           <Encabezado eyebrow="04 — Yielding Isometrics: Frenado y Cambio de Dirección" />
-          <Titulo>4.3 Dosificación de carga</Titulo>
-          <Tabla
-            columnas={['Variable', 'Prescripción']}
-            filas={[
-              ['Intensidad', 'Submáxima — o hasta la falla técnica (pérdida de alineación, no fatiga muscular total)'],
-              ['Tiempo bajo tensión (TUT)', '10 a 30 segundos por repetición'],
-              ['Foco neuromuscular', 'Co-contracción masiva de agonista/antagonista y resistencia estructural del tejido, no intención explosiva'],
-              ['Progresión', 'Aumento gradual del TUT y/o de la carga externa, siempre condicionado a mantener la alineación articular objetivo'],
-            ]}
-          />
-          <Nota>
-            A diferencia del bloque Overcoming (Sección 3.4), aquí el objetivo no es la
-            intención máxima instantánea sino la tolerancia estructural sostenida — la variable
-            de progresión primaria es el tiempo bajo tensión y la calidad de la alineación bajo
-            fatiga acumulada, no la carga externa levantada.
-          </Nota>
+          <Titulo>4.4 Postura de Absorción: la estocada profunda (lunge)</Titulo>
+          <P>
+            El ejercicio de referencia de la Teoría de Vectores de Fuerza para esta biomecánica es
+            la estocada profunda isométrica: pierna externa (delantera) con flexión profunda de
+            cadera, rodilla y tobillo, rodilla trackeando en línea con la punta del pie —nunca
+            colapsando hacia adentro—, soportando la mayor parte del peso y la carga; pierna
+            trasera extendida hacia atrás y levemente hacia el costado, ampliando la base lateral;
+            tronco con leve inclinación hacia adelante pero columna neutra, centro de masa
+            deliberadamente hundido entre ambos apoyos.
+          </P>
+          <Figura tipo="cod-yielding" caption="Postura de Yielding Isometric para absorción en cambio de dirección — estocada profunda (lunge), rodilla externa alineada sobre el pie, centro de masa hundido, vector de fuerza de frenado hacia el centro de masa." grande />
         </Hoja>
 
         <Hoja>
-          <Encabezado eyebrow="05 — Progresión Pedagógica y Dosificación Práctica" />
+          <Encabezado eyebrow="04 — Yielding Isometrics: Frenado y Cambio de Dirección" />
           <P>
-            La secuencia de introducción de la isometría avanzada en el club sigue cuatro fases,
-            en orden estricto — ninguna fase se salta ni se adelanta por presión de calendario
-            competitivo.
+            El objetivo neuromuscular de esta postura no es la intención explosiva del bloque
+            Overcoming: es la co-contracción masiva de la musculatura agonista y antagonista
+            alrededor de cadera, rodilla y tobillo, sosteniendo la alineación articular objetivo
+            bajo una carga que tiende constantemente a colapsarla — exactamente la demanda que
+            enfrenta el jugador en el instante real de frenado antes de redirigir su
+            desplazamiento.
           </P>
-          <Titulo>Fase 1 — Yielding Extenso (construcción de tejidos y tolerancia)</Titulo>
+          <Titulo>4.5 Dosificación para tolerancia estructural del tejido</Titulo>
+          <Tabla
+            columnas={['Variable', 'Prescripción', 'Fundamento fisiológico']}
+            filas={[
+              ['Intensidad', 'Submáxima — o hasta la falla técnica (pérdida de alineación, no fatiga total)', 'El objetivo es tolerancia estructural sostenida, no reclutamiento de alto umbral (cf. 3.4)'],
+              ['Tiempo bajo tensión (TUT)', '10 a 30 segundos por repetición', 'Duración suficiente para generar la hipoxia local y señalización de la Sección 1.8'],
+              ['Foco neuromuscular', 'Co-contracción agonista/antagonista y resistencia estructural, no intención explosiva', 'Reproduce la demanda de estabilidad articular sostenida del frenado real (4.3)'],
+              ['Progresión', 'Aumento gradual del TUT y/o la carga, condicionado a mantener la alineación objetivo', 'La variable de progresión es la calidad de alineación bajo fatiga, no la carga levantada'],
+            ]}
+          />
+          <Nota>
+            A diferencia del bloque Overcoming, donde la pausa completa protege la calidad del
+            reclutamiento neural, aquí el objetivo es exactamente el opuesto: acumular tiempo bajo
+            tensión suficiente para generar el estímulo metabólico e hipóxico local que sostiene
+            la adaptación estructural del tendón y el tejido conectivo.
+          </Nota>
+        </Hoja>
+
+        {/* ================= CAPÍTULO 5 — PROPUESTA METODOLÓGICA Y PROGRESIÓN LTAD ================= */}
+
+        <Hoja>
+          <Encabezado eyebrow="05 — Propuesta Metodológica y Progresión LTAD" />
           <P>
-            Punto de entrada obligatorio para todo jugador, independientemente de su categoría o
-            nivel de fuerza previo. El objetivo es construir la tolerancia estructural de base
-            (tendón, tejido conectivo, co-contracción) mediante Yielding de TUT moderado a alto y
-            carga conservadora, antes de introducir cualquier estímulo de intención máxima —
-            aplicación directa, en el terreno de la isometría avanzada, del principio "técnica y
-            tejido antes que intensidad" que organiza la colección LTAD del club.
+            Los cuatro tomos de la colección LTAD del club —del Manual de 10ma y Pre 9na al
+            Manual de 5ta y 4ta— establecen que la fuerza no se entrena igual en todas las
+            edades, porque la fisiología del jugador cambia de forma radical entre la etapa
+            pre-PHV, el propio pico de crecimiento y la ventana post-PHV. La isometría avanzada
+            no es una excepción: introducirla de la misma forma en un jugador de 12 años que en
+            uno de 17 sería ignorar todo lo que esos cuatro tomos documentan sobre maduración
+            ósea, riesgo estructural y disponibilidad hormonal. Este capítulo traduce ese marco
+            LTAD a una hoja de ruta específica para la isometría avanzada.
           </P>
-          <Titulo>Fase 2 — Overcoming Sub-máximo (aprendizaje del reclutamiento y postura)</Titulo>
+          <Titulo>5.1 10ma y Pre 9na (12-13 años) — Alfabetización</Titulo>
           <P>
-            Introducción de la isometría Overcoming con intensidades submáximas, con el objetivo
-            de que el jugador aprenda a organizar la postura correcta en el ángulo específico de
-            trabajo (Sección 2.1) y a reclutar la intención de empuje máximo de forma
-            técnicamente limpia, antes de exponerlo a la carga de intención verdaderamente
-            máxima de la fase siguiente.
+            Esta etapa es fisiológicamente pre-PHV: adaptaciones predominantemente neurales, el
+            esqueleto no completó su osificación, y el sistema hormonal no aportó todavía la masa
+            muscular ni los cambios arquitectónicos necesarios para tolerar tensión isométrica de
+            alta intensidad.
           </P>
-          <Titulo>Fase 3 — Overcoming Máximo (tensión mecánica y RFD puro)</Titulo>
+          <Lista
+            items={[
+              'Se habilita: Yielding básico, exclusivamente con peso corporal, con propósito estrictamente pedagógico — enseñar postura y a frenar (sostenes de 3-5s, aterrizajes controlados de bajísimo impacto).',
+              'Está prohibido: cualquier forma de Overcoming Isometric de intención máxima — el sustrato hormonal y estructural no está disponible; forzarlo no acelera el desarrollo, solo aumenta el riesgo.',
+            ]}
+          />
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="05 — Propuesta Metodológica y Progresión LTAD" />
+          <Titulo>5.2 9na y 8va (14-15 años) — El Estirón (PHV)</Titulo>
           <P>
-            Una vez consolidada la postura y el patrón de reclutamiento en la Fase 2, se habilita
-            la intensidad de 100% MVCI (Sección 3.4), con el objetivo explícito de tensión
-            mecánica máxima y desarrollo de RFD — la fase donde el trabajo Overcoming alcanza su
-            propósito fisiológico pleno.
+            La ventana de mayor vulnerabilidad estructural del proceso formativo: el cartílago de
+            crecimiento puede ser hasta cinco veces más débil que el tejido conectivo que lo
+            rodea durante el pico de crecimiento, y el desfasaje entre el crecimiento óseo
+            acelerado y la adaptación del tejido blando explica la torpeza motora transitoria
+            característica de esta etapa.
           </P>
-          <Titulo>Fase 4 — Integración en Microciclo MD (Potenciación Post-Activación en MD-1)</Titulo>
+          <Lista
+            items={[
+              'Se habilita: Yielding extenso (TUT moderado-alto, carga conservadora) para fortalecer tendones durante el crecimiento óseo rápido, y Overcoming submáximo —muy por debajo del 100% MVCI— con propósito puramente pedagógico: postura correcta e intención de empuje técnicamente limpia.',
+              'Se pospone: el Overcoming de intención verdaderamente máxima (100% MVCI), que corresponde a la etapa siguiente, cuando el tejido completó la transición arquitectónica del Capítulo 1.',
+            ]}
+          />
+          <Titulo>5.3 7ma a 4ta/Reserva (16 años en adelante) — Rendimiento</Titulo>
           <P>
-            Con las tres fases anteriores consolidadas, la isometría avanzada se integra dentro
-            de la periodización semanal por Día de Partido (Manual Metodológico Oficial, Sección
-            4): un bloque breve de Overcoming Isometrics de intención máxima en MD-1 (activación)
-            puede utilizarse como estímulo de Potenciación Post-Activación (PAP) — una
-            contracción voluntaria máxima previa que incrementa transitoriamente la
-            excitabilidad neuromuscular y la RFD disponible para la competencia del día
-            siguiente.
+            La ventana post-PHV de máxima adaptación hormonal y neural: el tejido ya completó la
+            transición arquitectónica (mayor ángulo de penación, mayor stiffness tendinoso, mayor
+            masa muscular) que habilita, con pleno sentido fisiológico, la exposición a los
+            estímulos de mayor intensidad de este manual.
           </P>
         </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="05 — Propuesta Metodológica y Progresión LTAD" />
+          <Lista
+            items={[
+              'Se habilita en plenitud: Overcoming de intención máxima (Sección 3.4), objetivo RFD, transferido a los vectores de aceleración (~90°) y velocidad máxima (~140°) de la Teoría de Vectores de Fuerza. En paralelo, Yielding pesado (Sección 4.5) para frenado y cambio de dirección, con cargas y TUT que exceden ampliamente los de la etapa anterior.',
+              'Se integra: dentro de la periodización semanal por Día de Partido del Manual Metodológico Oficial, incluyendo Overcoming de intención máxima en MD-1 como estímulo de Potenciación Post-Activación (PAP).',
+            ]}
+          />
+          <Tabla
+            columnas={['Categoría', 'Yielding', 'Overcoming', 'Objetivo dominante']}
+            filas={[
+              ['10ma y Pre 9na', 'Básico, peso corporal', 'Prohibido en intensidad máxima', 'Educación postural y del frenado'],
+              ['9na y 8va', 'Extenso, TUT moderado-alto', 'Submáximo (aprendizaje de postura)', 'Fortalecimiento tendinoso durante el PHV'],
+              ['7ma a 4ta/Reserva', 'Pesado (COD, frenado)', 'Máximo (100% MVCI, RFD)', 'Transferencia a aceleración y velocidad máxima'],
+            ]}
+          />
+        </Hoja>
+
+        {/* ================= CAPÍTULO 6 — REFERENCIAS ================= */}
 
         <Hoja>
           <Encabezado eyebrow="06 — Referencias Bibliográficas" />
           <Referencias
             items={[
-              'Manual Metodológico Oficial — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno, Sección 3, desarrollo original de la clasificación Yielding/Overcoming de Natera).',
+              'Manual Metodológico Oficial — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno, Sección 3, clasificación Yielding/Overcoming de Natera; Sección 1, RFD y ciclo estiramiento-acortamiento).',
+              'Manual de 10ma y Pre 9na División — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno).',
+              'Manual de 9na y 8va División — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno).',
+              'Manual de 7ma y 6ta División — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno).',
+              'Manual de 5ta y 4ta División — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno).',
               'Área de Fuerza, Club Atlético Unión de Santa Fe (2026). Teoría de Vectores de Fuerza: especificidad angular (±15°) y diferenciación entre vectores horizontales y verticales aplicada al entrenamiento isométrico. Estándar biomecánico institucional de la Metodología UNIÓN — desarrollado y adoptado internamente por el Área de Fuerza, no atribuido a una fuente externa.',
               'Lum, D., & Zavorsky, G. S. (2017). Referencia provista como parte del encargo original; no verificada de forma independiente en esta sesión — se cita tal como fue indicada, sin datos editoriales (journal, volumen, páginas) que no pudieron ser corroborados.',
               'Natera, A. (s.f.). Clasificación biomecánica de la isometría aplicada al fútbol: Run Isometrics, Yielding (Hold) y Overcoming (Push). Material de formación práctica y clínicas técnicas (ALTIS) — no peer-reviewed; citado por su relevancia práctica y adopción extendida en preparación física de fútbol de élite.',
@@ -371,12 +589,10 @@ export function MetodologiaIsometriaView() {
             marco de práctica profesional (Natera) se desarrolla y difunde principalmente en
             contextos de formación práctica, no en journals de revisión por pares; la literatura
             científica de consenso (Oranchuk et al., 2019) se presenta como atribución conceptual
-            estándar por autor y año; y la Teoría de Vectores de Fuerza (especificidad angular,
-            vectores horizontales/verticales) se asienta como estándar biomecánico propio de la
-            Metodología UNIÓN. La referencia de Lum &amp; Zavorsky (2017) fue provista como parte
-            del encargo original y no pudo ser corroborada con datos editoriales completos en
-            esta sesión — se cita con esa salvedad explícita, en lugar de inventar un dato
-            editorial no verificado.
+            estándar por autor y año; y la Teoría de Vectores de Fuerza se asienta como estándar
+            biomecánico propio de la Metodología UNIÓN. La referencia de Lum &amp; Zavorsky
+            (2017) fue provista como parte del encargo original y no pudo ser corroborada con
+            datos editoriales completos en esta sesión — se cita con esa salvedad explícita.
           </P>
           <Cierre />
           <Pie />
@@ -428,7 +644,7 @@ function Portada() {
 
       <div>
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-union-red-600">
-          Manual Metodológico Institucional · Escuela de Movimiento e Isometría
+          Libro de Texto Interno · Escuela de Movimiento e Isometría
         </p>
         <h1 className="text-4xl font-black leading-tight text-union-charcoal">
           Isometría
@@ -436,9 +652,9 @@ function Portada() {
           Avanzada
         </h1>
         <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-500">
-          Fundamentos fisiológicos y neurales, biomecánica de vectores y angulaciones,
-          clasificación funcional Overcoming/Yielding, dosificación de carga y progresión
-          pedagógica del entrenamiento isométrico aplicado al fútbol.
+          Fisiología celular y neural, arquitectura muscular, biomecánica de vectores de fuerza,
+          clasificación funcional Overcoming/Yielding, dosificación exhaustiva de carga y
+          progresión LTAD del entrenamiento isométrico aplicado al fútbol.
         </p>
       </div>
 
@@ -461,10 +677,6 @@ function Titulo({ children }: { children: ReactNode }) {
   return <h2 className="mb-2 mt-5 text-base font-bold leading-snug text-union-charcoal first:mt-0">{children}</h2>
 }
 
-function Subtitulo({ children }: { children: ReactNode }) {
-  return <h3 className="mb-1 mt-4 text-xs font-bold uppercase tracking-wide text-union-red-600">{children}</h3>
-}
-
 function P({ children }: { children: ReactNode }) {
   return <p className="mt-2 text-justify text-xs leading-relaxed tracking-wide text-slate-600">{children}</p>
 }
@@ -475,6 +687,19 @@ function Nota({ children }: { children: ReactNode }) {
       <span className="font-semibold not-italic text-union-red-600">Profundización: </span>
       {children}
     </p>
+  )
+}
+
+function Lista({ items }: { items: string[] }) {
+  return (
+    <ul className="mt-2 flex flex-col gap-1.5">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2 text-xs leading-relaxed text-slate-600">
+          <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-union-red-600" />
+          <span className="text-justify">{item}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -508,6 +733,31 @@ function Tabla({ columnas, filas }: { columnas: string[]; filas: string[][] }) {
   )
 }
 
+/**
+ * Contenedor "de libro de texto" para los diagramas biomecánicos: fondo
+ * sutil, borde redondeado y pie de figura científico — envuelve al SVG de
+ * `DiagramaBiomecanico`, que no sabe nada de layout ni de captions (queda
+ * reutilizable para otras vistas del club el día de mañana).
+ */
+function Figura({
+  tipo,
+  caption,
+  grande = false,
+}: {
+  tipo: TipoDiagramaBiomecanico
+  caption: string
+  grande?: boolean
+}) {
+  return (
+    <figure className="mt-4 break-inside-avoid rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <DiagramaBiomecanico tipo={tipo} className={grande ? 'mx-auto h-64 w-auto' : 'mx-auto h-40 w-auto'} />
+      <figcaption className="mt-2 text-center text-[10px] italic leading-snug text-slate-500">
+        {caption}
+      </figcaption>
+    </figure>
+  )
+}
+
 function Referencias({ items }: { items: string[] }) {
   return (
     <ol className="mt-2 flex flex-col gap-2.5">
@@ -525,11 +775,11 @@ function Referencias({ items }: { items: string[] }) {
 // ---------------------------------------------------------------------------
 
 const INDICE: { numero: string; titulo: string }[] = [
-  { numero: '01', titulo: 'Fundamentos Fisiológicos y Neurales (El Motor Interno)' },
+  { numero: '01', titulo: 'Fisiología y Arquitectura Muscular' },
   { numero: '02', titulo: 'Biomecánica y Teoría de Vectores de Fuerza' },
   { numero: '03', titulo: 'Overcoming Isometrics — Aceleración y Sprint' },
   { numero: '04', titulo: 'Yielding Isometrics — Frenado y Cambio de Dirección (COD)' },
-  { numero: '05', titulo: 'Progresión Pedagógica y Dosificación Práctica' },
+  { numero: '05', titulo: 'Propuesta Metodológica y Progresión LTAD' },
   { numero: '06', titulo: 'Referencias Bibliográficas' },
 ]
 
@@ -552,10 +802,12 @@ function Indice() {
 function NotaFuentes() {
   return (
     <section>
-      <Titulo>Nota metodológica sobre las fuentes citadas</Titulo>
       <P>
-        Este documento distingue explícitamente los niveles de cita, para no mezclar rigor
-        verificado con conocimiento general del campo:
+        Este documento distingue explícitamente los niveles de cita. Ninguna cifra, porcentaje o
+        mecanismo fisiológico fue inventado: donde el dato tiene respaldo en la literatura de
+        consenso se cita a su autor y año; donde es un estándar de aplicación propio del club, se
+        declara como tal; y donde un mecanismo es una hipótesis discutida, se dice
+        explícitamente que lo es.
       </P>
       <ol className="mt-2 flex flex-col gap-2">
         <li className="text-xs leading-relaxed text-slate-600">
@@ -571,23 +823,28 @@ function NotaFuentes() {
           <span className="font-semibold text-union-charcoal">
             2. Literatura científica de consenso —{' '}
           </span>
-          los mecanismos fisiológicos generales y la referencia de Oranchuk et al. (2019) se
-          presentan como marco conceptual de consenso, atribución estándar por autor y año — no
-          transcripción verbatim de un documento leído en esta sesión. La referencia de Lum
-          &amp; Zavorsky (2017) fue provista como parte del encargo original y no pudo ser
-          corroborada de forma independiente en esta sesión — se cita con esa salvedad
-          explícita.
+          los mecanismos fisiológicos generales corresponden a fisiología del ejercicio y
+          neurofisiología establecidas. La referencia de Oranchuk et al. (2019) se cita
+          explícitamente en cada afirmación que depende de su revisión sistemática — atribución
+          estándar por autor y año, no transcripción verbatim de un documento leído en esta
+          sesión. La referencia de Lum &amp; Zavorsky (2017) fue provista como parte del encargo
+          original y no pudo ser corroborada de forma independiente en esta sesión — se cita con
+          esa salvedad explícita.
         </li>
         <li className="text-xs leading-relaxed text-slate-600">
           <span className="font-semibold text-union-charcoal">
             3. Estándar biomecánico propio — Metodología UNIÓN —{' '}
           </span>
-          la Teoría de Vectores de Fuerza (especificidad angular de ±15°, diferenciación entre
-          vectores horizontales y verticales, Sección 2) se presenta como el estándar de
-          aplicación práctica propio del Área de Fuerza del club — no como cita a un tercero
-          externo, sino como marco biomecánico institucional.
+          la Teoría de Vectores de Fuerza (especificidad angular de ±15°, vectores horizontales y
+          verticales, Capítulo 2) se presenta como el estándar de aplicación práctica propio del
+          Área de Fuerza del club — no como cita a un tercero externo.
         </li>
       </ol>
+      <Nota>
+        Las figuras de este documento son diagramas biomecánicos esquemáticos ("stick figure"),
+        dibujados internamente en SVG por el Área de Fuerza — no son fotografías ni material con
+        derechos de autor de terceros.
+      </Nota>
     </section>
   )
 }
@@ -598,9 +855,11 @@ function Cierre() {
       <Titulo>Cierre</Titulo>
       <P>
         Este manual es el marco de referencia obligatorio para la prescripción de isometría
-        avanzada en el club. Ningún ejercicio se incorpora al programa sin responder primero a
-        la pregunta que organiza todo el documento: qué fase del gesto, en qué ángulo y en qué
-        dirección de fuerza, se está tratando de mejorar.
+        avanzada en el club, y su hoja de ruta LTAD (Capítulo 5) es de aplicación obligatoria por
+        categoría. Ningún ejercicio se incorpora al programa sin responder primero a la pregunta
+        que organiza todo el documento: qué fase del gesto, en qué ángulo y en qué dirección de
+        fuerza, se está tratando de mejorar — y si el jugador, según su categoría y su momento
+        madurativo, está fisiológicamente preparado para recibir ese estímulo.
       </P>
     </section>
   )
