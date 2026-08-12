@@ -33,5 +33,33 @@ export const navItems: NavItem[] = [
     icon: '🏋️',
     group: 'Estructura de Trabajo',
   },
+  {
+    to: '/metodologia/ltad-10ma-pre9na',
+    label: 'LTAD — 10ma y Pre 9na (12-13 años)',
+    shortLabel: '10ma-Pre9na',
+    icon: '📗',
+    group: 'Estructura de Trabajo',
+  },
+  {
+    to: '/metodologia/ltad-9na-8va',
+    label: 'LTAD — 9na y 8va (14-15 años)',
+    shortLabel: '9na-8va',
+    icon: '📗',
+    group: 'Estructura de Trabajo',
+  },
+  {
+    to: '/metodologia/ltad-7ma-6ta',
+    label: 'LTAD — 7ma y 6ta (16-17 años)',
+    shortLabel: '7ma-6ta',
+    icon: '📗',
+    group: 'Estructura de Trabajo',
+  },
+  {
+    to: '/metodologia/ltad-5ta-4ta',
+    label: 'LTAD — 5ta y 4ta (18-20 años)',
+    shortLabel: '5ta-4ta',
+    icon: '📗',
+    group: 'Estructura de Trabajo',
+  },
   { to: '/admin', label: 'Administración', shortLabel: 'Admin', icon: '⚙️' },
 ]
