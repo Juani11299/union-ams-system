@@ -99,6 +99,25 @@ export function ManualFuerzaView() {
           <NotaImplementacion />
         </Hoja>
 
+        {/* Capítulo 4 (cont.) — Sistema de Cuadrantes de Bove (3 hojas) */}
+        <Hoja>
+          <Encabezado eyebrow="04 — Manejo de Cargas: El Sistema de Cuadrantes" />
+          <Cap4CuadrantesIntro />
+          <Cap4ZonaGris />
+        </Hoja>
+        <Hoja>
+          <Encabezado eyebrow="04 — Manejo de Cargas: El Sistema de Cuadrantes" />
+          <Cap4Cuadrante4 />
+          <Cap4Cuadrante3 />
+        </Hoja>
+        <Hoja>
+          <Encabezado eyebrow="04 — Manejo de Cargas: El Sistema de Cuadrantes" />
+          <Cap4Cuadrante2 />
+          <Cap4Cuadrante1 />
+          <MatrizCuadrantes />
+          <Cap4CierreCuadrantes />
+        </Hoja>
+
         {/* Capítulo 5 — Modelo LTAD (5 hojas) */}
         <Hoja>
           <Encabezado eyebrow="05 — Modelo LTAD: Marco General" />
@@ -829,6 +848,241 @@ function NotaImplementacion() {
       como tag distinto queda pendiente de una decisión de producto explícita, no debe
       asumirse ya disponible en el planificador.
     </NotaTransparencia>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Capítulo 4 (cont.) — Manejo de Cargas y Consolidación del Estrés:
+// El Sistema de Cuadrantes (Daniel Bove)
+// ---------------------------------------------------------------------------
+
+function Cap4CuadrantesIntro() {
+  return (
+    <section>
+      <Titulo>Manejo de Cargas y Consolidación del Estrés: El Sistema de Cuadrantes</Titulo>
+      <P>
+        La secuencia MD-4 a MD+2 recién descripta responde a una pregunta de calendario:
+        "¿a cuántos días estoy del próximo partido?". El{' '}
+        <span className="font-semibold text-union-charcoal">Sistema de Cuadrantes</span>,
+        desarrollado por <span className="font-semibold text-union-charcoal">Daniel Bove</span>{' '}
+        (preparador físico de alto rendimiento en deportes de equipo, con trabajo documentado
+        en fútbol profesional de Estados Unidos), responde a una pregunta distinta y
+        complementaria: "¿qué tipo de estrés fisiológico estoy aplicando hoy, y el jugador que
+        tengo enfrente está en condiciones reales de recibirlo?". Este apartado adopta el
+        marco de Bove como el estándar de consenso profesional del club para el manejo de
+        cargas — la capa de individualización que se superpone a la nomenclatura de
+        microciclo ya establecida.
+      </P>
+      <NotaTransparencia>
+        El Sistema de Cuadrantes de Bove se desarrolla y difunde principalmente en contextos
+        de formación práctica de alto rendimiento (clínicas, conferencias, material técnico —
+        ver "The Quadrant System: Navigating Stress in Team Sport"), no en
+        journals de revisión por pares con DOI verificable. Se lo cita en este manual por su
+        relevancia práctica y su adopción extendida en preparación física de deportes de
+        equipo profesionales, no como literatura peer-reviewed verificada — el mismo criterio
+        de transparencia que ya aplica este manual a Natera (Capítulo 3).
+      </NotaTransparencia>
+    </section>
+  )
+}
+
+function Cap4ZonaGris() {
+  return (
+    <section className="mt-5">
+      <Subtitulo>El fin de la "zona gris"</Subtitulo>
+      <P>
+        La mayoría de los programas de fuerza en deportes de equipo caen, por default, en lo
+        que Bove llama la "zona gris": una intensidad moderada y prácticamente indiferenciada,
+        repetida sesión tras sesión, que se siente "prudente" en el día a día pero que no es ni
+        lo suficientemente pesada como para producir una adaptación neural o mecánica real, ni
+        lo suficientemente liviana como para permitir una recuperación real. A lo largo de una
+        temporada larga, entrenar crónicamente en esa zona gris no reduce el riesgo — lo
+        acumula: el jugador arrastra fatiga residual de sesiones que nunca fueron lo bastante
+        productivas como para justificarla.
+      </P>
+      <P>
+        La alternativa que propone el Sistema de Cuadrantes es{' '}
+        <span className="font-semibold text-union-charcoal">consolidar el estrés</span>: en
+        lugar de repartir una dosis moderada de estímulo neural pesado todos los días,
+        concentrar deliberadamente la demanda neural más alta en los días donde el jugador ya
+        está cargando la mayor fatiga de la semana — y, como contrapartida directa, dejar el
+        resto de los días genuinamente limpios, sin ningún estímulo que comprometa la
+        recuperación. No es una idea nueva en este manual: es la misma lógica de diferenciación
+        que ya organiza la secuencia MD-4 a MD+2. El aporte del Sistema de Cuadrantes es hacer
+        ese criterio explícito y, sobre todo, individualizable por jugador según su fatiga
+        real — no solo por la distancia calendaria al próximo partido.
+      </P>
+    </section>
+  )
+}
+
+function Cap4Cuadrante4() {
+  return (
+    <section>
+      <Subtitulo>Cuadrante 4 — Alta Intensidad Neural / Fuerza Pesada</Subtitulo>
+      <P>
+        Es el territorio de la fuerza máxima y la tensión mecánica más alta de la semana — el
+        mismo estímulo que ya describe MD-4 para los titulares: cargas altas de %RM, isometría
+        Overcoming a intensidad máxima (Capítulo 3), reclutamiento de unidades motoras de alto
+        umbral. El aporte específico del Sistema de Cuadrantes es la individualización por
+        minutos jugados: un suplente que no disputó minutos relevantes el día del partido no
+        acumuló la misma fatiga neuromuscular que un titular, y por lo tanto{' '}
+        <span className="font-semibold text-union-charcoal">
+          MD+1 puede ser, para ese jugador puntual, una ventana de Cuadrante 4
+        </span>{' '}
+        — el mismo día calendario que, para el titular que sí jugó, es Cuadrante 1 puramente
+        regenerativo. Un mismo día de microciclo puede alojar, entonces, dos cuadrantes
+        completamente distintos según el estado real de cada jugador.
+      </P>
+    </section>
+  )
+}
+
+function Cap4Cuadrante3() {
+  return (
+    <section className="mt-5">
+      <Subtitulo>Cuadrante 3 — Alta Velocidad / RFD</Subtitulo>
+      <P>
+        Cargas livianas, intención máxima, ejecución balística. La variable que define este
+        cuadrante no es cuánto peso se mueve, sino a qué velocidad: Bove fija el umbral de
+        referencia en velocidades superiores a{' '}
+        <span className="font-semibold text-union-charcoal">0,75 m/s</span>, un rango en el que
+        el movimiento es mecánicamente demasiado rápido y demasiado liviano como para generar
+        fatiga estructural o metabólica residual significativa. Es, en la nomenclatura de este
+        manual, exactamente el territorio de MD-1: activación neuromuscular pre-partido con
+        función de Potenciación Post-Activación (PAP), donde el objetivo es "encender" el
+        sistema nervioso —no fatigarlo— antes de la competencia del día siguiente.
+      </P>
+    </section>
+  )
+}
+
+function Cap4Cuadrante2() {
+  return (
+    <section>
+      <Subtitulo>Cuadrante 2 — Calidad del Tejido / Repeticiones</Subtitulo>
+      <P>
+        Volumen moderado, esfuerzo submáximo, con el foco puesto no en la producción de fuerza
+        sino en el estrés periférico — la calidad y la tolerancia del propio tejido tendinoso y
+        muscular. Es el cuadrante que enlaza de forma directa con la isometría Yielding
+        (Capítulo 3) y con la hipertrofia funcional: tiempo bajo tensión moderado a alto,
+        co-contracción sostenida, el mismo estímulo que en este manual protege tendón e
+        isquiotibiales en la ventana MD+1/MD+2. Cumple, dentro del flujo normal de
+        entrenamiento, una función de "prehabilitación" — construir la tolerancia estructural
+        que los Cuadrantes 3 y 4 exigirán más adelante en la semana — en lugar de tratarse como
+        un bloque correctivo aislado.
+      </P>
+    </section>
+  )
+}
+
+function Cap4Cuadrante1() {
+  return (
+    <section className="mt-5">
+      <Subtitulo>Cuadrante 1 — Regenerativo</Subtitulo>
+      <P>
+        Flujo sanguíneo y movilidad, sin carga mecánica relevante. Es el cuadrante de
+        MD+1/MD+2 para el jugador que sí disputó minutos significativos: el terreno natural de
+        los Ejercicios VITAMINA aplicados con función exclusivamente regenerativa, no
+        correctiva ni de prehabilitación.
+      </P>
+    </section>
+  )
+}
+
+interface Cuadrante {
+  numero: string
+  titulo: string
+  foco: string
+  ventana: string
+  ligado: string
+  intensidad: 'maxima' | 'alta' | 'media' | 'baja'
+}
+
+const CUADRANTES: Cuadrante[] = [
+  {
+    numero: '4',
+    titulo: 'Alta Intensidad Neural',
+    foco: 'Fuerza máxima, tensión mecánica, reclutamiento de alto umbral',
+    ventana: 'MD-4 (titulares) · MD+1 (suplentes)',
+    ligado: 'Overcoming Isometrics',
+    intensidad: 'maxima',
+  },
+  {
+    numero: '3',
+    titulo: 'Alta Velocidad / RFD',
+    foco: 'Intención máxima, velocidad balística (>0,75 m/s), sin fatiga residual',
+    ventana: 'MD-1 (PAP)',
+    ligado: 'Tasa de Desarrollo de la Fuerza',
+    intensidad: 'alta',
+  },
+  {
+    numero: '2',
+    titulo: 'Calidad del Tejido',
+    foco: 'Estrés periférico, tolerancia tendinosa y muscular',
+    ventana: 'MD+1/MD+2 (prehabilitación)',
+    ligado: 'Yielding Isometrics',
+    intensidad: 'media',
+  },
+  {
+    numero: '1',
+    titulo: 'Regenerativo',
+    foco: 'Flujo sanguíneo, movilidad, sin carga mecánica',
+    ventana: 'MD+1/MD+2 (titulares)',
+    ligado: 'Ejercicios VITAMINA',
+    intensidad: 'baja',
+  },
+]
+
+const ESTILO_INTENSIDAD: Record<Cuadrante['intensidad'], string> = {
+  maxima: 'bg-union-charcoal text-white border-union-charcoal',
+  alta: 'bg-union-red-600 text-white border-union-red-600',
+  media: 'bg-union-red-50 text-union-charcoal border-union-red-200',
+  baja: 'bg-slate-50 text-union-charcoal border-slate-200',
+}
+
+const ESTILO_BADGE: Record<Cuadrante['intensidad'], string> = {
+  maxima: 'bg-white text-union-charcoal',
+  alta: 'bg-white text-union-red-600',
+  media: 'bg-union-red-600 text-white',
+  baja: 'bg-slate-300 text-union-charcoal',
+}
+
+function MatrizCuadrantes() {
+  return (
+    <section className="mt-5">
+      <Subtitulo>Matriz de Cuadrantes — de un vistazo</Subtitulo>
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
+        {CUADRANTES.map((c) => (
+          <div key={c.numero} className={`rounded-lg border p-3 break-inside-avoid ${ESTILO_INTENSIDAD[c.intensidad]}`}>
+            <div className="flex items-center gap-2">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${ESTILO_BADGE[c.intensidad]}`}>
+                {c.numero}
+              </span>
+              <p className="text-[11px] font-bold uppercase tracking-wide">{c.titulo}</p>
+            </div>
+            <p className="mt-2 text-[10px] leading-relaxed opacity-90">{c.foco}</p>
+            <p className="mt-2 text-[9.5px] font-semibold uppercase tracking-wide opacity-75">{c.ventana}</p>
+            <p className="mt-0.5 text-[9.5px] italic opacity-75">↳ {c.ligado}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function Cap4CierreCuadrantes() {
+  return (
+    <P>
+      <span className="font-semibold text-union-charcoal">
+        El valor del Sistema de Cuadrantes para la Metodología UNIÓN no es reemplazar la
+        nomenclatura MD-4 a MD+2
+      </span>{' '}
+      — es explicar, con un criterio fisiológico explícito y trasladable a cada jugador
+      individualmente, por qué esa nomenclatura está construida exactamente como está, y
+      habilitar que el mismo día calendario aloje distintos cuadrantes según quién jugó y
+      cuánto.
+    </P>
   )
 }
 

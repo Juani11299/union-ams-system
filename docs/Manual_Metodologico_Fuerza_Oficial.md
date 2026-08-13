@@ -382,6 +382,102 @@ el partido.
 > queda pendiente de una decisión de producto explícita, no debe asumirse ya disponible en el
 > planificador.
 
+### Manejo de Cargas y Consolidación del Estrés: El Sistema de Cuadrantes
+
+La secuencia MD-4 a MD+2 recién descripta responde a una pregunta de calendario: "¿a cuántos
+días estoy del próximo partido?". El **Sistema de Cuadrantes**, desarrollado por **Daniel
+Bove** (preparador físico de alto rendimiento en deportes de equipo, con trabajo documentado
+en fútbol profesional de Estados Unidos), responde a una pregunta distinta y complementaria:
+"¿qué tipo de estrés fisiológico estoy aplicando hoy, y el jugador que tengo enfrente está en
+condiciones reales de recibirlo?". Este apartado adopta el marco de Bove como el estándar de
+consenso profesional del club para el manejo de cargas — la capa de individualización que se
+superpone a la nomenclatura de microciclo ya establecida.
+
+*Nota de transparencia: el Sistema de Cuadrantes de Bove se desarrolla y difunde
+principalmente en contextos de formación práctica de alto rendimiento (clínicas, conferencias,
+material técnico — ver "The Quadrant System: Navigating Stress in Team Sport" en la
+bibliografía), no en journals de revisión por pares con DOI verificable. Se lo cita en este
+manual por su relevancia práctica y su adopción extendida en preparación física de deportes de
+equipo profesionales, no como literatura peer-reviewed verificada — el mismo criterio de
+transparencia que ya aplica este manual a Natera (Sección 3).*
+
+#### El fin de la "zona gris"
+
+La mayoría de los programas de fuerza en deportes de equipo caen, por default, en lo que Bove
+llama la "zona gris": una intensidad moderada y prácticamente indiferenciada, repetida sesión
+tras sesión, que se siente "prudente" en el día a día pero que no es ni lo suficientemente
+pesada como para producir una adaptación neural o mecánica real, ni lo suficientemente liviana
+como para permitir una recuperación real. A lo largo de una temporada larga, entrenar
+crónicamente en esa zona gris no reduce el riesgo — lo acumula: el jugador arrastra fatiga
+residual de sesiones que nunca fueron lo bastante productivas como para justificarla.
+
+La alternativa que propone el Sistema de Cuadrantes es **consolidar el estrés**: en lugar de
+repartir una dosis moderada de estímulo neural pesado todos los días, concentrar
+deliberadamente la demanda neural más alta en los días donde el jugador **ya** está cargando la
+mayor fatiga de la semana (por ejemplo, el propio día de mayor tensión de gimnasio, o el día
+inmediatamente posterior al esfuerzo competitivo para quien no lo disputó) — y, como
+contrapartida directa, dejar el resto de los días genuinamente limpios, sin ningún estímulo que
+comprometa la recuperación. No es una idea nueva en este manual: es la misma lógica de
+diferenciación que ya organiza la secuencia MD-4 a MD+2 (Sección 4). El aporte del Sistema de
+Cuadrantes es hacer ese criterio **explícito** y, sobre todo, **individualizable** por jugador
+según su fatiga real — no solo por la distancia calendaria al próximo partido.
+
+#### Cuadrante 4 — Alta Intensidad Neural / Fuerza Pesada
+
+Es el territorio de la fuerza máxima y la tensión mecánica más alta de la semana — el mismo
+estímulo que ya describe MD-4 (Sección 4) para los titulares: cargas altas de %RM, isometría
+Overcoming a intensidad máxima (Sección 3.2), reclutamiento de unidades motoras de alto umbral.
+El aporte específico del Sistema de Cuadrantes es la individualización por minutos jugados: un
+suplente que no disputó minutos relevantes el día del partido no acumuló la misma fatiga
+neuromuscular que un titular, y por lo tanto **MD+1 puede ser, para ese jugador puntual, una
+ventana de Cuadrante 4** — el mismo día calendario que, para el titular que sí jugó, es
+Cuadrante 1 puramente regenerativo (Sección "MD+1 / MD+2" más arriba). Un mismo día de
+microciclo puede alojar, entonces, dos cuadrantes completamente distintos según el estado real
+de cada jugador — la aplicación más directa de por qué la planificación de este club no puede
+ser un programa único por categoría, sino un criterio individual aplicado sobre la estructura
+semanal.
+
+#### Cuadrante 3 — Alta Velocidad / RFD
+
+Cargas livianas, intención máxima, ejecución balística. La variable que define este cuadrante
+no es cuánto peso se mueve, sino **a qué velocidad**: Bove fija el umbral de referencia en
+velocidades superiores a **0,75 m/s**, un rango en el que el movimiento es
+mecánicamente demasiado rápido y demasiado liviano como para generar fatiga estructural o
+metabólica residual significativa. Es, en la nomenclatura de este manual, exactamente el
+territorio de MD-1 (Sección 4): activación neuromuscular pre-partido con función de
+Potenciación Post-Activación (PAP), donde el objetivo es "encender" el sistema nervioso —no
+fatigarlo— antes de la competencia del día siguiente.
+
+#### Cuadrante 2 — Calidad del Tejido / Repeticiones
+
+Volumen moderado, esfuerzo submáximo, con el foco puesto no en la producción de fuerza sino en
+el **estrés periférico** — la calidad y la tolerancia del propio tejido tendinoso y muscular.
+Es el cuadrante que enlaza de forma directa con la isometría Yielding (Sección 3.1) y con la
+hipertrofia funcional: tiempo bajo tensión moderado a alto, co-contracción sostenida, el mismo
+estímulo que en este manual protege tendón e isquiotibiales en la ventana MD+1/MD+2. Cumple,
+dentro del flujo normal de entrenamiento, una función de "prehabilitación" — construir la
+tolerancia estructural que los Cuadrantes 3 y 4 exigirán más adelante en la semana— en lugar de
+tratarse como un bloque correctivo aislado.
+
+#### Cuadrante 1 — Regenerativo
+
+Flujo sanguíneo y movilidad, sin carga mecánica relevante. Es el cuadrante de MD+1/MD+2 para el
+jugador que sí disputó minutos significativos (Sección 4): el terreno natural de los Ejercicios
+VITAMINA (Sección 2.2) aplicados con función exclusivamente regenerativa, no correctiva ni de
+prehabilitación.
+
+| Cuadrante | Foco fisiológico | Ventana MD típica | Ligado a |
+|---|---|---|---|
+| 4 — Alta Intensidad Neural | Fuerza máxima, tensión mecánica, reclutamiento de alto umbral | MD-4 (titulares) · MD+1 (suplentes) | Overcoming Isometrics (3.2) |
+| 3 — Alta Velocidad / RFD | Intención máxima, velocidad balística (&gt;0,75 m/s), sin fatiga residual | MD-1 (PAP) | RFD (1.2) |
+| 2 — Calidad del Tejido | Estrés periférico, tolerancia tendinosa y muscular | MD+1/MD+2 (prehabilitación) | Yielding Isometrics (3.1) |
+| 1 — Regenerativo | Flujo sanguíneo, movilidad, sin carga mecánica | MD+1/MD+2 (titulares) | Ejercicios VITAMINA (2.2) |
+
+El valor del Sistema de Cuadrantes para la Metodología UNIÓN no es reemplazar la nomenclatura
+MD-4 a MD+2 — es explicar, con un criterio fisiológico explícito y trasladable a cada jugador
+individualmente, por qué esa nomenclatura está construida exactamente como está, y habilitar
+que el mismo día calendario aloje distintos cuadrantes según quién jugó y cuánto.
+
 ---
 
 ## 5. Modelo LTAD — Desarrollo Atlético a Largo Plazo
@@ -483,6 +579,16 @@ y Ejercicios VITAMINA completamente individualizados por jugador según su propi
 carga externa registrado por GPS (volumen de sprints, aceleraciones/desaceleraciones,
 distancia a alta velocidad) — la etapa donde la prevención deja de ser genérica por
 categoría y pasa a ser, literalmente, un programa por jugador.
+
+---
+
+## Referencias Bibliográficas
+
+Bove, D. (s.f.). *The Quadrant System: Navigating Stress in Team Sport*. Material de formación
+práctica y clínicas técnicas de preparación física en deportes de equipo — no peer-reviewed;
+citado en la Sección 4 de este manual ("Manejo de Cargas y Consolidación del Estrés: El Sistema
+de Cuadrantes") por su relevancia práctica y su adopción extendida en preparación física de
+deportes de equipo profesionales.
 
 ---
 
