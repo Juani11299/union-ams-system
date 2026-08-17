@@ -6,7 +6,7 @@
  * por el mock de `generatePlanWithAI`, mañana por una API real de
  * OpenAI/Anthropic — respete el mismo criterio que un profe del club.
  *
- * La nomenclatura de microciclo (MD-4…MD+1) matchea 1-a-1 con `MatchDayTag`
+ * La nomenclatura de microciclo (MD-4…MD+2) matchea 1-a-1 con `MatchDayTag`
  * (`src/types/sessionPlan.ts`) para no generar planes con tags que la app no
  * reconoce.
  */
@@ -71,6 +71,11 @@ de salida.
   foco regenerativo — movilidad, isometría de sostén (Yielding) de bajo
   umbral para zona media y prevención (isquiotibiales, aductores), nunca
   intensidad alta.
+- **MD+2** (Recuperación / Vitamina, segundo día compensatorio): mismo foco
+  regenerativo que MD+1, para semanas con calendario competitivo poco denso
+  (margen de dos días de transición antes de retomar tensión en MD-4). Carga
+  interna muy baja, nunca trabajo de fuerza máxima ni volumen que comprometa
+  la disponibilidad para el próximo ciclo.
 
 ## 3. ISOMETRÍA DE NATERA — YIELDING VS OVERCOMING
 

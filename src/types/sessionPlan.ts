@@ -2,7 +2,7 @@ import type { GymSheetData } from './gymSheet'
 
 export type TipoSesion = 'Campo' | 'Gimnasio' | 'Partido' | 'Recuperación'
 
-export type MatchDayTag = 'MD-4' | 'MD-3' | 'MD-2' | 'MD-1' | 'MD' | 'MD+1'
+export type MatchDayTag = 'MD-4' | 'MD-3' | 'MD-2' | 'MD-1' | 'MD' | 'MD+1' | 'MD+2'
 
 export interface SessionPlan {
   id: string

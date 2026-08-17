@@ -839,14 +839,13 @@ function NotaImplementacion() {
   return (
     <NotaTransparencia>
       <span className="not-italic font-semibold text-union-charcoal">Nota de implementación: </span>
-      la nomenclatura de microciclo actualmente soportada por la plataforma (
+      la nomenclatura de microciclo soportada por la plataforma (
       <span className="not-italic">MatchDayTag</span>,{' '}
-      <span className="not-italic">src/types/sessionPlan.ts</span>) contempla MD-4 a MD+1 — un
-      único día compensatorio. La distinción MD+1/MD+2 de este apartado es un desarrollo
-      teórico para semanas con calendario competitivo poco denso (un solo partido, con margen
-      para dos días de transición antes de retomar tensión); su implementación en el sistema
-      como tag distinto queda pendiente de una decisión de producto explícita, no debe
-      asumirse ya disponible en el planificador.
+      <span className="not-italic">src/types/sessionPlan.ts</span>) contempla MD-4 a MD+2 — la
+      distinción MD+1/MD+2 de este apartado ya está disponible como dos días compensatorios
+      distintos en el selector de Microciclo del Planificador, pensada para semanas con
+      calendario competitivo poco denso (un solo partido, con margen para dos días de
+      transición antes de retomar tensión en MD-4).
     </NotaTransparencia>
   )
 }

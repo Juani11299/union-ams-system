@@ -374,13 +374,12 @@ VITAMINA (Sección 2.2), aplicados aquí no como corrección de asimetría sino 
 de recuperación activa individualizada según el desgaste específico que cada jugador tuvo en
 el partido.
 
-> **Nota de implementación:** la nomenclatura de microciclo actualmente soportada por la
-> plataforma (`MatchDayTag`, `src/types/sessionPlan.ts`) contempla `MD-4` a `MD+1` — un único
-> día compensatorio. La distinción MD+1/MD+2 de este apartado es un desarrollo teórico para
-> semanas con calendario competitivo poco denso (un solo partido, con margen para dos días de
-> transición antes de retomar tensión); su implementación en el sistema como tag distinto
-> queda pendiente de una decisión de producto explícita, no debe asumirse ya disponible en el
-> planificador.
+> **Nota de implementación:** la nomenclatura de microciclo soportada por la plataforma
+> (`MatchDayTag`, `src/types/sessionPlan.ts`) contempla `MD-4` a `MD+2` — la distinción
+> MD+1/MD+2 de este apartado ya está disponible como dos días compensatorios distintos en el
+> selector de Microciclo del Planificador, pensada para semanas con calendario competitivo poco
+> denso (un solo partido, con margen para dos días de transición antes de retomar tensión en
+> MD-4).
 
 ### Manejo de Cargas y Consolidación del Estrés: El Sistema de Cuadrantes
 

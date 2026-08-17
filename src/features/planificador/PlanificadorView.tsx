@@ -52,7 +52,7 @@ const TAREA_TONE: Record<TipoTarea, BadgeTone> = {
 }
 
 const TIPO_OPCIONES: TipoSesion[] = ['Campo', 'Gimnasio', 'Partido', 'Recuperación']
-const MD_OPCIONES: MatchDayTag[] = ['MD-4', 'MD-3', 'MD-2', 'MD-1', 'MD', 'MD+1']
+const MD_OPCIONES: MatchDayTag[] = ['MD', 'MD+1', 'MD+2', 'MD-4', 'MD-3', 'MD-2', 'MD-1']
 
 /**
  * "Doble Turno" (Fase 13) — colores del selector de tipo al agregar una 2da+
