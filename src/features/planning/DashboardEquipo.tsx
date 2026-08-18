@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   useAppStore,
   useAthletesActivos,
@@ -5,6 +6,7 @@ import {
   useSessionPlansActivos,
   useWellnessEntriesActivas,
   usePhysicalTestsActivos,
+  useGymExternalLoadsActivos,
 } from '@/store/useAppStore'
 import { StatCard } from '@/components/StatCard'
 import { Card } from '@/components/Card'
@@ -26,6 +28,8 @@ import { fechaHoyLocal } from '@/utils/fecha'
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { inputClass } from '@/components/FormField'
 import { GRUPOS_POSICION, grupoDePosicion } from '@/utils/posicion'
+import { evaluarRiesgoAtleta, nivelSemaforo, type NivelSemaforo } from './riskAssessment'
+import { AnalisisGrupalModal } from './AnalisisGrupalModal'
 import type { EstadoSalud } from '@/types'
 
 const ESTADO_TONE: Record<EstadoSalud, BadgeTone> = {
@@ -64,18 +68,35 @@ const RIESGO_BARRA: Record<NivelRiesgoAcwr, string> = {
   'sin-datos': 'bg-slate-300 dark:bg-slate-600',
 }
 
+const CARD_BORDE_RIESGO: Record<NivelSemaforo, string> = {
+  rojo: 'border-rose-300 dark:border-rose-500/40',
+  amarillo: 'border-amber-300 dark:border-amber-500/40',
+  verde: '',
+}
+
+const RIESGO_SEMAFORO_BADGE: Record<NivelSemaforo, { tone: BadgeTone; label: string } | null> = {
+  rojo: { tone: 'red', label: '🔴 Riesgo alto' },
+  amarillo: { tone: 'yellow', label: '🟡 Riesgo moderado' },
+  verde: null,
+}
+
 export function DashboardEquipo() {
   const athletes = useAthletesActivos()
   const sessionExecutions = useSessionExecutionsActivas()
   const sessionPlans = useSessionPlansActivos()
   const wellnessEntries = useWellnessEntriesActivas()
   const physicalTests = usePhysicalTestsActivos()
+  const gymExternalLoads = useGymExternalLoadsActivos()
+  const categories = useAppStore((s) => s.categories)
+  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
   const filtroNombre = useAppStore((s) => s.filtroNombre)
   const filtroPosicion = useAppStore((s) => s.filtroPosicion)
   const setFiltroNombre = useAppStore((s) => s.setFiltroNombre)
   const setFiltroPosicion = useAppStore((s) => s.setFiltroPosicion)
   const abrirModalIngreso = useAppStore((s) => s.abrirModalIngreso)
+  const [analisisAbierto, setAnalisisAbierto] = useState(false)
 
+  const categoriaActual = categories.find((c) => c.id === activeCategoryId)
   const hoy = fechaHoyLocal()
   // Fase 13 ("Doble Turno"): hoy puede tener varias sesiones (Campo + Gimnasio) —
   // el objetivo del día es la suma de las de todas, no la de una sola.
@@ -86,21 +107,33 @@ export function DashboardEquipo() {
   const aptos = athletes.filter((a) => a.estadoSalud === 'Activo').length
   const bajasMedicas = athletes.filter((a) => a.estadoSalud !== 'Activo').length
 
-  const acwrPorAtleta = athletes.map((athlete) => ({
-    athlete,
-    acwr: calcularAcwr(sessionExecutions, sessionPlans, athlete.id),
-    fatiga: evaluarFatiga(physicalTests, athlete.id),
-  }))
+  const acwrPorAtleta = athletes.map((athlete) => {
+    const acwr = calcularAcwr(sessionExecutions, sessionPlans, athlete.id)
+    const fatiga = evaluarFatiga(physicalTests, athlete.id)
+    const wellnessHoy = obtenerWellnessDelDia(wellnessEntries, athlete.id, hoy)
+    const ejecucionesHoyAtleta = sessionExecutions.filter((e) => e.athleteId === athlete.id && e.fecha === hoy)
+    const evaluacionRiesgo = evaluarRiesgoAtleta({ wellnessHoy, ejecucionesHoyAtleta, acwr, fatiga })
+    return { athlete, acwr, fatiga, wellnessHoy, evaluacionRiesgo }
+  })
   const alertasAltoRiesgo = acwrPorAtleta.filter((a) => a.acwr.riesgo === 'alto').length
   const alertasFatiga = acwrPorAtleta.filter((a) => a.fatiga.enFatiga).length
 
+  const evaluaciones = new Map(acwrPorAtleta.map((a) => [a.athlete.id, a.evaluacionRiesgo]))
+
   const nombreBuscado = filtroNombre.trim().toLowerCase()
-  const acwrFiltrado = acwrPorAtleta.filter(({ athlete }) => {
-    const coincideNombre = athlete.nombre.toLowerCase().includes(nombreBuscado)
-    const coincidePosicion =
-      filtroPosicion === 'todas' || athlete.posiciones.some((p) => grupoDePosicion(p) === filtroPosicion)
-    return coincideNombre && coincidePosicion
-  })
+  // Fase 20: "Smart Sorting" — mayor Risk Score arriba (semáforos rojos primero),
+  // empate se desempata alfabéticamente para que el orden no "salte" entre renders.
+  const acwrFiltrado = acwrPorAtleta
+    .filter(({ athlete }) => {
+      const coincideNombre = athlete.nombre.toLowerCase().includes(nombreBuscado)
+      const coincidePosicion =
+        filtroPosicion === 'todas' || athlete.posiciones.some((p) => grupoDePosicion(p) === filtroPosicion)
+      return coincideNombre && coincidePosicion
+    })
+    .sort((a, b) => {
+      const diff = b.evaluacionRiesgo.riskScore - a.evaluacionRiesgo.riskScore
+      return diff !== 0 ? diff : a.athlete.nombre.localeCompare(b.athlete.nombre)
+    })
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,13 +146,23 @@ export function DashboardEquipo() {
             sRPE semanal y riesgo de carga (ACWR) por jugador
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => abrirModalIngreso('wellness')}
-          className="shrink-0 rounded-xl bg-union-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
-        >
-          + Ingresar Datos
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => setAnalisisAbierto(true)}
+            disabled={athletes.length === 0}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            📊 Análisis Grupal
+          </button>
+          <button
+            type="button"
+            onClick={() => abrirModalIngreso('wellness')}
+            className="rounded-xl bg-union-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
+          >
+            + Ingresar Datos
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -211,11 +254,12 @@ export function DashboardEquipo() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {acwrFiltrado.map(({ athlete, acwr, fatiga }) => {
+        {acwrFiltrado.map(({ athlete, acwr, fatiga, wellnessHoy, evaluacionRiesgo }) => {
           const sRpeSemana = calcularSRpeSemana(sessionExecutions, sessionPlans, athlete.id)
           const serie = calcularSerieUltimos7Dias(sessionExecutions, sessionPlans, athlete.id)
-          const wellnessHoy = obtenerWellnessDelDia(wellnessEntries, athlete.id, hoy)
           const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
+          const nivelRiesgo = nivelSemaforo(evaluacionRiesgo.riskScore)
+          const riesgoBadge = RIESGO_SEMAFORO_BADGE[nivelRiesgo]
 
           let comparacionHoy: ReturnType<typeof compararConObjetivo> | null = null
           let faltaTiempoHoy = false
@@ -235,7 +279,7 @@ export function DashboardEquipo() {
           }
 
           return (
-            <Card key={athlete.id} className="flex flex-col gap-4">
+            <Card key={athlete.id} className={`flex flex-col gap-4 ${CARD_BORDE_RIESGO[nivelRiesgo]}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <Avatar nombre={athlete.nombre} />
@@ -249,18 +293,14 @@ export function DashboardEquipo() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <div className="flex items-center gap-1.5">
-                    {wellnessHoy?.comentarioDolor && (
-                      <InfoTooltip
-                        titulo="💬 Comentario de dolor"
-                        descripcion={wellnessHoy.comentarioDolor}
-                        icono="🩹"
-                      />
-                    )}
-                    <Badge tone={ESTADO_TONE[athlete.estadoSalud]}>
-                      {ESTADO_LABEL[athlete.estadoSalud]}
+                  <Badge tone={ESTADO_TONE[athlete.estadoSalud]}>
+                    {ESTADO_LABEL[athlete.estadoSalud]}
+                  </Badge>
+                  {riesgoBadge && (
+                    <Badge tone={riesgoBadge.tone} className="whitespace-nowrap">
+                      {riesgoBadge.label}
                     </Badge>
-                  </div>
+                  )}
                   {fatiga.enFatiga && (
                     <Badge tone="red" className="whitespace-nowrap">
                       ⚠️ {fatiga.motivo === 'mrsi' ? 'Fatiga (RSI mod)' : 'Posible fatiga (CMJ)'}
@@ -268,6 +308,12 @@ export function DashboardEquipo() {
                   )}
                 </div>
               </div>
+
+              {wellnessHoy?.comentarioDolor && (
+                <p className="-mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs italic leading-snug text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                  🗨️ "{wellnessHoy.comentarioDolor}"
+                </p>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
@@ -369,6 +415,19 @@ export function DashboardEquipo() {
         })}
       </div>
       <IngresoModal />
+      {analisisAbierto && (
+        <AnalisisGrupalModal
+          athletes={athletes}
+          evaluaciones={evaluaciones}
+          wellnessEntries={wellnessEntries}
+          sessionExecutions={sessionExecutions}
+          gymExternalLoads={gymExternalLoads}
+          sessionPlans={sessionPlans}
+          categoriaNombre={categoriaActual?.nombre ?? 'Categoría'}
+          hoy={hoy}
+          onClose={() => setAnalisisAbierto(false)}
+        />
+      )}
     </div>
   )
 }

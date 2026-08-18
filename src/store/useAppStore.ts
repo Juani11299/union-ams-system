@@ -1340,3 +1340,26 @@ export function useStrengthAssignmentsActivas(): StrengthAssignment[] {
     return strengthAssignments.filter((a) => idsActivos.has(a.sessionPlanId))
   }, [strengthAssignments, sessionPlans, activeSeasonId, activeCategoryId])
 }
+
+/**
+ * Carga externa de Gimnasio (Fase 17) de la categoría/temporada activa —
+ * `gym_external_loads` no tiene `season_id`/`category_id` propio (cuelga de
+ * `session_id`), así que se filtra cruzando contra los `sessionPlans` ya
+ * activos (mismo criterio que `useStrengthAssignmentsActivas`). Usado por el
+ * Dashboard de Riesgo (Fase 20) para cruzar fatiga reportada vs. tonelaje real.
+ */
+export function useGymExternalLoadsActivos(): GymExternalLoad[] {
+  const gymExternalLoads = useAppStore((s) => s.gymExternalLoads)
+  const sessionPlans = useAppStore((s) => s.sessionPlans)
+  const activeSeasonId = useAppStore((s) => s.activeSeasonId)
+  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+
+  return useMemo(() => {
+    const idsActivos = new Set(
+      sessionPlans
+        .filter((p) => p.season_id === activeSeasonId && p.category_id === activeCategoryId)
+        .map((p) => p.id),
+    )
+    return gymExternalLoads.filter((g) => idsActivos.has(g.sessionId))
+  }, [gymExternalLoads, sessionPlans, activeSeasonId, activeCategoryId])
+}

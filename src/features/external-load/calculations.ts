@@ -1,4 +1,4 @@
-import type { PhysicalTest } from '@/types'
+import type { GymExternalLoad, PhysicalTest, SessionPlan } from '@/types'
 
 function ultimosDosConCampo<K extends keyof PhysicalTest>(
   tests: PhysicalTest[],
@@ -98,4 +98,53 @@ export function obtenerUltimoCmj(tests: PhysicalTest[], athleteId: string): Phys
     .filter((t) => t.athleteId === athleteId)
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
   return propios[0] ?? null
+}
+
+export type TendenciaTonelaje = 'subiendo' | 'bajando' | 'estable' | 'sin-datos'
+
+export interface TonelajeResult {
+  tendencia: TendenciaTonelaje
+  ultimo: GymExternalLoad | null
+  variacionPct: number | null
+}
+
+const UMBRAL_ESTABLE_TONELAJE_PCT = 3
+
+/**
+ * Tendencia de tonelaje del ejercicio troncal (Fase 20, "Mini-Integración de
+ * Carga Externa") — compara el último registro de Terminal de Fuerza contra
+ * el registro anterior DEL MISMO ejercicio (no tiene sentido comparar
+ * tonelaje entre ejercicios distintos). Responde "¿la fatiga de hoy le está
+ * bajando el rendimiento en el gimnasio?" cruzando wellness/RPE contra este
+ * dato real de carga externa.
+ */
+export function calcularTendenciaTonelaje(
+  gymExternalLoads: GymExternalLoad[],
+  sessionPlans: SessionPlan[],
+  athleteId: string,
+): TonelajeResult {
+  const propios = gymExternalLoads
+    .filter((g) => g.athleteId === athleteId)
+    .map((g) => ({ registro: g, fecha: sessionPlans.find((p) => p.id === g.sessionId)?.fecha ?? '' }))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.registro.createdAt.localeCompare(a.registro.createdAt))
+
+  const ultimo = propios[0]?.registro ?? null
+  if (!ultimo) return { tendencia: 'sin-datos', ultimo: null, variacionPct: null }
+
+  const anterior = propios.slice(1).find((p) => p.registro.exerciseName === ultimo.exerciseName)?.registro
+  if (!anterior || anterior.totalTonnage === 0) {
+    return { tendencia: 'sin-datos', ultimo, variacionPct: null }
+  }
+
+  const variacionPct = Number(
+    (((ultimo.totalTonnage - anterior.totalTonnage) / anterior.totalTonnage) * 100).toFixed(1),
+  )
+  const tendencia: TendenciaTonelaje =
+    variacionPct > UMBRAL_ESTABLE_TONELAJE_PCT
+      ? 'subiendo'
+      : variacionPct < -UMBRAL_ESTABLE_TONELAJE_PCT
+        ? 'bajando'
+        : 'estable'
+
+  return { tendencia, ultimo, variacionPct }
 }
