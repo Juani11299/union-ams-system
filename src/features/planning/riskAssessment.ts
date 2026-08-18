@@ -1,20 +1,28 @@
 import type { SessionExecution, WellnessEntry } from '@/types'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import type { AcwrResult } from '@/features/workload/calculations'
-import type { FatigaResult } from '@/features/external-load/calculations'
 
 export const WELLNESS_SCORE_MAX = 20
 export const UMBRAL_WELLNESS_BAJO = 12
 export const UMBRAL_RPE_ALTO = 8
 export const UMBRAL_DOLOR_INTENSO = 4
 
-export type ClaveFactorRiesgo =
-  | 'wellness-bajo'
-  | 'rpe-alto'
-  | 'doms'
-  | 'acwr-alto'
-  | 'acwr-precaucion'
-  | 'fatiga-neuromuscular'
+/**
+ * Umbral de "Alerta de Fatiga" (Fase 24) — el club no cuenta con
+ * plataformas de fuerza para medir RSI modificado de forma confiable, así
+ * que la alerta roja de fatiga se basa exclusivamente en el Índice de
+ * Hooper (wellness subjetivo) y el ACWR, ambas métricas validadas que no
+ * dependen de hardware. Ver `evaluarRiesgoAtleta`.
+ * Fuente Hooper: Hooper, S.L., Mackinnon, L.T., Howard, A., Gordon, R.D.,
+ * Bachmann, A.W. (1995). Markers for monitoring overtraining and recovery.
+ * Medicine & Science in Sports & Exercise, 27(1), 106-112 (mismas 4
+ * dimensiones que ya trackea el formulario de Wellness: sueño, estrés,
+ * fatiga, dolor muscular).
+ */
+export const UMBRAL_WELLNESS_CRITICO = 12
+const UMBRAL_RATING_SEVERO = 5
+
+export type ClaveFactorRiesgo = 'wellness-bajo' | 'rpe-alto' | 'doms' | 'acwr-alto' | 'acwr-precaucion'
 
 export interface FactorRiesgo {
   clave: ClaveFactorRiesgo
@@ -28,6 +36,8 @@ export interface EvaluacionRiesgoAtleta {
   rpeHoy: number | null
   factores: FactorRiesgo[]
   enZonaRoja: boolean
+  /** Alerta de Fatiga (Fase 24) — Hooper + ACWR únicamente, sin RSI. */
+  alertaFatiga: boolean
 }
 
 export type NivelSemaforo = 'rojo' | 'amarillo' | 'verde'
@@ -39,22 +49,18 @@ export function nivelSemaforo(riskScore: number): NivelSemaforo {
 }
 
 /**
- * Algoritmo de Risk Score (Fase 20) — combina las 3 señales pedidas por el
- * profe (Wellness del día bajo, sRPE de hoy por las nubes, DOMS intenso) con
- * las 2 alertas que el Dashboard ya calculaba por separado (ACWR y fatiga
- * neuromuscular por CMJ/RSI mod) en un único puntaje, así el sorting "mayor
- * riesgo arriba" y la Zona Roja del Análisis Grupal usan la misma fuente de
- * verdad. Los pesos son ordinales (no una escala clínica validada): más
- * severidad del desvío ⇒ más puntos, para que el orden dentro de la lista
- * también tenga sentido y no sólo el corte binario "en riesgo o no".
+ * Algoritmo de Risk Score (Fase 20, revisado en Fase 24) — combina Wellness
+ * del día bajo, sRPE de hoy por las nubes, DOMS intenso y ACWR en un único
+ * puntaje, así el sorting "mayor riesgo arriba" y la Zona Roja del Análisis
+ * Grupal usan la misma fuente de verdad. Los pesos son ordinales (no una
+ * escala clínica validada): más severidad del desvío ⇒ más puntos.
  */
 export function evaluarRiesgoAtleta(params: {
   wellnessHoy: WellnessEntry | null
   ejecucionesHoyAtleta: SessionExecution[]
   acwr: AcwrResult
-  fatiga: FatigaResult
 }): EvaluacionRiesgoAtleta {
-  const { wellnessHoy, ejecucionesHoyAtleta, acwr, fatiga } = params
+  const { wellnessHoy, ejecucionesHoyAtleta, acwr } = params
 
   const wellnessScore = wellnessHoy ? calcularWellnessScore20(wellnessHoy) : null
   const rpeHoy = ejecucionesHoyAtleta.length > 0 ? Math.max(...ejecucionesHoyAtleta.map((e) => e.rpe)) : null
@@ -108,15 +114,12 @@ export function evaluarRiesgoAtleta(params: {
     })
   }
 
-  if (fatiga.enFatiga) {
-    riskScore += 15
-    factores.push({
-      clave: 'fatiga-neuromuscular',
-      etiqueta: fatiga.motivo === 'mrsi' ? 'Caída de RSI modificado' : 'Posible fatiga (CMJ)',
-      sugerencia:
-        'Caída de rendimiento neuromuscular. Priorizar recuperación, evitar pliometría de alta intensidad hoy.',
-    })
-  }
+  // Alerta de Fatiga (Fase 24): wellness crítico (≤12/20, o dolor/fatiga en
+  // rojo aunque el total no baje de 12) O ACWR en zona de peligro (>1.5).
+  const wellnessCritico =
+    (wellnessScore !== null && wellnessScore <= UMBRAL_WELLNESS_CRITICO) ||
+    (!!wellnessHoy && (wellnessHoy.dolorMuscular >= UMBRAL_RATING_SEVERO || wellnessHoy.fatiga >= UMBRAL_RATING_SEVERO))
+  const alertaFatiga = wellnessCritico || acwr.riesgo === 'alto'
 
-  return { riskScore, wellnessScore, rpeHoy, factores, enZonaRoja: factores.length > 0 }
+  return { riskScore, wellnessScore, rpeHoy, factores, enZonaRoja: factores.length > 0, alertaFatiga }
 }

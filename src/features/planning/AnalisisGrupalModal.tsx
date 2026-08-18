@@ -2,8 +2,10 @@ import { Card } from '@/components/Card'
 import { Badge } from '@/components/Badge'
 import { Avatar } from '@/components/Avatar'
 import { StatCard } from '@/components/StatCard'
+import { MiniBarChart } from '@/components/MiniBarChart'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { calcularTendenciaTonelaje } from '@/features/external-load/calculations'
+import { calcularSerieEquipoUltimos7Dias } from '@/features/workload/calculations'
 import { nivelSemaforo, type EvaluacionRiesgoAtleta } from './riskAssessment'
 import type { Athlete, GymExternalLoad, SessionExecution, SessionPlan, WellnessEntry } from '@/types'
 
@@ -34,10 +36,13 @@ const TENDENCIA_LABEL: Record<string, string> = {
 }
 
 /**
- * Análisis Grupal (Fase 20) — consolida los datos de la categoría/temporada
- * activa: promedios de equipo, y un plan de acción automatizado por atleta
- * en Zona Roja, cruzando wellness/RPE de hoy con ACWR, fatiga neuromuscular
- * (CMJ/RSI mod) y tendencia de tonelaje en Terminal de Fuerza.
+ * Análisis Grupal (Fase 20, revisado en Fase 24) — consolida los datos de la
+ * categoría/temporada activa: promedios de equipo, sparkline de sRPE del
+ * plantel, y un plan de acción automatizado por atleta en Zona Roja,
+ * cruzando wellness/RPE de hoy con ACWR y tendencia de tonelaje en Terminal
+ * de Fuerza. Ver `riskAssessment.ts` — la Alerta de Fatiga ya no depende del
+ * RSI modificado (el club no tiene plataformas de fuerza), sólo de Wellness
+ * (Índice de Hooper) y ACWR.
  */
 export function AnalisisGrupalModal({
   athletes,
@@ -67,6 +72,12 @@ export function AnalisisGrupalModal({
 
   const participacionPct =
     athletes.length > 0 ? Math.round((wellnessHoy.length / athletes.length) * 100) : 0
+
+  const serieEquipo7d = calcularSerieEquipoUltimos7Dias(
+    sessionExecutions,
+    sessionPlans,
+    athletes.map((a) => a.id),
+  )
 
   const zonaRoja = athletes
     .map((athlete) => ({ athlete, evaluacion: evaluaciones.get(athlete.id) }))
@@ -108,6 +119,14 @@ export function AnalisisGrupalModal({
             />
             <StatCard label="% Participación" value={`${participacionPct}%`} hint="Wellness cargado hoy" />
           </div>
+
+          <Card className="mt-3 flex flex-col gap-2">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              📈 sRPE del equipo — últimos 7 días
+            </p>
+            <MiniBarChart valores={serieEquipo7d} barClassName="bg-union-red-500 dark:bg-union-red-400" />
+            <p className="text-[11px] text-slate-400">Suma diaria de sRPE de todo el plantel (hoy a la derecha)</p>
+          </Card>
 
           <div className="mt-5">
             <h4 className="flex items-center gap-1.5 text-sm font-semibold text-rose-700 dark:text-rose-400">

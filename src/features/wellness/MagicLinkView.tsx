@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/useAppStore'
 import { Card } from '@/components/Card'
 import { Avatar } from '@/components/Avatar'
-import { RatingPicker } from '@/components/RatingPicker'
+import { EmojiSlider } from '@/components/EmojiSlider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { colorRpe } from '@/features/workload/calculations'
 import { getErrorMessage } from '@/utils/errors'
@@ -23,6 +23,34 @@ const RPE_LABEL: Record<number, string> = {
   9: 'Casi máximo',
   10: 'Máximo',
 }
+
+/** Cara emoji según intensidad de RPE (Fase 24, estilo "Training Feel"). */
+function emojiRpe(rpe: number): string {
+  if (rpe <= 1) return '🛋️'
+  if (rpe <= 3) return '🙂'
+  if (rpe <= 5) return '😅'
+  if (rpe <= 7) return '😓'
+  if (rpe <= 9) return '😰'
+  return '🥵'
+}
+
+// Mismos 5 colores y misma convención "invert" que `RatingPicker` (1=verde
+// .. 5=rojo si invert, o al revés si no) — acá en hex porque el slider los
+// necesita para el gradiente del track, no para clases de Tailwind.
+const COLOR_HEX_BUENO_A_MALO = ['#10b981', '#84cc16', '#f59e0b', '#f97316', '#f43f5e']
+function colorRating(value: number, invert: boolean): string {
+  const colores = invert ? COLOR_HEX_BUENO_A_MALO : [...COLOR_HEX_BUENO_A_MALO].reverse()
+  return colores[value - 1]
+}
+
+const SUENO_EMOJIS = ['😫', '😕', '😐', '🙂', '😄']
+const SUENO_LABELS = ['Muy mala', 'Mala', 'Regular', 'Buena', 'Excelente']
+const DOLOR_EMOJIS = ['💪', '🙂', '😐', '😣', '🤕']
+const DOLOR_LABELS = ['Sin dolor', 'Leve', 'Moderado', 'Intenso', 'Muy intenso']
+const ESTRES_EMOJIS = ['😌', '🙂', '😐', '😟', '😖']
+const ESTRES_LABELS = ['Relajado', 'Tranquilo', 'Normal', 'Estresado', 'Muy estresado']
+const FATIGA_EMOJIS = ['⚡', '🙂', '😐', '😓', '🥵']
+const FATIGA_LABELS = ['Con energía', 'Leve', 'Moderada', 'Cansado', 'Agotado']
 
 type TipoFormulario = 'wellness' | 'rpe'
 
@@ -202,36 +230,51 @@ function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugad
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <Card className="flex flex-col gap-4">
-            <RatingPicker
-              label="Calidad de sueño"
-              value={sueno}
-              onChange={(v) => setSueno(v as WellnessRating)}
-              emojis={['😫', '😕', '😐', '🙂', '😄']}
-            />
-            <RatingPicker
-              label="Dolor muscular"
-              value={dolorMuscular}
-              onChange={(v) => setDolorMuscular(v as WellnessRating)}
-              emojis={['💪', '🙂', '😐', '😣', '🤕']}
-              invert
-            />
-            <RatingPicker
-              label="Estrés"
-              value={estres}
-              onChange={(v) => setEstres(v as WellnessRating)}
-              emojis={['😌', '🙂', '😐', '😟', '😖']}
-              invert
-            />
-            <RatingPicker
-              label="Fatiga"
-              value={fatiga}
-              onChange={(v) => setFatiga(v as WellnessRating)}
-              emojis={['⚡', '🙂', '😐', '😓', '🥵']}
-              invert
-            />
-          </Card>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <EmojiSlider
+            icono="🛌"
+            label="Calidad de sueño"
+            value={sueno}
+            onChange={(v) => setSueno(v as WellnessRating)}
+            min={1}
+            max={5}
+            emoji={(v) => SUENO_EMOJIS[v - 1]}
+            descripcion={(v) => SUENO_LABELS[v - 1]}
+            color={(v) => colorRating(v, false)}
+          />
+          <EmojiSlider
+            icono="🦵"
+            label="Dolor muscular"
+            value={dolorMuscular}
+            onChange={(v) => setDolorMuscular(v as WellnessRating)}
+            min={1}
+            max={5}
+            emoji={(v) => DOLOR_EMOJIS[v - 1]}
+            descripcion={(v) => DOLOR_LABELS[v - 1]}
+            color={(v) => colorRating(v, true)}
+          />
+          <EmojiSlider
+            icono="🧠"
+            label="Estrés"
+            value={estres}
+            onChange={(v) => setEstres(v as WellnessRating)}
+            min={1}
+            max={5}
+            emoji={(v) => ESTRES_EMOJIS[v - 1]}
+            descripcion={(v) => ESTRES_LABELS[v - 1]}
+            color={(v) => colorRating(v, true)}
+          />
+          <EmojiSlider
+            icono="🔋"
+            label="Fatiga"
+            value={fatiga}
+            onChange={(v) => setFatiga(v as WellnessRating)}
+            min={1}
+            max={5}
+            emoji={(v) => FATIGA_EMOJIS[v - 1]}
+            descripcion={(v) => FATIGA_LABELS[v - 1]}
+            color={(v) => colorRating(v, true)}
+          />
 
           <Card className="flex flex-col gap-2">
             <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -332,35 +375,19 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <Card className="flex flex-col items-center gap-3">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">RPE de la sesión</span>
-            <span className="text-5xl font-bold" style={{ color: colorRpe(rpe) }}>
-              {rpe}
-            </span>
-            <span className="text-sm text-slate-500 dark:text-slate-400">{RPE_LABEL[rpe]}</span>
-            <input
-              type="range"
-              min={0}
-              max={10}
-              step={1}
-              value={rpe}
-              onChange={(e) => setRpe(Number(e.target.value))}
-              className="h-3 w-full cursor-pointer appearance-none rounded-full [&::-moz-range-thumb]:h-8 [&::-moz-range-thumb]:w-8 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-4 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md [&::-webkit-slider-thumb]:h-8 [&::-webkit-slider-thumb]:w-8 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md"
-              style={{
-                background: `linear-gradient(to right, ${colorRpe(rpe)} 0%, ${colorRpe(rpe)} ${
-                  (rpe / 10) * 100
-                }%, #e2e8f0 ${(rpe / 10) * 100}%, #e2e8f0 100%)`,
-              }}
-            />
-            <div className="flex w-full justify-between text-[11px] text-slate-400">
-              <span>0</span>
-              <span>2</span>
-              <span>4</span>
-              <span>6</span>
-              <span>8</span>
-              <span>10</span>
-            </div>
-          </Card>
+          <EmojiSlider
+            icono="🏃"
+            label="RPE de la sesión"
+            value={rpe}
+            onChange={setRpe}
+            min={0}
+            max={10}
+            emoji={emojiRpe}
+            descripcion={(v) => RPE_LABEL[v]}
+            color={colorRpe}
+            minLabel="🛋️ Descanso"
+            maxLabel="🥵 Esfuerzo Máximo"
+          />
 
           <button
             type="submit"

@@ -95,7 +95,11 @@ export function calcularAcwr(
   const cargaCronica = cargaCronicaTotal / 4
 
   if (cargaCronica === 0) {
-    return { cargaAguda, cargaCronica, acwr: null, riesgo: 'sin-datos' }
+    // Fase 24: sin 4 semanas de carga real todavía (atleta nuevo, arranque
+    // de temporada) — fallback a ACWR neutro (1.0, zona óptima) en vez de
+    // "sin datos", para no mostrar ni un hueco gris ni un falso alto riesgo
+    // antes de tener suficiente historial.
+    return { cargaAguda, cargaCronica, acwr: 1, riesgo: 'optimo' }
   }
 
   const acwr = cargaAguda / cargaCronica
@@ -174,4 +178,62 @@ export function calcularSerieUltimos7Dias(
   }
 
   return dias
+}
+
+/** Suma día a día la serie de últimos 7 días de varios atletas — sparkline de sRPE del equipo (Fase 24). */
+export function calcularSerieEquipoUltimos7Dias(
+  ejecuciones: SessionExecution[],
+  sessionPlans: SessionPlan[],
+  athleteIds: string[],
+  fechaReferencia: Date = new Date(),
+): number[] {
+  const total = new Array(7).fill(0)
+  for (const athleteId of athleteIds) {
+    const serie = calcularSerieUltimos7Dias(ejecuciones, sessionPlans, athleteId, fechaReferencia)
+    serie.forEach((valor, i) => {
+      total[i] += valor
+    })
+  }
+  return total
+}
+
+/** A partir de qué Monotonía se considera "alta" (Fase 24) — ver `calcularMonotonia`. */
+export const UMBRAL_MONOTONIA_ALTA = 2
+
+/**
+ * Monotonía de Foster — carga media semanal / desvío estándar semanal, sobre
+ * la serie de 7 cargas diarias (`calcularSerieUltimos7Dias`). Entrenar
+ * siempre con la misma intensidad, sin días de descarga que bajen la
+ * variabilidad, se asocia a mayor riesgo de enfermedad/sobreentrenamiento
+ * aunque la carga TOTAL de la semana no sea extrema — por eso es una señal
+ * distinta e independiente del ACWR.
+ * Fuente: Foster, C. (1998). Monitoring training in athletes with reference
+ * to overtraining syndrome. Medicine & Science in Sports & Exercise, 30(7),
+ * 1164-1168.
+ */
+export function calcularMonotonia(serieUltimos7Dias: number[]): number | null {
+  if (serieUltimos7Dias.length === 0) return null
+  const media = serieUltimos7Dias.reduce((sum, v) => sum + v, 0) / serieUltimos7Dias.length
+  if (media === 0) return null
+
+  const varianza =
+    serieUltimos7Dias.reduce((sum, v) => sum + (v - media) ** 2, 0) / serieUltimos7Dias.length
+  const desviacion = Math.sqrt(varianza)
+  // Misma carga los 7 días: monotonía máxima — un valor alto fijo en vez de
+  // dividir por cero (matemáticamente sería infinito, pero eso no se puede
+  // mostrar en una tarjeta).
+  if (desviacion === 0) return 99
+
+  return Number((media / desviacion).toFixed(2))
+}
+
+/**
+ * Strain de Foster — carga total semanal × Monotonía. Combina volumen y
+ * falta de variación en un único número: dos semanas con la misma carga
+ * total pueden tener un Strain muy distinto según cuán monótona haya sido
+ * cada una. Misma fuente que `calcularMonotonia` (Foster, 1998).
+ */
+export function calcularStrain(cargaTotalSemanal: number, monotonia: number | null): number | null {
+  if (monotonia === null) return null
+  return Number((cargaTotalSemanal * monotonia).toFixed(0))
 }

@@ -5,7 +5,6 @@ import {
   useSessionExecutionsActivas,
   useSessionPlansActivos,
   useWellnessEntriesActivas,
-  usePhysicalTestsActivos,
   useGymExternalLoadsActivos,
 } from '@/store/useAppStore'
 import { StatCard } from '@/components/StatCard'
@@ -18,11 +17,13 @@ import {
   calcularSRpeSemana,
   calcularSerieUltimos7Dias,
   calcularCargaEjecutadaReal,
+  calcularMonotonia,
+  calcularStrain,
   compararConObjetivo,
+  UMBRAL_MONOTONIA_ALTA,
   type NivelRiesgoAcwr,
 } from '@/features/workload/calculations'
 import { calcularReadiness, obtenerWellnessDelDia } from '@/features/wellness/calculations'
-import { evaluarFatiga } from '@/features/external-load/calculations'
 import { IngresoModal } from '@/features/wellness/IngresoModal'
 import { fechaHoyLocal } from '@/utils/fecha'
 import { InfoTooltip } from '@/components/InfoTooltip'
@@ -85,7 +86,6 @@ export function DashboardEquipo() {
   const sessionExecutions = useSessionExecutionsActivas()
   const sessionPlans = useSessionPlansActivos()
   const wellnessEntries = useWellnessEntriesActivas()
-  const physicalTests = usePhysicalTestsActivos()
   const gymExternalLoads = useGymExternalLoadsActivos()
   const categories = useAppStore((s) => s.categories)
   const activeCategoryId = useAppStore((s) => s.activeCategoryId)
@@ -109,14 +109,13 @@ export function DashboardEquipo() {
 
   const acwrPorAtleta = athletes.map((athlete) => {
     const acwr = calcularAcwr(sessionExecutions, sessionPlans, athlete.id)
-    const fatiga = evaluarFatiga(physicalTests, athlete.id)
     const wellnessHoy = obtenerWellnessDelDia(wellnessEntries, athlete.id, hoy)
     const ejecucionesHoyAtleta = sessionExecutions.filter((e) => e.athleteId === athlete.id && e.fecha === hoy)
-    const evaluacionRiesgo = evaluarRiesgoAtleta({ wellnessHoy, ejecucionesHoyAtleta, acwr, fatiga })
-    return { athlete, acwr, fatiga, wellnessHoy, evaluacionRiesgo }
+    const evaluacionRiesgo = evaluarRiesgoAtleta({ wellnessHoy, ejecucionesHoyAtleta, acwr })
+    return { athlete, acwr, wellnessHoy, evaluacionRiesgo }
   })
   const alertasAltoRiesgo = acwrPorAtleta.filter((a) => a.acwr.riesgo === 'alto').length
-  const alertasFatiga = acwrPorAtleta.filter((a) => a.fatiga.enFatiga).length
+  const alertasFatiga = acwrPorAtleta.filter((a) => a.evaluacionRiesgo.alertaFatiga).length
 
   const evaluaciones = new Map(acwrPorAtleta.map((a) => [a.athlete.id, a.evaluacionRiesgo]))
 
@@ -201,9 +200,9 @@ export function DashboardEquipo() {
           <span className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
             Alertas Fatiga
             <InfoTooltip
-              titulo="Alerta de Fatiga Neuromuscular"
-              descripcion="Prioriza el RSI modificado (altura de salto / tiempo hasta despegue): una caída ≥8% dispara la alerta. Si no hay RSI modificado cargado, se usa la altura del CMJ como respaldo (señal más débil)."
-              cita="Martinez, D. (2016), J. Aust. Strength Cond. 24(5), citando Ronglan, Raastad & Borgesen (2006, balonmano de élite). Ver también Marques et al. (2026) y TFM Robles, J.I. (2026)."
+              titulo="Alerta de Fatiga (Hooper + ACWR)"
+              descripcion="Sin plataformas de fuerza para medir RSI modificado, la alerta usa sólo métricas subjetivas validadas: Wellness del día crítico (≤12/20, Índice de Hooper) o dolor muscular/fatiga severos, O ACWR en zona de peligro (&gt;1.5)."
+              cita="Hooper, S.L. et al. (1995). Markers for monitoring overtraining and recovery. Medicine & Science in Sports & Exercise, 27(1). Gabbett, T.J. (2016), ACWR."
             />
           </span>
           <span
@@ -213,7 +212,7 @@ export function DashboardEquipo() {
           >
             {alertasFatiga}
           </span>
-          <span className="text-xs text-slate-400">Caída de RSI modificado ≥ 8%</span>
+          <span className="text-xs text-slate-400">Wellness crítico o ACWR &gt; 1.5</span>
         </Card>
       </div>
 
@@ -254,9 +253,12 @@ export function DashboardEquipo() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {acwrFiltrado.map(({ athlete, acwr, fatiga, wellnessHoy, evaluacionRiesgo }) => {
+        {acwrFiltrado.map(({ athlete, acwr, wellnessHoy, evaluacionRiesgo }) => {
           const sRpeSemana = calcularSRpeSemana(sessionExecutions, sessionPlans, athlete.id)
           const serie = calcularSerieUltimos7Dias(sessionExecutions, sessionPlans, athlete.id)
+          const monotonia = calcularMonotonia(serie)
+          const strain = calcularStrain(sRpeSemana, monotonia)
+          const monotoniaAlta = monotonia !== null && monotonia >= UMBRAL_MONOTONIA_ALTA
           const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
           const nivelRiesgo = nivelSemaforo(evaluacionRiesgo.riskScore)
           const riesgoBadge = RIESGO_SEMAFORO_BADGE[nivelRiesgo]
@@ -301,11 +303,6 @@ export function DashboardEquipo() {
                       {riesgoBadge.label}
                     </Badge>
                   )}
-                  {fatiga.enFatiga && (
-                    <Badge tone="red" className="whitespace-nowrap">
-                      ⚠️ {fatiga.motivo === 'mrsi' ? 'Fatiga (RSI mod)' : 'Posible fatiga (CMJ)'}
-                    </Badge>
-                  )}
                 </div>
               </div>
 
@@ -313,6 +310,26 @@ export function DashboardEquipo() {
                 <p className="-mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs italic leading-snug text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
                   🗨️ "{wellnessHoy.comentarioDolor}"
                 </p>
+              )}
+
+              {(evaluacionRiesgo.alertaFatiga || acwr.riesgo === 'alto' || monotoniaAlta) && (
+                <div className="-mt-2 flex flex-wrap gap-1.5">
+                  {acwr.riesgo === 'alto' && acwr.acwr !== null && (
+                    <Badge tone="red" className="whitespace-nowrap">
+                      🔥 ACWR Peligroso: {acwr.acwr.toFixed(1)}
+                    </Badge>
+                  )}
+                  {monotoniaAlta && (
+                    <Badge tone="orange" className="whitespace-nowrap">
+                      📈 Alta Monotonía
+                    </Badge>
+                  )}
+                  {evaluacionRiesgo.alertaFatiga && (
+                    <Badge tone="red" className="whitespace-nowrap">
+                      🥵 Fatiga Severa
+                    </Badge>
+                  )}
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
@@ -329,6 +346,17 @@ export function DashboardEquipo() {
                     {sRpeSemana} <span className="text-xs font-normal text-slate-400">AU</span>
                   </p>
                   <MiniBarChart valores={serie} className="mt-2" />
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1">
+                      Monotonía {monotonia !== null ? monotonia.toFixed(2) : '—'}
+                      <InfoTooltip
+                        titulo="Monotonía y Strain (Foster)"
+                        descripcion="Monotonía = carga media semanal / desvío estándar semanal — entrenar siempre igual de fuerte, sin variar, es un factor de riesgo aunque la carga total no sea alta (valores ≥2 se consideran altos). Strain = carga total semanal × Monotonía."
+                        cita="Foster, C. (1998). Monitoring training in athletes with reference to overtraining syndrome. Medicine & Science in Sports & Exercise, 30(7), 1164-1168."
+                      />
+                    </span>
+                    <span>Strain {strain !== null ? strain.toLocaleString('es-AR') : '—'}</span>
+                  </div>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
                   <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
