@@ -348,6 +348,20 @@ export const useAppStore = create<AppState>()(
       const categories = (categoriesRes.data ?? []) as TeamCategory[]
       const temporadaActiva = seasons.find((s) => s.is_active) ?? seasons[0]
 
+      // No pisar una temporada/categoría ya vigente (persistida de una sesión
+      // anterior, o recién fijada por un link escopeado — ver
+      // `useScopedCategoryFromUrl`, que corre en paralelo y normalmente gana
+      // esta carrera porque no depende de la red): sólo caemos al default si
+      // no hay ninguna seleccionada todavía, o si la que había ya no existe
+      // (categoría/temporada borrada del lado del servidor).
+      const { activeSeasonId: seasonIdVigente, activeCategoryId: categoryIdVigente } = get()
+      const activeSeasonId = seasons.some((s) => s.id === seasonIdVigente)
+        ? seasonIdVigente
+        : (temporadaActiva?.id ?? null)
+      const activeCategoryId = categories.some((c) => c.id === categoryIdVigente)
+        ? categoryIdVigente
+        : (categories[0]?.id ?? null)
+
       set({
         club: (clubRes.data as Club | null) ?? null,
         seasons,
@@ -378,8 +392,8 @@ export const useAppStore = create<AppState>()(
         gymExternalLoads: ((gymExternalLoadsRes.data ?? []) as GymExternalLoadRow[]).map(
           gymExternalLoadFromRow,
         ),
-        activeSeasonId: temporadaActiva?.id ?? null,
-        activeCategoryId: categories[0]?.id ?? null,
+        activeSeasonId,
+        activeCategoryId,
         isLoading: false,
         error: primerError
           ? getErrorMessage(primerError, 'Algunas tablas no se pudieron sincronizar con Supabase.')

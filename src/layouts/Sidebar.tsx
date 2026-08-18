@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { navItems, type NavItem } from './navConfig'
 import { useAppStore } from '@/store/useAppStore'
 import { ClubLogo } from '@/components/ClubLogo'
+import { rutaPermitidaParaStaff } from '@/utils/staffAccess'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -11,8 +12,18 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
       : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
   }`
 
+/** Candado (Fase 23) al lado de los links bloqueados en "Modo Staff" — no se ocultan, sólo se marcan. */
+function CandadoStaff() {
+  return (
+    <span className="ml-auto text-xs" aria-label="Bloqueado en Modo Staff" title="Bloqueado en Modo Staff">
+      🔒
+    </span>
+  )
+}
+
 export function Sidebar() {
   const club = useAppStore((s) => s.club)
+  const categoryLocked = useAppStore((s) => s.categoryLocked)
   const gruposRenderizados = new Set<string>()
 
   return (
@@ -26,13 +37,17 @@ export function Sidebar() {
             if (gruposRenderizados.has(item.group)) return null
             gruposRenderizados.add(item.group)
             const itemsDelGrupo = navItems.filter((i) => i.group === item.group)
-            return <NavGroup key={item.group} titulo={item.group} items={itemsDelGrupo} />
+            return (
+              <NavGroup key={item.group} titulo={item.group} items={itemsDelGrupo} categoryLocked={categoryLocked} />
+            )
           }
 
+          const bloqueado = categoryLocked && !rutaPermitidaParaStaff(item.to)
           return (
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className={navLinkClass}>
               <span aria-hidden>{item.icon}</span>
               {item.label}
+              {bloqueado && <CandadoStaff />}
             </NavLink>
           )
         })}
@@ -42,10 +57,11 @@ export function Sidebar() {
 }
 
 /** Submenú desplegable del Sidebar (ej. "Estructura de Trabajo") — se abre solo si contiene la ruta activa. */
-function NavGroup({ titulo, items }: { titulo: string; items: NavItem[] }) {
+function NavGroup({ titulo, items, categoryLocked }: { titulo: string; items: NavItem[]; categoryLocked: boolean }) {
   const location = useLocation()
   const contieneActivo = items.some((item) => item.to === location.pathname)
   const [abierto, setAbierto] = useState(contieneActivo)
+  const grupoBloqueado = categoryLocked && items.every((item) => !rutaPermitidaParaStaff(item.to))
 
   return (
     <div>
@@ -63,19 +79,26 @@ function NavGroup({ titulo, items }: { titulo: string; items: NavItem[] }) {
           <span aria-hidden>🗂️</span>
           {titulo}
         </span>
-        <span aria-hidden className={`text-[10px] transition-transform ${abierto ? 'rotate-90' : ''}`}>
-          ▶
+        <span className="flex items-center gap-1.5">
+          {grupoBloqueado && <CandadoStaff />}
+          <span aria-hidden className={`text-[10px] transition-transform ${abierto ? 'rotate-90' : ''}`}>
+            ▶
+          </span>
         </span>
       </button>
 
       {abierto && (
         <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-3 dark:border-slate-700">
-          {items.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navLinkClass}>
-              <span aria-hidden>{item.icon}</span>
-              {item.label}
-            </NavLink>
-          ))}
+          {items.map((item) => {
+            const bloqueado = categoryLocked && !rutaPermitidaParaStaff(item.to)
+            return (
+              <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                <span aria-hidden>{item.icon}</span>
+                {item.label}
+                {bloqueado && <CandadoStaff />}
+              </NavLink>
+            )
+          })}
         </div>
       )}
     </div>

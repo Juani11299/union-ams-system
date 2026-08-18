@@ -7,6 +7,8 @@ import { useAppStore } from '@/store/useAppStore'
  * staff) y, si están presentes, fija esa categoría como activa en el store
  * global y bloquea el selector de categoría del TopBar — así un profe que
  * abre el link de su categoría no puede, ni por error, cambiarse a otra.
+ * Desde Fase 23 también determina el "Modo Staff" (`categoryLocked`) que usa
+ * `MainLayout` para bloquear rutas fuera del allowlist — ver `staffAccess.ts`.
  *
  * Sólo aplica al árbol de rutas montado bajo `MainLayout` (donde vive el
  * selector global de `activeCategoryId`); la Terminal de Fuerza es una ruta
@@ -20,9 +22,22 @@ export function useScopedCategoryFromUrl() {
   useEffect(() => {
     const categoryId = searchParams.get('category')
     const locked = searchParams.get('locked') === 'true'
-    if (categoryId && locked) {
-      setActiveCategoryLocked(categoryId)
+    if (!categoryId || !locked) return
+
+    const aplicar = () => setActiveCategoryLocked(categoryId)
+
+    // `activeCategoryId` está persistido en IndexedDB (Fase 18) y rehidrata
+    // de forma ASÍNCRONA — si aplicáramos el link ya, la rehidratación puede
+    // resolver después y pisarlo con la categoría de una sesión anterior
+    // (bug real: un profe que recibe un link nuevo para otra categoría
+    // terminaba viendo la vieja, marcada como "bloqueada" igual, sin ningún
+    // indicio de que estaba en la categoría equivocada). Esperar a que
+    // termine de rehidratar garantiza que la URL siempre gane.
+    if (useAppStore.persist.hasHydrated()) {
+      aplicar()
+      return
     }
+    return useAppStore.persist.onFinishHydration(aplicar)
     // Sólo nos importa la lectura inicial de la URL con la que se abrió el
     // link — no queremos volver a disparar esto en cada cambio de
     // searchParams que agregue otra parte de la app (por ejemplo, un filtro).

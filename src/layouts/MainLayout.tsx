@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomTabBar } from './BottomTabBar'
 import { TopBar } from './TopBar'
 import { useAppStore } from '@/store/useAppStore'
 import { ToastContainer } from '@/components/ToastContainer'
+import { LockedModuleView } from '@/components/LockedModuleView'
 import { useScopedCategoryFromUrl } from '@/hooks/useScopedCategoryFromUrl'
+import { rutaPermitidaParaStaff } from '@/utils/staffAccess'
 
 function EstadoCarga() {
   return (
@@ -50,10 +52,14 @@ function ToastError({ mensaje, onRetry, onClose }: { mensaje: string; onRetry: (
 export function MainLayout() {
   const isLoading = useAppStore((s) => s.isLoading)
   const error = useAppStore((s) => s.error)
+  const categoryLocked = useAppStore((s) => s.categoryLocked)
   const fetchInitialData = useAppStore((s) => s.fetchInitialData)
   const [toastCerrado, setToastCerrado] = useState(false)
+  const location = useLocation()
 
   useScopedCategoryFromUrl()
+
+  const bloqueadoPorModoStaff = categoryLocked && !rutaPermitidaParaStaff(location.pathname)
 
   useEffect(() => {
     fetchInitialData()
@@ -69,7 +75,7 @@ export function MainLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-y-auto px-4 pb-20 pt-4 md:px-8 md:pb-8 md:pt-6">
-          {isLoading ? <EstadoCarga /> : <Outlet />}
+          {isLoading ? <EstadoCarga /> : bloqueadoPorModoStaff ? <LockedModuleView /> : <Outlet />}
         </main>
       </div>
       <BottomTabBar />
