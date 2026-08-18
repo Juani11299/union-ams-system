@@ -24,9 +24,25 @@ const RPE_LABEL: Record<number, string> = {
   10: 'Máximo',
 }
 
-function Pantalla({ children }: { children: React.ReactNode }) {
+type TipoFormulario = 'wellness' | 'rpe'
+
+/**
+ * Título del módulo (Fase 22) — usado tanto en el encabezado grande de cada
+ * pantalla como (con el sufijo del club) en `document.title`. Mismo texto en
+ * los dos lugares para que la pestaña del navegador y lo que ve el jugador
+ * en pantalla coincidan.
+ */
+function tituloModulo(tipo: TipoFormulario, categoriaNombre: string | null): string {
+  const modulo = tipo === 'rpe' ? 'RPE' : 'Wellness'
+  return categoriaNombre ? `${modulo} — ${categoriaNombre}` : `Control de ${modulo} — C.A. Unión`
+}
+
+function Pantalla({ titulo, children }: { titulo?: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4 py-8 dark:bg-slate-950">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-slate-50 px-4 py-8 dark:bg-slate-950">
+      {titulo && (
+        <p className="text-center text-xl font-bold text-slate-800 dark:text-slate-100">{titulo}</p>
+      )}
       <div className="w-full max-w-md">{children}</div>
     </div>
   )
@@ -59,13 +75,15 @@ function PantallaLinkInvalido() {
 
 interface PantallaSeleccionJugadorProps {
   jugadores: Athlete[]
+  tipo: TipoFormulario
+  categoriaNombre: string | null
   onSeleccionar: (athleteId: string) => void
 }
 
 /** Paso 0: el link ya no trae el jugador — cada uno elige su nombre de una lista. */
-function PantallaSeleccionJugador({ jugadores, onSeleccionar }: PantallaSeleccionJugadorProps) {
+function PantallaSeleccionJugador({ jugadores, tipo, categoriaNombre, onSeleccionar }: PantallaSeleccionJugadorProps) {
   return (
-    <Pantalla>
+    <Pantalla titulo={tituloModulo(tipo, categoriaNombre)}>
       <Card className="flex flex-col items-center gap-4 py-8 text-center">
         <span className="text-3xl">👋</span>
         <div>
@@ -88,6 +106,7 @@ function PantallaSeleccionJugador({ jugadores, onSeleccionar }: PantallaSeleccio
 interface FormularioProps {
   athleteId: string
   nombre: string
+  categoriaNombre: string | null
   onCambiarJugador: () => void
 }
 
@@ -115,11 +134,12 @@ function EncabezadoJugador({ nombre, subtitulo, onCambiarJugador }: { nombre: st
 }
 
 /** Formulario del jugador cuando el link es `?type=wellness` — inicio del día. */
-function FormularioWellness({ athleteId, nombre, onCambiarJugador }: FormularioProps) {
+function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugador }: FormularioProps) {
   const [searchParams] = useSearchParams()
   const submitWellness = useAppStore((s) => s.submitWellness)
   const seasonId = searchParams.get('season')
   const categoryId = searchParams.get('category')
+  const titulo = tituloModulo('wellness', categoriaNombre)
 
   const [sueno, setSueno] = useState<WellnessRating>(3)
   const [dolorMuscular, setDolorMuscular] = useState<WellnessRating>(3)
@@ -159,7 +179,7 @@ function FormularioWellness({ athleteId, nombre, onCambiarJugador }: FormularioP
 
   if (enviado) {
     return (
-      <Pantalla>
+      <Pantalla titulo={titulo}>
         <Card className="flex flex-col items-center gap-2 py-12 text-center">
           <span className="text-4xl">✅</span>
           <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
@@ -172,7 +192,7 @@ function FormularioWellness({ athleteId, nombre, onCambiarJugador }: FormularioP
   }
 
   return (
-    <Pantalla>
+    <Pantalla titulo={titulo}>
       <div className="flex flex-col gap-4">
         <EncabezadoJugador nombre={nombre} subtitulo="Wellness de hoy" onCambiarJugador={onCambiarJugador} />
 
@@ -241,11 +261,12 @@ function FormularioWellness({ athleteId, nombre, onCambiarJugador }: FormularioP
 
 /** Formulario del jugador cuando el link es `?type=rpe` — fin de la sesión. La
  * duración ya la definió el coach (viaja en la URL) y no se le muestra. */
-function FormularioRpe({ athleteId, nombre, onCambiarJugador }: FormularioProps) {
+function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }: FormularioProps) {
   const [searchParams] = useSearchParams()
   const submitSessionLoad = useAppStore((s) => s.submitSessionLoad)
   const seasonId = searchParams.get('season')
   const categoryId = searchParams.get('category')
+  const titulo = tituloModulo('rpe', categoriaNombre)
 
   const [rpe, setRpe] = useState(5)
   const [enviando, setEnviando] = useState(false)
@@ -283,7 +304,7 @@ function FormularioRpe({ athleteId, nombre, onCambiarJugador }: FormularioProps)
 
   if (enviado) {
     return (
-      <Pantalla>
+      <Pantalla titulo={titulo}>
         <Card className="flex flex-col items-center gap-2 py-12 text-center">
           <span className="text-4xl">✅</span>
           <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
@@ -296,7 +317,7 @@ function FormularioRpe({ athleteId, nombre, onCambiarJugador }: FormularioProps)
   }
 
   return (
-    <Pantalla>
+    <Pantalla titulo={titulo}>
       <div className="flex flex-col gap-4">
         <EncabezadoJugador
           nombre={nombre}
@@ -360,15 +381,27 @@ export function MagicLinkView() {
   const fetchInitialData = useAppStore((s) => s.fetchInitialData)
   const athletes = useAppStore((s) => s.athletes)
   const rosters = useAppStore((s) => s.rosters)
+  const categories = useAppStore((s) => s.categories)
   const [athleteId, setAthleteId] = useState<string | null>(null)
 
-  const tipo = searchParams.get('type') === 'rpe' ? 'rpe' : 'wellness'
+  const tipo: TipoFormulario = searchParams.get('type') === 'rpe' ? 'rpe' : 'wellness'
   const seasonId = searchParams.get('season')
   const categoryId = searchParams.get('category')
+  // Fase 22: la categoría puede llegar por id (`?category=<uuid>`, el caso
+  // normal — se resuelve el nombre contra `categories` una vez que cargó) o
+  // ya resuelta por nombre (`?category_name=`), para no depender de que el
+  // store haya sincronizado con Supabase.
+  const categoryNameParam = searchParams.get('category_name')
+  const categoriaNombre =
+    categoryNameParam || categories.find((c) => c.id === categoryId)?.nombre || null
 
   useEffect(() => {
     fetchInitialData()
   }, [fetchInitialData])
+
+  useEffect(() => {
+    document.title = `${tituloModulo(tipo, categoriaNombre)}${categoriaNombre ? ' | C.A. Unión' : ''}`
+  }, [tipo, categoriaNombre])
 
   const jugadoresActivos = useMemo(() => {
     if (!seasonId || !categoryId) return []
@@ -384,12 +417,29 @@ export function MagicLinkView() {
   const athlete = athleteId ? (jugadoresActivos.find((a) => a.id === athleteId) ?? null) : null
 
   if (!athlete) {
-    return <PantallaSeleccionJugador jugadores={jugadoresActivos} onSeleccionar={setAthleteId} />
+    return (
+      <PantallaSeleccionJugador
+        jugadores={jugadoresActivos}
+        tipo={tipo}
+        categoriaNombre={categoriaNombre}
+        onSeleccionar={setAthleteId}
+      />
+    )
   }
 
   return tipo === 'rpe' ? (
-    <FormularioRpe athleteId={athlete.id} nombre={athlete.nombre} onCambiarJugador={() => setAthleteId(null)} />
+    <FormularioRpe
+      athleteId={athlete.id}
+      nombre={athlete.nombre}
+      categoriaNombre={categoriaNombre}
+      onCambiarJugador={() => setAthleteId(null)}
+    />
   ) : (
-    <FormularioWellness athleteId={athlete.id} nombre={athlete.nombre} onCambiarJugador={() => setAthleteId(null)} />
+    <FormularioWellness
+      athleteId={athlete.id}
+      nombre={athlete.nombre}
+      categoriaNombre={categoriaNombre}
+      onCambiarJugador={() => setAthleteId(null)}
+    />
   )
 }

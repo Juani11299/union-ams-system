@@ -7,29 +7,8 @@ import { RatingPicker } from '@/components/RatingPicker'
 import { colorRpe } from '@/features/workload/calculations'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
+import { construirLinkWellness, construirLinkRpe, copiarLinkMagico } from '@/utils/magicLinks'
 import type { WellnessRating } from '@/types'
-
-// El link es genérico por categoría/temporada (no atado a un jugador puntual):
-// el profe lo comparte una vez (ej. por WhatsApp) y cada jugador elige su
-// nombre de una lista al abrirlo — ver MagicLinkView. La duración de la sesión
-// ya no viaja acá (Fase 9.2): el profe la carga en "PLANIFICAR MICROCICLO" y
-// el sRPE real se calcula cruzando esa duración con el RPE de cada jugador.
-function construirLinkWellness(seasonId: string, categoryId: string): string {
-  return `${window.location.origin}/ingreso-rapido?type=wellness&season=${seasonId}&category=${categoryId}`
-}
-
-function construirLinkRpe(seasonId: string, categoryId: string): string {
-  return `${window.location.origin}/ingreso-rapido?type=rpe&season=${seasonId}&category=${categoryId}`
-}
-
-async function copiarLink(url: string, showToast: (t: 'success' | 'error', m: string) => void) {
-  try {
-    await navigator.clipboard.writeText(url)
-    showToast('success', 'Copiado al portapapeles')
-  } catch {
-    showToast('error', `No se pudo copiar el link. Copialo manualmente: ${url}`)
-  }
-}
 
 interface TabFormProps {
   athleteId: string
@@ -82,7 +61,7 @@ function TabWellness({ athleteId }: TabFormProps) {
 
   function handleGenerarLink() {
     if (!activeSeasonId || !activeCategoryId) return
-    copiarLink(construirLinkWellness(activeSeasonId, activeCategoryId), showToast)
+    copiarLinkMagico(construirLinkWellness(activeSeasonId, activeCategoryId), showToast)
   }
 
   return (
@@ -190,7 +169,7 @@ function TabRpe({ athleteId }: TabFormProps) {
 
   function handleGenerarLink() {
     if (!activeSeasonId || !activeCategoryId) return
-    copiarLink(construirLinkRpe(activeSeasonId, activeCategoryId), showToast)
+    copiarLinkMagico(construirLinkRpe(activeSeasonId, activeCategoryId), showToast)
   }
 
   return (
