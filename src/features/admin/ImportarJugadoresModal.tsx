@@ -12,12 +12,12 @@ interface ImportarJugadoresModalProps {
 
 /**
  * Importador masivo "estilo pegado de Excel" (Fase 19) — el staff pega
- * directamente el rango de celdas copiado de una planilla (Nombre | Apellido
- * | Posición | Documento opcional) y el sistema da de alta a todos los
- * jugadores de una sola vez, ya asignados al plantel de la categoría
- * elegida. Pensado para el onboarding inicial de un plantel completo, donde
- * cargar jugador por jugador en el formulario de al lado sería carísimo en
- * tiempo del profe.
+ * directamente el rango de celdas copiado de su planilla real (Apellido y
+ * Nombre | Posición | Fecha Nac. DD/MM/AAAA | DNI opcional) y el sistema da
+ * de alta a todos los jugadores de una sola vez, ya asignados al plantel de
+ * la categoría elegida. Pensado para el onboarding inicial de un plantel
+ * completo, donde cargar jugador por jugador en el formulario de al lado
+ * sería carísimo en tiempo del profe.
  */
 export function ImportarJugadoresModal({ onClose }: ImportarJugadoresModalProps) {
   const categories = useAppStore((s) => s.categories)
@@ -41,7 +41,11 @@ export function ImportarJugadoresModal({ onClose }: ImportarJugadoresModalProps)
       const cantidad = await importAthletesBulk({
         seasonId: activeSeasonId,
         categoryId,
-        jugadores: resultado.validas.map((j) => ({ nombre: j.nombre, posiciones: j.posiciones })),
+        jugadores: resultado.validas.map((j) => ({
+          nombre: j.nombre,
+          posiciones: j.posiciones,
+          fechaNacimiento: j.fechaNacimiento,
+        })),
       })
       showToast(
         'success',
@@ -91,24 +95,51 @@ export function ImportarJugadoresModal({ onClose }: ImportarJugadoresModalProps)
               <textarea
                 className={`${inputClass} font-mono text-xs`}
                 rows={9}
-                placeholder={'Pegá los datos de tu Excel acá\nJuan\tPérez\tDelantero\n35123456\nAgustín\tGómez\tArquero'}
+                placeholder={'Pegá los datos de tu Excel acá\nDrescher Krause Thiago\tdef. central\t25/10/2012\t52496938\nAlbornoz Mateo\tvol. der.\t20/5/2012\t52560347'}
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
               />
             </Field>
             <p className="mt-1.5 text-xs text-slate-400">
-              Orden de columnas: <span className="font-medium text-slate-500 dark:text-slate-400">Nombre | Apellido | Posición | Documento (opcional)</span>.
-              Una fila por jugador — pegá directo desde Excel/Google Sheets (separado por tabs) o un .csv (separado por comas).
+              Formato esperado:{' '}
+              <span className="font-medium text-slate-500 dark:text-slate-400">
+                Apellido y Nombre | Posición | Fecha Nac. (DD/MM/YYYY) | DNI
+              </span>
+              . Una fila por jugador — pegá directo desde Excel/Google Sheets (separado por tabs) o un .csv (separado
+              por comas). Si la fecha viene vacía o mal escrita se guarda como 01/01/2000 provisorio, a corregir
+              después.
             </p>
           </div>
 
           {texto.trim() && (
             <div className="mt-3 flex flex-col gap-2">
               {resultado.validas.length > 0 && (
-                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                  ✅ {resultado.validas.length} jugador{resultado.validas.length === 1 ? '' : 'es'} listo
-                  {resultado.validas.length === 1 ? '' : 's'} para importar.
-                </p>
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    ✅ {resultado.validas.length} jugador{resultado.validas.length === 1 ? '' : 'es'} listo
+                    {resultado.validas.length === 1 ? '' : 's'} para importar:
+                  </p>
+                  <div className="mt-1.5 max-h-40 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-emerald-600/70 dark:text-emerald-400/70">
+                          <th className="py-0.5 pr-2 font-medium">Nombre</th>
+                          <th className="py-0.5 pr-2 font-medium">Posición</th>
+                          <th className="py-0.5 font-medium">Fecha Nac.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resultado.validas.map((j, i) => (
+                          <tr key={i} className="text-emerald-800 dark:text-emerald-300">
+                            <td className="truncate py-0.5 pr-2">{j.nombre}</td>
+                            <td className="truncate py-0.5 pr-2">{j.posiciones.join(', ')}</td>
+                            <td className="whitespace-nowrap py-0.5">{j.fechaNacimiento}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
               {resultado.errores.length > 0 && (
                 <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-400">

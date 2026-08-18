@@ -24,6 +24,7 @@ import type {
   StrengthAssignment,
   StrengthAssignmentAthlete,
   GymExternalLoad,
+  Posicion,
 } from '@/types'
 import type { GrupoPosicion } from '@/utils/posicion'
 import { supabase, isSupabaseConfigured } from '@/utils/supabase'
@@ -108,11 +109,17 @@ interface AsignarPlantelInput {
 }
 
 /** Importador masivo de jugadores (Fase 19) — un `AthleteInput` mínimo por
- * fila pegada desde Excel, ya validada por `parsearImportacionJugadores`. */
+ * fila pegada desde Excel, ya validada por `parsearImportacionJugadores`.
+ * `posiciones` es `string[]` y no `Posicion[]`: el Excel real del club trae
+ * abreviaturas ("vol. der.") que `parsearImportacionJugadores` canoniza
+ * cuando puede, pero guarda tal cual cuando no reconoce la abreviatura —
+ * `athletes.posiciones` es `text[]` libre en el esquema (a diferencia de
+ * `estado_salud`, no tiene `check`), así que no hace falta forzarlo al union
+ * estricto que sí exige el formulario manual de "Nuevo jugador". */
 interface ImportarJugadoresInput {
   seasonId: string
   categoryId: string
-  jugadores: Pick<AthleteInput, 'nombre' | 'posiciones'>[]
+  jugadores: { nombre: string; posiciones: string[]; fechaNacimiento: string }[]
 }
 
 /** Alta de una asignación de plantilla de fuerza a un día (Fase 12) — el store hace los 2 inserts (assignment + athletes). */
@@ -652,13 +659,21 @@ export const useAppStore = create<AppState>()(
     exigirSupabase(set)
     if (input.jugadores.length === 0) return 0
 
-    // `fecha_nacimiento` es NOT NULL en el esquema, pero el pegado de Excel
-    // del importador masivo (Fase 19) no la incluye a propósito (columna que
-    // el staff no suele tener a mano al armar la planilla) — se guarda un
-    // placeholder explícito y el profe la completa después editando cada
-    // jugador, en vez de bloquear el import esperando un dato que no vino.
+    // `fechaNacimiento` ya viene resuelta por `parsearFechaNacimiento` (fecha
+    // real del Excel del club o el fallback '2000-01-01' si vino vacía o
+    // inválida) — acá no hace falta un placeholder propio, sólo castear
+    // `posiciones` de `string[]` a `Posicion[]`: `athleteToRow` no valida en
+    // runtime y `athletes.posiciones` es `text[]` libre en el esquema, así
+    // que guardar una posición no canónica ("Vol. Der.") es seguro — ver
+    // comentario de `ImportarJugadoresInput` sobre por qué no se fuerza el
+    // union estricto acá.
     const rows = input.jugadores.map((j) =>
-      athleteToRow({ nombre: j.nombre, posiciones: j.posiciones, estadoSalud: 'Activo', fechaNacimiento: '2000-01-01' }),
+      athleteToRow({
+        nombre: j.nombre,
+        posiciones: j.posiciones as Posicion[],
+        estadoSalud: 'Activo',
+        fechaNacimiento: j.fechaNacimiento,
+      }),
     )
 
     const { data, error } = await supabase.from('athletes').insert(rows).select()
