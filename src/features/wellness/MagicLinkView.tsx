@@ -4,6 +4,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { Card } from '@/components/Card'
 import { Avatar } from '@/components/Avatar'
 import { RatingPicker } from '@/components/RatingPicker'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { colorRpe } from '@/features/workload/calculations'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
@@ -71,22 +72,14 @@ function PantallaSeleccionJugador({ jugadores, onSeleccionar }: PantallaSeleccio
           <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100">¿Quién sos?</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Elegí tu nombre para continuar</p>
         </div>
-        <select
-          defaultValue=""
-          onChange={(e) => {
-            if (e.target.value) onSeleccionar(e.target.value)
-          }}
-          className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-4 text-center text-base font-semibold text-slate-800 focus:border-union-red-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-        >
-          <option value="" disabled>
-            Elegí tu nombre…
-          </option>
-          {jugadores.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nombre}
-            </option>
-          ))}
-        </select>
+        <SearchableSelect
+          className="w-full text-left"
+          options={jugadores.map((a) => ({ id: a.id, label: a.nombre }))}
+          value={null}
+          onChange={onSeleccionar}
+          placeholder="Escribí tu nombre…"
+          emptyLabel="Ningún jugador coincide"
+        />
       </Card>
     </Pantalla>
   )

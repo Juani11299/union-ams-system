@@ -36,9 +36,9 @@ import {
   sessionPlanToInsertRow,
   sessionPlanConfigToUpdateRow,
   sessionExecutionFromRow,
-  sessionExecutionToInsertRow,
+  sessionExecutionToUpsertRow,
   wellnessEntryFromRow,
-  wellnessEntryToInsertRow,
+  wellnessEntryToUpsertRow,
   externalLoadFromRow,
   externalLoadToInsertRow,
   physicalTestFromRow,
@@ -399,9 +399,13 @@ export const useAppStore = create<AppState>()(
   submitSessionLoad: async (input) => {
     exigirSupabase(set)
 
+    // Fase 21: upsert por (athlete_id, fecha) — un jugador sólo tiene un RPE
+    // por día; si reenvía el formulario, "gana" el último envío en vez de
+    // sumarse como una sesión fantasma. Requiere la unique constraint de
+    // `migration_fase21_upsert_diario.sql`.
     const { data, error } = await supabase
       .from('session_executions')
-      .insert(sessionExecutionToInsertRow(input))
+      .upsert(sessionExecutionToUpsertRow(input), { onConflict: 'athlete_id,fecha' })
       .select()
       .single()
 
@@ -410,20 +414,20 @@ export const useAppStore = create<AppState>()(
       throw error
     }
 
+    const guardado = sessionExecutionFromRow(data as SessionExecutionRow)
     set((state) => ({
-      sessionExecutions: [
-        ...state.sessionExecutions,
-        sessionExecutionFromRow(data as SessionExecutionRow),
-      ],
+      sessionExecutions: [...state.sessionExecutions.filter((e) => e.id !== guardado.id), guardado],
     }))
   },
 
   submitWellness: async (input) => {
     exigirSupabase(set)
 
+    // Fase 21: mismo criterio "keep the latest" que submitSessionLoad — ver
+    // esa nota y `migration_fase21_upsert_diario.sql`.
     const { data, error } = await supabase
       .from('wellness_entries')
-      .insert(wellnessEntryToInsertRow(input))
+      .upsert(wellnessEntryToUpsertRow(input), { onConflict: 'athlete_id,fecha' })
       .select()
       .single()
 
@@ -432,8 +436,9 @@ export const useAppStore = create<AppState>()(
       throw error
     }
 
+    const guardado = wellnessEntryFromRow(data as WellnessEntryRow)
     set((state) => ({
-      wellnessEntries: [...state.wellnessEntries, wellnessEntryFromRow(data as WellnessEntryRow)],
+      wellnessEntries: [...state.wellnessEntries.filter((w) => w.id !== guardado.id), guardado],
     }))
   },
 

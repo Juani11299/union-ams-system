@@ -202,7 +202,14 @@ export interface NuevaCargaInput {
   cargaInternaCalculada: number
 }
 
-export function sessionExecutionToInsertRow(input: NuevaCargaInput) {
+/**
+ * Fase 21: `submitSessionLoad` la usa con `.upsert(row, { onConflict:
+ * 'athlete_id,fecha' })` — un jugador sólo puede tener UN registro de RPE por
+ * día, así que un reenvío del mismo día (typeo, "mejor pongo de nuevo")
+ * sobreescribe la fila anterior en vez de sumar una carga fantasma. Requiere
+ * la unique constraint de `migration_fase21_upsert_diario.sql`.
+ */
+export function sessionExecutionToUpsertRow(input: NuevaCargaInput) {
   return {
     plan_id: input.planId || null,
     athlete_id: input.athleteId,
@@ -255,7 +262,13 @@ export interface NuevoWellnessInput {
   comentarioDolor?: string
 }
 
-export function wellnessEntryToInsertRow(input: NuevoWellnessInput) {
+/**
+ * Fase 21: `submitWellness` la usa con `.upsert(row, { onConflict:
+ * 'athlete_id,fecha' })` — mismo criterio "keep the latest" que
+ * `sessionExecutionToUpsertRow`, ver esa nota. Requiere la unique constraint
+ * de `migration_fase21_upsert_diario.sql`.
+ */
+export function wellnessEntryToUpsertRow(input: NuevoWellnessInput) {
   return {
     athlete_id: input.athleteId,
     season_id: input.seasonId,
