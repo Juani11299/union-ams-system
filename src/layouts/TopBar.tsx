@@ -8,6 +8,7 @@ export function TopBar() {
   const categories = useAppStore((s) => s.categories)
   const activeSeasonId = useAppStore((s) => s.activeSeasonId)
   const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+  const categoryLocked = useAppStore((s) => s.categoryLocked)
   const setActiveSeason = useAppStore((s) => s.setActiveSeason)
   const setActiveCategory = useAppStore((s) => s.setActiveCategory)
   const isOnline = useNetworkStatus()
@@ -43,19 +44,29 @@ export function TopBar() {
             ))}
           </select>
 
-          <div className="flex gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+          <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+            {categoryLocked && (
+              <span
+                className="pl-2 pr-1 text-sm"
+                title="Categoría bloqueada por link — abrí el link general para poder cambiarla"
+                aria-hidden
+              >
+                🔒
+              </span>
+            )}
             {categories.map((category) => {
               const activa = category.id === activeCategoryId
               return (
                 <button
                   key={category.id}
                   type="button"
+                  disabled={categoryLocked}
                   onClick={() => setActiveCategory(category.id)}
                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                     activa
                       ? 'bg-white text-union-red-700 shadow-sm dark:bg-slate-700 dark:text-union-red-400'
                       : 'text-slate-500 dark:text-slate-400'
-                  }`}
+                  } ${categoryLocked ? 'cursor-not-allowed opacity-60' : ''}`}
                 >
                   {category.nombre}
                 </button>

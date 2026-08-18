@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/useAppStore'
 import { fechaHoyLocal } from '@/utils/fecha'
 import { ToastContainer } from '@/components/ToastContainer'
@@ -22,7 +23,16 @@ export function TerminalFuerzaView() {
   const gymExternalLoads = useAppStore((s) => s.gymExternalLoads)
   const activeSeasonId = useAppStore((s) => s.activeSeasonId)
 
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  // Terminal de Fuerza es una ruta standalone (fuera de MainLayout) con su
+  // propio selector de categoría en estado local — no comparte el
+  // `activeCategoryId` global, así que el link mágico escopeado (Fase 19,
+  // `useScopedCategoryFromUrl`) no le llega. Lee `?category=&locked=true`
+  // acá mismo, directo de la URL.
+  const [searchParams] = useSearchParams()
+  const categoryIdEscopeada = searchParams.get('category')
+  const categoryLocked = !!categoryIdEscopeada && searchParams.get('locked') === 'true'
+
+  const [categoryId, setCategoryId] = useState<string | null>(categoryIdEscopeada)
   const [jugadorSeleccionado, setJugadorSeleccionado] = useState<Athlete | null>(null)
 
   useEffect(() => {
@@ -87,11 +97,16 @@ export function TerminalFuerzaView() {
         </div>
         <select
           value={categoryId ?? ''}
+          disabled={categoryLocked}
           onChange={(e) => setCategoryId(e.target.value)}
-          className="rounded-xl border-2 border-white/20 bg-white/10 px-4 py-3 text-lg font-semibold text-white"
+          title={categoryLocked ? 'Categoría bloqueada por link — abrí el link general para poder cambiarla' : undefined}
+          className={`rounded-xl border-2 border-white/20 bg-white/10 px-4 py-3 text-lg font-semibold text-white ${
+            categoryLocked ? 'cursor-not-allowed opacity-70' : ''
+          }`}
         >
           {categories.map((c) => (
             <option key={c.id} value={c.id} className="text-slate-900">
+              {categoryLocked ? '🔒 ' : ''}
               {c.nombre}
             </option>
           ))}

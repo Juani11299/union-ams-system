@@ -7,6 +7,23 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { getErrorMessage } from '@/utils/errors'
 import type { TeamCategory } from '@/types'
 
+// Link mágico escopeado por categoría (Fase 19) — apunta al Planificador con
+// `locked=true`: al abrirlo, el staff arranca directo en su categoría y no
+// puede cambiarse a otra por error (ver `useScopedCategoryFromUrl`).
+function construirLinkStaff(categoryId: string): string {
+  return `${window.location.origin}/planificador?category=${categoryId}&locked=true`
+}
+
+async function copiarLinkStaff(categoryId: string, showToast: (t: 'success' | 'error', m: string) => void) {
+  const url = construirLinkStaff(categoryId)
+  try {
+    await navigator.clipboard.writeText(url)
+    showToast('success', 'Link mágico copiado')
+  } catch {
+    showToast('error', `No se pudo copiar el link. Copialo manualmente: ${url}`)
+  }
+}
+
 export function CategoriesTab() {
   const categories = useAppStore((s) => s.categories)
   const createCategory = useAppStore((s) => s.createCategory)
@@ -90,6 +107,15 @@ export function CategoriesTab() {
                 className="flex items-center gap-1.5 rounded-full bg-slate-100 py-1.5 pl-3 pr-1.5 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
               >
                 {category.nombre}
+                <button
+                  type="button"
+                  onClick={() => copiarLinkStaff(category.id, showToast)}
+                  aria-label={`Copiar link para staff de ${category.nombre}`}
+                  title="Copiar link para staff"
+                  className="rounded-full px-1.5 text-slate-400 hover:bg-union-red-100 hover:text-union-red-600 dark:hover:bg-union-red-500/10 dark:hover:text-union-red-400"
+                >
+                  🔗
+                </button>
                 <button
                   type="button"
                   onClick={() => setCategoriaAEliminar(category)}

@@ -1,0 +1,30 @@
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useAppStore } from '@/store/useAppStore'
+
+/**
+ * Lee `?category=<uuid>&locked=true` de la URL (Fase 19, "links mágicos" del
+ * staff) y, si están presentes, fija esa categoría como activa en el store
+ * global y bloquea el selector de categoría del TopBar — así un profe que
+ * abre el link de su categoría no puede, ni por error, cambiarse a otra.
+ *
+ * Sólo aplica al árbol de rutas montado bajo `MainLayout` (donde vive el
+ * selector global de `activeCategoryId`); la Terminal de Fuerza es una ruta
+ * standalone con su propio selector de categoría en estado local y lee estos
+ * mismos parámetros por su cuenta, no a través de este hook.
+ */
+export function useScopedCategoryFromUrl() {
+  const [searchParams] = useSearchParams()
+  const setActiveCategoryLocked = useAppStore((s) => s.setActiveCategoryLocked)
+
+  useEffect(() => {
+    const categoryId = searchParams.get('category')
+    const locked = searchParams.get('locked') === 'true'
+    if (categoryId && locked) {
+      setActiveCategoryLocked(categoryId)
+    }
+    // Sólo nos importa la lectura inicial de la URL con la que se abrió el
+    // link — no queremos volver a disparar esto en cada cambio de
+    // searchParams que agregue otra parte de la app (por ejemplo, un filtro).
+  }, [])
+}

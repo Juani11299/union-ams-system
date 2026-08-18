@@ -6,6 +6,7 @@ import { Badge, type BadgeTone } from '@/components/Badge'
 import { Avatar } from '@/components/Avatar'
 import { Field, inputClass } from '@/components/FormField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { ImportarJugadoresModal } from './ImportarJugadoresModal'
 import { getErrorMessage } from '@/utils/errors'
 import type { Athlete, EstadoSalud, Posicion } from '@/types'
 
@@ -53,6 +54,7 @@ export function AthletesTab() {
   const [busqueda, setBusqueda] = useState('')
   const [aEliminar, setAEliminar] = useState<Athlete | null>(null)
   const [eliminando, setEliminando] = useState(false)
+  const [importadorAbierto, setImportadorAbierto] = useState(false)
 
   function togglePosicion(pos: Posicion) {
     setForm((f) => ({
@@ -239,16 +241,25 @@ export function AthletesTab() {
       </Card>
 
       <Card className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             Plantel completo ({athletes.length})
           </h2>
-          <input
-            className={`${inputClass} max-w-[200px]`}
-            placeholder="Buscar…"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setImportadorAbierto(true)}
+              className="rounded-lg border border-union-red-200 bg-union-red-50 px-3 py-1.5 text-xs font-semibold text-union-red-700 hover:bg-union-red-100 dark:border-union-red-500/30 dark:bg-union-red-500/10 dark:text-union-red-400 dark:hover:bg-union-red-500/20"
+            >
+              📥 Importar desde Excel/CSV
+            </button>
+            <input
+              className={`${inputClass} max-w-[200px]`}
+              placeholder="Buscar…"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
+          </div>
         </div>
 
         {filtrados.length === 0 ? (
@@ -301,6 +312,8 @@ export function AthletesTab() {
           confirmando={eliminando}
         />
       )}
+
+      {importadorAbierto && <ImportarJugadoresModal onClose={() => setImportadorAbierto(false)} />}
     </div>
   )
 }

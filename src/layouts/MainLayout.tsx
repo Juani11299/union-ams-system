@@ -5,6 +5,7 @@ import { BottomTabBar } from './BottomTabBar'
 import { TopBar } from './TopBar'
 import { useAppStore } from '@/store/useAppStore'
 import { ToastContainer } from '@/components/ToastContainer'
+import { useScopedCategoryFromUrl } from '@/hooks/useScopedCategoryFromUrl'
 
 function EstadoCarga() {
   return (
@@ -51,6 +52,8 @@ export function MainLayout() {
   const error = useAppStore((s) => s.error)
   const fetchInitialData = useAppStore((s) => s.fetchInitialData)
   const [toastCerrado, setToastCerrado] = useState(false)
+
+  useScopedCategoryFromUrl()
 
   useEffect(() => {
     fetchInitialData()

@@ -107,6 +107,14 @@ interface AsignarPlantelInput {
   athleteIds: string[]
 }
 
+/** Importador masivo de jugadores (Fase 19) — un `AthleteInput` mínimo por
+ * fila pegada desde Excel, ya validada por `parsearImportacionJugadores`. */
+interface ImportarJugadoresInput {
+  seasonId: string
+  categoryId: string
+  jugadores: Pick<AthleteInput, 'nombre' | 'posiciones'>[]
+}
+
 /** Alta de una asignación de plantilla de fuerza a un día (Fase 12) — el store hace los 2 inserts (assignment + athletes). */
 interface AsignarStrengthTemplateInput {
   templateId: string
@@ -135,6 +143,12 @@ interface AppState {
   gymExternalLoads: GymExternalLoad[]
   activeSeasonId: string | null
   activeCategoryId: string | null
+  /** Link mágico con `?locked=true` (Fase 19) — mientras esté en `true`, el
+   * selector de categoría del TopBar se deshabilita. Deliberadamente no se
+   * persiste (ver `partialize` al final del archivo): es un modo de sesión
+   * que sólo debe activarse cuando la URL lo pide explícitamente, nunca
+   * sobrevivir a un refresh sin la URL escopeada. */
+  categoryLocked: boolean
   isLoading: boolean
   error: string | null
   /** Filtros de la vista "Control Carga Interna" (Fase 9). */
@@ -145,6 +159,8 @@ interface AppState {
   modalIngresoTab: 'wellness' | 'rpe'
   setActiveSeason: (seasonId: string) => void
   setActiveCategory: (categoryId: string) => void
+  /** Fija la categoría activa Y bloquea el selector — usado por los links mágicos escopeados (Fase 19). */
+  setActiveCategoryLocked: (categoryId: string) => void
   setFiltroNombre: (nombre: string) => void
   setFiltroPosicion: (posicion: GrupoPosicion | 'todas') => void
   abrirModalIngreso: (tab?: 'wellness' | 'rpe') => void
@@ -165,6 +181,8 @@ interface AppState {
   updateAthlete: (id: string, input: AthleteInput) => Promise<void>
   deleteAthlete: (id: string) => Promise<void>
   assignAthletesToRoster: (input: AsignarPlantelInput) => Promise<void>
+  /** Alta + asignación a plantel en un solo paso (Fase 19, importador de Excel/CSV). Devuelve la cantidad de jugadores creados. */
+  importAthletesBulk: (input: ImportarJugadoresInput) => Promise<number>
   removeAthleteFromRoster: (rosterId: string) => Promise<void>
   /** Devuelve la sesión creada — Fase 13 la usa para autogenerar una Sesión de Gimnasio al recibir un drop de plantilla de Fuerza y necesitar su id de inmediato. */
   createSessionPlan: (input: NuevoSessionPlanInput) => Promise<SessionPlan>
@@ -221,6 +239,7 @@ export const useAppStore = create<AppState>()(
   gymExternalLoads: [],
   activeSeasonId: null,
   activeCategoryId: null,
+  categoryLocked: false,
   isLoading: true,
   error: null,
   filtroNombre: '',
@@ -230,6 +249,7 @@ export const useAppStore = create<AppState>()(
 
   setActiveSeason: (seasonId) => set({ activeSeasonId: seasonId }),
   setActiveCategory: (categoryId) => set({ activeCategoryId: categoryId }),
+  setActiveCategoryLocked: (categoryId) => set({ activeCategoryId: categoryId, categoryLocked: true }),
   setFiltroNombre: (nombre) => set({ filtroNombre: nombre }),
   setFiltroPosicion: (posicion) => set({ filtroPosicion: posicion }),
   abrirModalIngreso: (tab) => set({ modalIngresoAbierto: true, modalIngresoTab: tab ?? 'wellness' }),
@@ -626,6 +646,38 @@ export const useAppStore = create<AppState>()(
       const aAgregar = nuevos.filter((r) => !idsExistentes.has(r.id))
       return { rosters: [...state.rosters, ...aAgregar] }
     })
+  },
+
+  importAthletesBulk: async (input) => {
+    exigirSupabase(set)
+    if (input.jugadores.length === 0) return 0
+
+    // `fecha_nacimiento` es NOT NULL en el esquema, pero el pegado de Excel
+    // del importador masivo (Fase 19) no la incluye a propósito (columna que
+    // el staff no suele tener a mano al armar la planilla) — se guarda un
+    // placeholder explícito y el profe la completa después editando cada
+    // jugador, en vez de bloquear el import esperando un dato que no vino.
+    const rows = input.jugadores.map((j) =>
+      athleteToRow({ nombre: j.nombre, posiciones: j.posiciones, estadoSalud: 'Activo', fechaNacimiento: '2000-01-01' }),
+    )
+
+    const { data, error } = await supabase.from('athletes').insert(rows).select()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const nuevos = ((data ?? []) as AthleteRow[]).map(athleteFromRow)
+    set((state) => ({ athletes: [...state.athletes, ...nuevos] }))
+
+    await get().assignAthletesToRoster({
+      seasonId: input.seasonId,
+      categoryId: input.categoryId,
+      athleteIds: nuevos.map((a) => a.id),
+    })
+
+    return nuevos.length
   },
 
   removeAthleteFromRoster: async (rosterId) => {
