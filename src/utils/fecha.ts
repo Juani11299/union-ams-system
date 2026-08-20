@@ -21,7 +21,7 @@ export function formatFechaCorta(fecha: string): string {
 }
 
 /** Lunes (00:00 local) de la semana que contiene `referencia`. */
-function inicioDeSemana(referencia: Date): Date {
+export function inicioDeSemana(referencia: Date): Date {
   const d = new Date(referencia)
   const dia = d.getDay() // 0=domingo .. 6=sábado
   const diffALunes = dia === 0 ? -6 : 1 - dia

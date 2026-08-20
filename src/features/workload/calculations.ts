@@ -1,6 +1,6 @@
 import type { SessionExecution, SessionPlan, WellnessEntry } from '@/types'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
-import { fechaHoyLocal } from '@/utils/fecha'
+import { fechaHoyLocal, parsearFechaLocal, inicioDeSemana } from '@/utils/fecha'
 
 export function calcularCargaInterna(rpe: number, duracionMin: number): number {
   return rpe * duracionMin
@@ -339,4 +339,50 @@ export function calcularTendenciaEquipo(
   }
 
   return resultado
+}
+
+export interface PuntoMacrociclo {
+  /** Lunes de la semana (YYYY-MM-DD) — clave de agrupación y eje X del gráfico. */
+  semanaInicio: string
+  /** Volumen semanal = suma de `duracionRealMin` de las sesiones YA ejecutadas esa semana. */
+  volumenMin: number
+  /** Intensidad semanal = promedio del RPE reportado por los jugadores esa semana. `null` si nadie reportó. */
+  intensidadRpe: number | null
+}
+
+/**
+ * Torre de Control de Temporada (Fase 33, ver docs/Propuesta_Integracion_NSCA.md
+ * sección 2) — agrupa el historial real por semana (lunes a domingo, mismo
+ * criterio que `diasDeLaSemanaActual`) para graficar Volumen vs. Intensidad.
+ * Sólo cuenta sesiones con `duracionRealMin` cargado (sesiones ya ejecutadas,
+ * no planificadas a futuro) — mismo criterio que `calcularCargaEjecutadaReal`.
+ */
+export function calcularVolumenIntensidadPorSemana(
+  sessionPlans: SessionPlan[],
+  sessionExecutions: SessionExecution[],
+): PuntoMacrociclo[] {
+  const semanas = new Map<string, { volumenMin: number; rpes: number[] }>()
+
+  for (const plan of sessionPlans) {
+    if (plan.duracionRealMin === undefined) continue
+    const clave = fechaHoyLocal(inicioDeSemana(parsearFechaLocal(plan.fecha)))
+    const entry = semanas.get(clave) ?? { volumenMin: 0, rpes: [] }
+    entry.volumenMin += plan.duracionRealMin
+    semanas.set(clave, entry)
+  }
+
+  for (const ejecucion of sessionExecutions) {
+    const clave = fechaHoyLocal(inicioDeSemana(parsearFechaLocal(ejecucion.fecha)))
+    const entry = semanas.get(clave) ?? { volumenMin: 0, rpes: [] }
+    entry.rpes.push(ejecucion.rpe)
+    semanas.set(clave, entry)
+  }
+
+  return Array.from(semanas.entries())
+    .map(([semanaInicio, { volumenMin, rpes }]) => ({
+      semanaInicio,
+      volumenMin,
+      intensidadRpe: rpes.length > 0 ? Number((rpes.reduce((s, v) => s + v, 0) / rpes.length).toFixed(2)) : null,
+    }))
+    .sort((a, b) => a.semanaInicio.localeCompare(b.semanaInicio))
 }
