@@ -62,7 +62,7 @@ export function DashboardIntegrado() {
             Último CMJ por jugador
             <InfoTooltip
               titulo="Altura de CMJ: señal de baja sensibilidad"
-              descripcion="La altura del salto por sí sola tiende a mantenerse estable aunque exista fatiga neuromuscular real. Para una señal más sensible, cargá también el RSI modificado en cada evaluación (ver pestaña Carga Manual)."
+              descripcion="La altura del salto por sí sola tiende a mantenerse estable aunque exista fatiga neuromuscular real. Para una señal más sensible, cargá también el RSI modificado en cada evaluación."
               cita="Marques et al. (2026); TFM Robles, J.I. (2026), dir. Olaya Cuartero, J. — 'Jump height lies'."
             />
           </h2>

@@ -1,18 +1,16 @@
 import { useState } from 'react'
 import { Tabs, type TabItem } from '@/components/Tabs'
-import { CsvImportTab } from './CsvImportTab'
-import { CmjTab } from './CmjTab'
 import { GymLoadHistoryTab } from './GymLoadHistoryTab'
+import { GpsPlaceholderTab } from './GpsPlaceholderTab'
 import { DashboardIntegrado } from './DashboardIntegrado'
 
 const TABS: TabItem[] = [
-  { id: 'csv', label: 'Importar CSV (GPS)', icon: '📄' },
-  { id: 'cmj', label: 'Carga Manual (Métricas)', icon: '🦵' },
-  { id: 'gym', label: 'Registro de Carga Externa', icon: '🏋️' },
+  { id: 'gimnasio', label: 'Gimnasio (Kg)', icon: '🏋️' },
+  { id: 'campo', label: 'Campo (GPS)', icon: '📡' },
 ]
 
 export function ExternalLoadView() {
-  const [tabActiva, setTabActiva] = useState('csv')
+  const [tabActiva, setTabActiva] = useState('gimnasio')
 
   return (
     <div className="flex flex-col gap-6">
@@ -21,15 +19,14 @@ export function ExternalLoadView() {
           Control de Carga Externa
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          GPS por sesión y evaluaciones físicas (CMJ) del plantel.
+          Tonelaje de Gimnasio y GPS de Campo del plantel.
         </p>
       </div>
 
       <Tabs tabs={TABS} activeId={tabActiva} onChange={setTabActiva} />
 
-      {tabActiva === 'csv' && <CsvImportTab />}
-      {tabActiva === 'cmj' && <CmjTab />}
-      {tabActiva === 'gym' && <GymLoadHistoryTab />}
+      {tabActiva === 'gimnasio' && <GymLoadHistoryTab />}
+      {tabActiva === 'campo' && <GpsPlaceholderTab />}
 
       <div>
         <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-200">
