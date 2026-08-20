@@ -76,6 +76,18 @@ function dentroDeVentana(fecha: string, referencia: Date, dias: number): boolean
   return diff >= 0 && diff < dias * DIA_MS
 }
 
+/**
+ * Fase 26 — "Cold start": con menos de 3 sesiones en la ventana crónica (28
+ * días), el promedio crónico es tan chico (o cero) que cualquier carga
+ * aguda normal dispara un ratio disparatado — ej. una sola sesión vieja de
+ * bajo volumen puede hacer que una semana normal de hoy dé ACWR > 20, una
+ * falsa alarma de "riesgo alto" que no tiene nada que ver con sobrecarga
+ * real, sólo con falta de historial. El período de gracia no es sólo
+ * "cargaCronica === 0": con 1-2 sesiones sueltas la suma ya no es cero pero
+ * sigue sin ser una línea de base confiable.
+ */
+const MINIMO_SESIONES_CRONICAS = 3
+
 export function calcularAcwr(
   ejecuciones: SessionExecution[],
   sessionPlans: SessionPlan[],
@@ -94,12 +106,12 @@ export function calcularAcwr(
   )
   const cargaCronica = cargaCronicaTotal / 4
 
-  if (cargaCronica === 0) {
-    // Fase 24: sin 4 semanas de carga real todavía (atleta nuevo, arranque
-    // de temporada) — fallback a ACWR neutro (1.0, zona óptima) en vez de
-    // "sin datos", para no mostrar ni un hueco gris ni un falso alto riesgo
-    // antes de tener suficiente historial.
-    return { cargaAguda, cargaCronica, acwr: 1, riesgo: 'optimo' }
+  if (cronicas.length < MINIMO_SESIONES_CRONICAS || cargaCronica === 0) {
+    // Período de gracia: `acwr: null` + `riesgo: 'sin-datos'` es una señal
+    // explícita ("todavía recopilando historial"), no un número inventado —
+    // ver el badge gris "Sin datos" y "Recopilando datos…" en el Dashboard,
+    // y cómo `riskAssessment.ts` ignora este estado al armar el semáforo.
+    return { cargaAguda, cargaCronica, acwr: null, riesgo: 'sin-datos' }
   }
 
   const acwr = cargaAguda / cargaCronica

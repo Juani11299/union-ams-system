@@ -371,7 +371,11 @@ export function DashboardEquipo() {
                     />
                   </p>
                   <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {acwr.acwr !== null ? acwr.acwr.toFixed(2) : '—'}
+                    {acwr.acwr !== null ? (
+                      acwr.acwr.toFixed(2)
+                    ) : (
+                      <span className="text-sm font-normal text-slate-400">Recopilando datos…</span>
+                    )}
                   </p>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                     <div

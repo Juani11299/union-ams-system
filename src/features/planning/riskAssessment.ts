@@ -104,6 +104,12 @@ export function evaluarRiesgoAtleta(params: {
     })
   }
 
+  // Fase 26 — "Cold start": `acwr.riesgo` sólo vale 'alto'/'precaucion' con
+  // suficiente historial (ver MINIMO_SESIONES_CRONICAS en
+  // `workload/calculations.ts`); durante el "período de gracia" viene
+  // 'sin-datos', que no matchea ninguna de las dos ramas de abajo — el ACWR
+  // no suma puntaje ni entra como factor mientras el atleta es nuevo, sin
+  // necesidad de un chequeo explícito acá.
   if (acwr.riesgo === 'alto') {
     riskScore += 20
     factores.push({
@@ -120,8 +126,10 @@ export function evaluarRiesgoAtleta(params: {
     })
   }
 
-  // Alerta de Fatiga (Fase 24): wellness crítico (≤12/20, o dolor/fatiga en
-  // rojo aunque el total no baje de 12) O ACWR en zona de peligro (>1.5).
+  // Alerta de Fatiga (Fase 24, revisada en Fase 26): wellness crítico
+  // (≤12/20, o dolor/fatiga en rojo aunque el total no baje de 12) O ACWR en
+  // zona de peligro (>1.5) — en período de gracia, `acwr.riesgo` nunca es
+  // 'alto', así que el semáforo queda guiado únicamente por el Wellness.
   const wellnessCritico =
     (wellnessScore !== null && wellnessScore <= UMBRAL_WELLNESS_CRITICO) ||
     (!!wellnessHoy && (wellnessHoy.dolorMuscular <= UMBRAL_RATING_SEVERO || wellnessHoy.fatiga <= UMBRAL_RATING_SEVERO))
