@@ -263,12 +263,16 @@ function ConfiguracionSesionDiaria({ plan }: { plan: SessionPlan }) {
   const [duracionRealMin, setDuracionRealMin] = useState(plan.duracionRealMin ?? plan.duracionEstimadaMin)
   const [guardando, setGuardando] = useState(false)
 
-  // "Carga Interna Proyectada" — Fase 14: rpeEsperado × duracionEstimadaMin,
-  // la misma fórmula que fija `cargaObjetivo` al crear la sesión. Se
-  // recalcula acá en vivo mientras el profe ajusta el RPE Esperado, y se
-  // vuelve a guardar en `cargaObjetivo` al confirmar para que nunca quede
-  // desincronizado del "Objetivo (UA)" mostrado en el resto de la app.
-  const cargaProyectada = calcularCargaInterna(rpeEsperado, plan.duracionEstimadaMin)
+  // "Carga Interna Proyectada" — Fase 14: rpeEsperado × duracionRealMin, la
+  // misma fórmula que fija `cargaObjetivo` al crear la sesión. Se recalcula
+  // acá en vivo mientras el profe ajusta el RPE Esperado O el Tiempo Total
+  // de Trabajo (bug fix: antes usaba `plan.duracionEstimadaMin`, el valor
+  // fijo original del plan, así que tocar el input de minutos no
+  // recalculaba nada — el cálculo tiene que seguir el estado editable
+  // `duracionRealMin`, no la prop estática), y se vuelve a guardar en
+  // `cargaObjetivo` al confirmar para que nunca quede desincronizado del
+  // "Objetivo (UA)" mostrado en el resto de la app.
+  const cargaProyectada = calcularCargaInterna(rpeEsperado, duracionRealMin)
 
   async function handleGuardar() {
     setGuardando(true)
