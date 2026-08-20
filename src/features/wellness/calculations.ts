@@ -2,26 +2,28 @@ import type { WellnessEntry } from '@/types'
 
 type WellnessInput = Pick<WellnessEntry, 'sueno' | 'dolorMuscular' | 'estres' | 'fatiga'>
 
+/**
+ * Fase 25 — Normalización de escala: las 4 variables del Índice de Hooper
+ * (`sueno`, `dolorMuscular`, `estres`, `fatiga`) se guardan TODAS con la
+ * misma convención "5 = óptimo, 1 = pésimo" (antes `dolorMuscular`/`estres`/
+ * `fatiga` se guardaban al revés — 5 = mucho dolor/estrés/fatiga — y esta
+ * función las invertía acá con `6 - x`). Con las 4 ya normalizadas en el
+ * origen (sliders de `MagicLinkView`/`IngresoModal`), sumar directo alcanza
+ * y el número crudo de cada campo es legible tal cual se ve en pantalla
+ * (ver el desglose de Readiness en `DashboardEquipo`). Requiere haber
+ * corrido `migration_fase25_normalizar_hooper.sql` sobre los datos viejos.
+ */
 export function calcularReadiness(entry: WellnessInput): number {
-  const suenoInv = entry.sueno
-  const dolorInv = 6 - entry.dolorMuscular
-  const estresInv = 6 - entry.estres
-  const fatigaInv = 6 - entry.fatiga
-  return Number(((suenoInv + dolorInv + estresInv + fatigaInv) / 4).toFixed(1))
+  return Number(((entry.sueno + entry.dolorMuscular + entry.estres + entry.fatiga) / 4).toFixed(1))
 }
 
 /**
- * Puntuación total de Wellness del día sobre 20 (Fase 20) — misma lógica de
- * inversión que `calcularReadiness` (a mayor dolor/estrés/fatiga, peor
- * puntaje) pero sin promediar, para poder compararla contra el umbral de
- * riesgo "< 12 sobre 20" que usa el Dashboard de Riesgo.
+ * Puntuación total de Wellness del día sobre 20 (Fase 20) — mismos 4 campos
+ * ya normalizados que `calcularReadiness`, sin promediar, para compararla
+ * contra el umbral de riesgo "< 12 sobre 20" del Dashboard de Riesgo.
  */
 export function calcularWellnessScore20(entry: WellnessInput): number {
-  const suenoInv = entry.sueno
-  const dolorInv = 6 - entry.dolorMuscular
-  const estresInv = 6 - entry.estres
-  const fatigaInv = 6 - entry.fatiga
-  return suenoInv + dolorInv + estresInv + fatigaInv
+  return entry.sueno + entry.dolorMuscular + entry.estres + entry.fatiga
 }
 
 /** Wellness reportado por un atleta en una fecha exacta (por defecto, hoy). */

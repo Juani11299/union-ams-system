@@ -5,7 +5,12 @@ import type { AcwrResult } from '@/features/workload/calculations'
 export const WELLNESS_SCORE_MAX = 20
 export const UMBRAL_WELLNESS_BAJO = 12
 export const UMBRAL_RPE_ALTO = 8
-export const UMBRAL_DOLOR_INTENSO = 4
+/**
+ * Fase 25: `dolorMuscular` ahora sigue la misma convención "5 = óptimo
+ * (sin dolor), 1 = pésimo (dolor severo)" que el resto del Wellness — antes
+ * era al revés. DOMS intenso ahora es un valor BAJO, no alto.
+ */
+export const UMBRAL_DOLOR_INTENSO = 2
 
 /**
  * Umbral de "Alerta de Fatiga" (Fase 24) — el club no cuenta con
@@ -20,7 +25,8 @@ export const UMBRAL_DOLOR_INTENSO = 4
  * fatiga, dolor muscular).
  */
 export const UMBRAL_WELLNESS_CRITICO = 12
-const UMBRAL_RATING_SEVERO = 5
+/** Fase 25: "severo" es ahora el extremo BAJO (1) de la escala normalizada. */
+const UMBRAL_RATING_SEVERO = 1
 
 export type ClaveFactorRiesgo = 'wellness-bajo' | 'rpe-alto' | 'doms' | 'acwr-alto' | 'acwr-precaucion'
 
@@ -89,7 +95,7 @@ export function evaluarRiesgoAtleta(params: {
     })
   }
 
-  if (wellnessHoy && wellnessHoy.dolorMuscular >= UMBRAL_DOLOR_INTENSO) {
+  if (wellnessHoy && wellnessHoy.dolorMuscular <= UMBRAL_DOLOR_INTENSO) {
     riskScore += 15
     factores.push({
       clave: 'doms',
@@ -118,7 +124,7 @@ export function evaluarRiesgoAtleta(params: {
   // rojo aunque el total no baje de 12) O ACWR en zona de peligro (>1.5).
   const wellnessCritico =
     (wellnessScore !== null && wellnessScore <= UMBRAL_WELLNESS_CRITICO) ||
-    (!!wellnessHoy && (wellnessHoy.dolorMuscular >= UMBRAL_RATING_SEVERO || wellnessHoy.fatiga >= UMBRAL_RATING_SEVERO))
+    (!!wellnessHoy && (wellnessHoy.dolorMuscular <= UMBRAL_RATING_SEVERO || wellnessHoy.fatiga <= UMBRAL_RATING_SEVERO))
   const alertaFatiga = wellnessCritico || acwr.riesgo === 'alto'
 
   return { riskScore, wellnessScore, rpeHoy, factores, enZonaRoja: factores.length > 0, alertaFatiga }

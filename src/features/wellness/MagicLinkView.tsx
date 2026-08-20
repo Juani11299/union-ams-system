@@ -43,14 +43,17 @@ function colorRating(value: number, invert: boolean): string {
   return colores[value - 1]
 }
 
+// Fase 25: las 4 escalas quedan normalizadas "5 = óptimo, 1 = pésimo" — antes
+// dolor/estrés/fatiga guardaban 5 = peor síntoma (al revés de sueño), lo que
+// hacía ilegible la suma de 20 puntos y el desglose crudo en el Dashboard.
 const SUENO_EMOJIS = ['😫', '😕', '😐', '🙂', '😄']
 const SUENO_LABELS = ['Muy mala', 'Mala', 'Regular', 'Buena', 'Excelente']
-const DOLOR_EMOJIS = ['💪', '🙂', '😐', '😣', '🤕']
-const DOLOR_LABELS = ['Sin dolor', 'Leve', 'Moderado', 'Intenso', 'Muy intenso']
-const ESTRES_EMOJIS = ['😌', '🙂', '😐', '😟', '😖']
-const ESTRES_LABELS = ['Relajado', 'Tranquilo', 'Normal', 'Estresado', 'Muy estresado']
-const FATIGA_EMOJIS = ['⚡', '🙂', '😐', '😓', '🥵']
-const FATIGA_LABELS = ['Con energía', 'Leve', 'Moderada', 'Cansado', 'Agotado']
+const DOLOR_EMOJIS = ['🤕', '😣', '😐', '🙂', '💪']
+const DOLOR_LABELS = ['Muy intenso', 'Intenso', 'Moderado', 'Leve', 'Sin dolor']
+const ESTRES_EMOJIS = ['😖', '😟', '😐', '🙂', '😌']
+const ESTRES_LABELS = ['Muy estresado', 'Estresado', 'Normal', 'Tranquilo', 'Relajado']
+const FATIGA_EMOJIS = ['🥵', '😓', '😐', '🙂', '⚡']
+const FATIGA_LABELS = ['Agotado', 'Cansado', 'Moderada', 'Leve', 'Con energía']
 
 type TipoFormulario = 'wellness' | 'rpe'
 
@@ -251,7 +254,7 @@ function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugad
             max={5}
             emoji={(v) => DOLOR_EMOJIS[v - 1]}
             descripcion={(v) => DOLOR_LABELS[v - 1]}
-            color={(v) => colorRating(v, true)}
+            color={(v) => colorRating(v, false)}
           />
           <EmojiSlider
             icono="🧠"
@@ -262,7 +265,7 @@ function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugad
             max={5}
             emoji={(v) => ESTRES_EMOJIS[v - 1]}
             descripcion={(v) => ESTRES_LABELS[v - 1]}
-            color={(v) => colorRating(v, true)}
+            color={(v) => colorRating(v, false)}
           />
           <EmojiSlider
             icono="🔋"
@@ -273,7 +276,7 @@ function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugad
             max={5}
             emoji={(v) => FATIGA_EMOJIS[v - 1]}
             descripcion={(v) => FATIGA_LABELS[v - 1]}
-            color={(v) => colorRating(v, true)}
+            color={(v) => colorRating(v, false)}
           />
 
           <Card className="flex flex-col gap-2">

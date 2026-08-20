@@ -71,6 +71,8 @@ function TabWellness({ athleteId }: TabFormProps) {
           {error}
         </div>
       )}
+      {/* Fase 25: las 4 escalas están normalizadas "5 = óptimo, 1 = pésimo" —
+          ninguna usa `invert` acá, a diferencia de antes. */}
       <RatingPicker
         label="Calidad de sueño"
         value={sueno}
@@ -81,22 +83,19 @@ function TabWellness({ athleteId }: TabFormProps) {
         label="Dolor muscular"
         value={dolorMuscular}
         onChange={(v) => setDolorMuscular(v as WellnessRating)}
-        emojis={['💪', '🙂', '😐', '😣', '🤕']}
-        invert
+        emojis={['🤕', '😣', '😐', '🙂', '💪']}
       />
       <RatingPicker
         label="Estrés"
         value={estres}
         onChange={(v) => setEstres(v as WellnessRating)}
-        emojis={['😌', '🙂', '😐', '😟', '😖']}
-        invert
+        emojis={['😖', '😟', '😐', '🙂', '😌']}
       />
       <RatingPicker
         label="Fatiga"
         value={fatiga}
         onChange={(v) => setFatiga(v as WellnessRating)}
-        emojis={['⚡', '🙂', '😐', '😓', '🥵']}
-        invert
+        emojis={['🥵', '😓', '😐', '🙂', '⚡']}
       />
       <Field label="Comentarios / ¿Siente algún dolor?">
         <textarea

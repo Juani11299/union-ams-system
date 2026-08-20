@@ -3,6 +3,7 @@ import { Badge } from '@/components/Badge'
 import { Avatar } from '@/components/Avatar'
 import { StatCard } from '@/components/StatCard'
 import { MiniBarChart } from '@/components/MiniBarChart'
+import { useToastStore } from '@/store/useToastStore'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { calcularTendenciaTonelaje } from '@/features/external-load/calculations'
 import { calcularSerieEquipoUltimos7Dias } from '@/features/workload/calculations'
@@ -35,14 +36,34 @@ const TENDENCIA_LABEL: Record<string, string> = {
   'sin-datos': 'Sin datos suficientes',
 }
 
+/** Mensaje prolijo para pegar en el grupo de WhatsApp del plantel (Fase 25, "Lista de Deudores"). */
+function construirMensajeCumplimiento(
+  categoriaNombre: string,
+  sinWellness: Athlete[],
+  sinRpe: Athlete[],
+): string {
+  const lineas = [`📋 Pendientes de hoy — ${categoriaNombre}`, '']
+  if (sinWellness.length > 0) {
+    lineas.push('🌅 Todavía no cargaron el Wellness:')
+    lineas.push(...sinWellness.map((a) => `- ${a.nombre}`))
+    lineas.push('')
+  }
+  if (sinRpe.length > 0) {
+    lineas.push('🏁 Todavía no cargaron el RPE:')
+    lineas.push(...sinRpe.map((a) => `- ${a.nombre}`))
+    lineas.push('')
+  }
+  lineas.push('Por favor complétenlo cuanto antes 🙏')
+  return lineas.join('\n')
+}
+
 /**
- * Análisis Grupal (Fase 20, revisado en Fase 24) — consolida los datos de la
- * categoría/temporada activa: promedios de equipo, sparkline de sRPE del
- * plantel, y un plan de acción automatizado por atleta en Zona Roja,
- * cruzando wellness/RPE de hoy con ACWR y tendencia de tonelaje en Terminal
- * de Fuerza. Ver `riskAssessment.ts` — la Alerta de Fatiga ya no depende del
- * RSI modificado (el club no tiene plataformas de fuerza), sólo de Wellness
- * (Índice de Hooper) y ACWR.
+ * Análisis Grupal (Fase 20, revisado en Fase 24/25) — consolida los datos de
+ * la categoría/temporada activa: promedios de equipo, sparkline de sRPE del
+ * plantel, Monitor de Cumplimiento (quién no cargó Wellness/RPE hoy, con
+ * botón de copia para WhatsApp), y un plan de acción automatizado por
+ * atleta en Zona Roja, cruzando wellness/RPE de hoy con ACWR y tendencia de
+ * tonelaje en Terminal de Fuerza.
  */
 export function AnalisisGrupalModal({
   athletes,
@@ -55,6 +76,7 @@ export function AnalisisGrupalModal({
   hoy,
   onClose,
 }: AnalisisGrupalModalProps) {
+  const showToast = useToastStore((s) => s.showToast)
   const wellnessHoy = wellnessEntries.filter((w) => w.fecha === hoy)
   const wellnessPromedio =
     wellnessHoy.length > 0
@@ -78,6 +100,23 @@ export function AnalisisGrupalModal({
     sessionPlans,
     athletes.map((a) => a.id),
   )
+
+  // Monitor de Cumplimiento (Fase 25) — quiénes del plantel todavía no
+  // cargaron Wellness/RPE hoy, cruzando contra `wellnessHoy`/`rpePorAtleta`.
+  const idsConWellness = new Set(wellnessHoy.map((w) => w.athleteId))
+  const idsConRpe = new Set(rpePorAtleta.keys())
+  const sinWellness = athletes.filter((a) => !idsConWellness.has(a.id))
+  const sinRpe = athletes.filter((a) => !idsConRpe.has(a.id))
+
+  async function handleCopiarCumplimiento() {
+    const mensaje = construirMensajeCumplimiento(categoriaNombre, sinWellness, sinRpe)
+    try {
+      await navigator.clipboard.writeText(mensaje)
+      showToast('success', 'Mensaje copiado — pegalo en el grupo de WhatsApp')
+    } catch {
+      showToast('error', 'No se pudo copiar el mensaje.')
+    }
+  }
 
   const zonaRoja = athletes
     .map((athlete) => ({ athlete, evaluacion: evaluaciones.get(athlete.id) }))
@@ -127,6 +166,70 @@ export function AnalisisGrupalModal({
             <MiniBarChart valores={serieEquipo7d} barClassName="bg-union-red-500 dark:bg-union-red-400" />
             <p className="text-[11px] text-slate-400">Suma diaria de sRPE de todo el plantel (hoy a la derecha)</p>
           </Card>
+
+          <div className="mt-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                📋 Monitor de Cumplimiento
+              </h4>
+              {(sinWellness.length > 0 || sinRpe.length > 0) && (
+                <button
+                  type="button"
+                  onClick={handleCopiarCumplimiento}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                >
+                  📋 Copiar para WhatsApp
+                </button>
+              )}
+            </div>
+
+            {sinWellness.length === 0 && sinRpe.length === 0 ? (
+              <Card className="mt-2 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                ✅ Todos cargaron Wellness y RPE hoy.
+              </Card>
+            ) : (
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Card className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">
+                    🔴 No cargaron Wellness ({sinWellness.length})
+                  </p>
+                  {sinWellness.length === 0 ? (
+                    <p className="text-xs text-slate-400">Todos cargaron.</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {sinWellness.map((a) => (
+                        <li
+                          key={a.id}
+                          className="rounded-full bg-rose-50 px-2.5 py-1 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+                        >
+                          {a.nombre}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+                <Card className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">
+                    🔴 No cargaron RPE ({sinRpe.length})
+                  </p>
+                  {sinRpe.length === 0 ? (
+                    <p className="text-xs text-slate-400">Todos cargaron.</p>
+                  ) : (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {sinRpe.map((a) => (
+                        <li
+                          key={a.id}
+                          className="rounded-full bg-rose-50 px-2.5 py-1 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+                        >
+                          {a.nombre}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              </div>
+            )}
+          </div>
 
           <div className="mt-5">
             <h4 className="flex items-center gap-1.5 text-sm font-semibold text-rose-700 dark:text-rose-400">

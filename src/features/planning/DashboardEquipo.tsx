@@ -429,7 +429,15 @@ export function DashboardEquipo() {
               )}
 
               <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <span>Readiness (hoy)</span>
+                <span className="flex items-center gap-1">
+                  Readiness (hoy)
+                  {wellnessHoy && (
+                    <InfoTooltip
+                      titulo="Desglose de Wellness de hoy"
+                      descripcion={`🛌 Sueño: ${wellnessHoy.sueno} | 🧠 Estrés: ${wellnessHoy.estres} | 🔋 Fatiga: ${wellnessHoy.fatiga} | 🦵 Dolor: ${wellnessHoy.dolorMuscular}`}
+                    />
+                  )}
+                </span>
                 {readiness !== null ? (
                   <span className="font-medium text-slate-700 dark:text-slate-300">
                     {readiness.toFixed(1)} / 5
