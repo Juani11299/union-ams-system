@@ -1,3 +1,13 @@
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 import { Card } from '@/components/Card'
 import { Badge } from '@/components/Badge'
 import { Avatar } from '@/components/Avatar'
@@ -6,9 +16,14 @@ import { MiniBarChart } from '@/components/MiniBarChart'
 import { useToastStore } from '@/store/useToastStore'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { calcularTendenciaTonelaje } from '@/features/external-load/calculations'
-import { calcularSerieEquipoUltimos7Dias } from '@/features/workload/calculations'
+import { calcularSerieEquipoUltimos7Dias, calcularTendenciaEquipo } from '@/features/workload/calculations'
 import { nivelSemaforo, type EvaluacionRiesgoAtleta } from './riskAssessment'
+import { formatFechaCorta } from '@/utils/fecha'
 import type { Athlete, GymExternalLoad, SessionExecution, SessionPlan, WellnessEntry } from '@/types'
+
+const DIAS_TENDENCIA_EQUIPO = 14
+const UNION_ROJO = '#ed1c24'
+const VERDE = '#10b981'
 
 interface AnalisisGrupalModalProps {
   athletes: Athlete[]
@@ -58,9 +73,13 @@ function construirMensajeCumplimiento(
 }
 
 /**
- * Análisis Grupal (Fase 20, revisado en Fase 24/25) — consolida los datos de
- * la categoría/temporada activa: promedios de equipo, sparkline de sRPE del
- * plantel, Monitor de Cumplimiento (quién no cargó Wellness/RPE hoy, con
+ * Análisis Grupal (Fase 20, revisado en Fase 24/25/27) — vista a pantalla
+ * completa (Fase 27: el profe necesita todo el ancho para leer la
+ * macro-estructura del plantel) que consolida los datos de la
+ * categoría/temporada activa: promedios de equipo, LineChart de tendencia
+ * (sRPE vs. Wellness promedio de los últimos 14 días, para ver correlación
+ * carga↔recuperación en vez de sólo el snapshot de hoy), sparkline de sRPE
+ * del plantel, Monitor de Cumplimiento (quién no cargó Wellness/RPE hoy, con
  * botón de copia para WhatsApp), y un plan de acción automatizado por
  * atleta en Zona Roja, cruzando wellness/RPE de hoy con ACWR y tendencia de
  * tonelaje en Terminal de Fuerza.
@@ -101,6 +120,18 @@ export function AnalisisGrupalModal({
     athletes.map((a) => a.id),
   )
 
+  const tendenciaEquipo = calcularTendenciaEquipo(
+    sessionExecutions,
+    sessionPlans,
+    wellnessEntries,
+    athletes.map((a) => a.id),
+    DIAS_TENDENCIA_EQUIPO,
+  ).map((p) => ({
+    fecha: formatFechaCorta(p.fecha),
+    sRpe: p.sRpePromedio,
+    wellness: p.wellnessPromedio,
+  }))
+
   // Monitor de Cumplimiento (Fase 25) — quiénes del plantel todavía no
   // cargaron Wellness/RPE hoy, cruzando contra `wellnessHoy`/`rpePorAtleta`.
   const idsConWellness = new Set(wellnessHoy.map((w) => w.athleteId))
@@ -127,24 +158,24 @@ export function AnalisisGrupalModal({
     .sort((a, b) => b.evaluacion.riskScore - a.evaluacion.riskScore)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">📊 Análisis Grupal</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{categoriaNombre} — hoy</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-50 flex h-full min-h-screen w-full flex-col bg-white dark:bg-slate-900">
+      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">📊 Análisis Grupal</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{categoriaNombre} — hoy</p>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          ✕
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="mx-auto flex w-full max-w-6xl flex-col">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCard
               label="Wellness Promedio"
@@ -158,6 +189,54 @@ export function AnalisisGrupalModal({
             />
             <StatCard label="% Participación" value={`${participacionPct}%`} hint="Wellness cargado hoy" />
           </div>
+
+          <Card className="mt-3 flex flex-col gap-2">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              📊 Carga vs. Recuperación del equipo — últimos {DIAS_TENDENCIA_EQUIPO} días
+            </p>
+            <p className="text-[11px] text-slate-400">
+              sRPE promedio del plantel (izquierda) vs. Wellness promedio (derecha) — sirve para ver, por ejemplo, si
+              el Wellness cae unos días después de que suba el sRPE.
+            </p>
+            <div className="mt-1 h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={tendenciaEquipo} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="fecha" tick={{ fontSize: 10 }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 20]}
+                    tick={{ fontSize: 11 }}
+                    allowDecimals={false}
+                  />
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="sRpe"
+                    name="sRPE promedio"
+                    stroke={UNION_ROJO}
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="wellness"
+                    name="Wellness promedio /20"
+                    stroke={VERDE}
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
 
           <Card className="mt-3 flex flex-col gap-2">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -293,16 +372,16 @@ export function AnalisisGrupalModal({
             )}
           </div>
         </div>
+      </div>
 
-        <div className="flex justify-end border-t border-slate-100 px-5 py-4 dark:border-slate-800">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-union-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-union-red-700"
-          >
-            Cerrar
-          </button>
-        </div>
+      <div className="flex justify-end border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg bg-union-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-union-red-700"
+        >
+          Cerrar
+        </button>
       </div>
     </div>
   )

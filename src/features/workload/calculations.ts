@@ -1,4 +1,6 @@
-import type { SessionExecution, SessionPlan } from '@/types'
+import type { SessionExecution, SessionPlan, WellnessEntry } from '@/types'
+import { calcularWellnessScore20 } from '@/features/wellness/calculations'
+import { fechaHoyLocal } from '@/utils/fecha'
 
 export function calcularCargaInterna(rpe: number, duracionMin: number): number {
   return rpe * duracionMin
@@ -248,4 +250,93 @@ export function calcularMonotonia(serieUltimos7Dias: number[]): number | null {
 export function calcularStrain(cargaTotalSemanal: number, monotonia: number | null): number | null {
   if (monotonia === null) return null
   return Number((cargaTotalSemanal * monotonia).toFixed(0))
+}
+
+export interface PuntoSerieDiaria {
+  fecha: string
+  carga: number
+}
+
+/**
+ * Serie diaria de sRPE de un atleta sobre una ventana arbitraria de días
+ * (Fase 27, "Athlete Trend Analysis") — a diferencia de
+ * `calcularSerieUltimos7Dias` (siempre 7 días, sin fechas), ésta devuelve la
+ * fecha de cada punto para poder graficarla con Recharts (eje X con fechas
+ * reales, no sólo un índice 0-6).
+ */
+export function calcularSerieDiasAtleta(
+  ejecuciones: SessionExecution[],
+  sessionPlans: SessionPlan[],
+  athleteId: string,
+  dias: number,
+  fechaReferencia: Date = new Date(),
+): PuntoSerieDiaria[] {
+  const propias = ejecuciones.filter((e) => e.athleteId === athleteId)
+  const resultado: PuntoSerieDiaria[] = []
+
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(fechaReferencia)
+    d.setDate(d.getDate() - i)
+    const fecha = fechaHoyLocal(d)
+    const carga = propias
+      .filter((e) => e.fecha === fecha)
+      .reduce((sum, e) => sum + (calcularCargaEjecutadaReal(e, sessionPlans) ?? 0), 0)
+    resultado.push({ fecha, carga })
+  }
+
+  return resultado
+}
+
+export interface PuntoTendenciaEquipo {
+  fecha: string
+  sRpePromedio: number | null
+  wellnessPromedio: number | null
+}
+
+/**
+ * Tendencia diaria del equipo (Fase 27, LineChart principal del Análisis
+ * Grupal) — promedio de sRPE y de Wellness (/20) del día, calculado sólo
+ * sobre quienes reportaron ESE día (no diluye el promedio con jugadores que
+ * no entrenaron o no cargaron wellness). `null` cuando nadie reportó ese
+ * día, para que el gráfico muestre un hueco en vez de una caída falsa a 0.
+ */
+export function calcularTendenciaEquipo(
+  ejecuciones: SessionExecution[],
+  sessionPlans: SessionPlan[],
+  wellnessEntries: WellnessEntry[],
+  athleteIds: string[],
+  dias: number,
+  fechaReferencia: Date = new Date(),
+): PuntoTendenciaEquipo[] {
+  const idsSet = new Set(athleteIds)
+  const resultado: PuntoTendenciaEquipo[] = []
+
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(fechaReferencia)
+    d.setDate(d.getDate() - i)
+    const fecha = fechaHoyLocal(d)
+
+    const cargasDelDia: number[] = []
+    for (const athleteId of athleteIds) {
+      const ejecucionesDia = ejecuciones.filter((e) => e.athleteId === athleteId && e.fecha === fecha)
+      if (ejecucionesDia.length === 0) continue
+      cargasDelDia.push(
+        ejecucionesDia.reduce((sum, e) => sum + (calcularCargaEjecutadaReal(e, sessionPlans) ?? 0), 0),
+      )
+    }
+    const sRpePromedio =
+      cargasDelDia.length > 0 ? Number((cargasDelDia.reduce((s, v) => s + v, 0) / cargasDelDia.length).toFixed(1)) : null
+
+    const wellnessDelDia = wellnessEntries.filter((w) => idsSet.has(w.athleteId) && w.fecha === fecha)
+    const wellnessPromedio =
+      wellnessDelDia.length > 0
+        ? Number(
+            (wellnessDelDia.reduce((s, w) => s + calcularWellnessScore20(w), 0) / wellnessDelDia.length).toFixed(1),
+          )
+        : null
+
+    resultado.push({ fecha, sRpePromedio, wellnessPromedio })
+  }
+
+  return resultado
 }

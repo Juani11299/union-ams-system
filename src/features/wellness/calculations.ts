@@ -1,3 +1,4 @@
+import { fechaHoyLocal } from '@/utils/fecha'
 import type { WellnessEntry } from '@/types'
 
 type WellnessInput = Pick<WellnessEntry, 'sueno' | 'dolorMuscular' | 'estres' | 'fatiga'>
@@ -33,4 +34,36 @@ export function obtenerWellnessDelDia(
   fecha: string,
 ): WellnessEntry | null {
   return entries.find((e) => e.athleteId === athleteId && e.fecha === fecha) ?? null
+}
+
+export interface PuntoSerieWellness {
+  fecha: string
+  score: number | null
+}
+
+/**
+ * Serie diaria de Wellness (/20) de un atleta sobre una ventana de días
+ * (Fase 27, "Athlete Trend Analysis") — `score: null` en los días sin
+ * registro, para que el LineChart muestre un hueco en vez de una caída
+ * falsa a 0 (un jugador que no cargó wellness no es lo mismo que un
+ * jugador con wellness pésimo).
+ */
+export function calcularSerieWellnessAtleta(
+  entries: WellnessEntry[],
+  athleteId: string,
+  dias: number,
+  fechaReferencia: Date = new Date(),
+): PuntoSerieWellness[] {
+  const propias = entries.filter((e) => e.athleteId === athleteId)
+  const resultado: PuntoSerieWellness[] = []
+
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(fechaReferencia)
+    d.setDate(d.getDate() - i)
+    const fecha = fechaHoyLocal(d)
+    const entry = propias.find((e) => e.fecha === fecha)
+    resultado.push({ fecha, score: entry ? calcularWellnessScore20(entry) : null })
+  }
+
+  return resultado
 }

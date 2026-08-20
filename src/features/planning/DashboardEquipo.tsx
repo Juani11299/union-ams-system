@@ -31,7 +31,8 @@ import { inputClass } from '@/components/FormField'
 import { GRUPOS_POSICION, grupoDePosicion } from '@/utils/posicion'
 import { evaluarRiesgoAtleta, nivelSemaforo, type NivelSemaforo } from './riskAssessment'
 import { AnalisisGrupalModal } from './AnalisisGrupalModal'
-import type { EstadoSalud } from '@/types'
+import { AthleteDetailModal } from './AthleteDetailModal'
+import type { Athlete, EstadoSalud } from '@/types'
 
 const ESTADO_TONE: Record<EstadoSalud, BadgeTone> = {
   Activo: 'green',
@@ -95,6 +96,7 @@ export function DashboardEquipo() {
   const setFiltroPosicion = useAppStore((s) => s.setFiltroPosicion)
   const abrirModalIngreso = useAppStore((s) => s.abrirModalIngreso)
   const [analisisAbierto, setAnalisisAbierto] = useState(false)
+  const [atletaDetalle, setAtletaDetalle] = useState<Athlete | null>(null)
 
   const categoriaActual = categories.find((c) => c.id === activeCategoryId)
   const hoy = fechaHoyLocal()
@@ -289,9 +291,13 @@ export function DashboardEquipo() {
                 <div className="flex items-center gap-3">
                   <Avatar nombre={athlete.nombre} />
                   <div>
-                    <p className="font-semibold text-slate-900 dark:text-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setAtletaDetalle(athlete)}
+                      className="font-semibold text-slate-900 underline decoration-slate-300 decoration-dotted underline-offset-2 transition-colors hover:text-union-red-600 hover:decoration-union-red-400 dark:text-slate-100 dark:hover:text-union-red-400"
+                    >
                       {athlete.nombre}
-                    </p>
+                    </button>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {athlete.posiciones.join(', ')}
                     </p>
@@ -470,6 +476,16 @@ export function DashboardEquipo() {
           categoriaNombre={categoriaActual?.nombre ?? 'Categoría'}
           hoy={hoy}
           onClose={() => setAnalisisAbierto(false)}
+        />
+      )}
+      {atletaDetalle && (
+        <AthleteDetailModal
+          athlete={atletaDetalle}
+          sessionExecutions={sessionExecutions}
+          sessionPlans={sessionPlans}
+          wellnessEntries={wellnessEntries}
+          hoy={hoy}
+          onClose={() => setAtletaDetalle(null)}
         />
       )}
     </div>
