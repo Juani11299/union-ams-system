@@ -144,6 +144,9 @@ export function DashboardEquipo() {
           <p className="text-sm text-slate-500 dark:text-slate-400">
             sRPE semanal y riesgo de carga (ACWR) por jugador
           </p>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            ℹ️ Escala Readiness: 1 (Pésimo) ➡️ 5 (Óptimo)
+          </p>
         </div>
         <div className="flex shrink-0 gap-2">
           <button
@@ -435,6 +438,7 @@ export function DashboardEquipo() {
                     <InfoTooltip
                       titulo="Desglose de Wellness de hoy"
                       descripcion={`🛌 Sueño: ${wellnessHoy.sueno} | 🧠 Estrés: ${wellnessHoy.estres} | 🔋 Fatiga: ${wellnessHoy.fatiga} | 🦵 Dolor: ${wellnessHoy.dolorMuscular}`}
+                      cita="* Valores más cercanos a 5 indican un mejor estado de recuperación."
                     />
                   )}
                 </span>
