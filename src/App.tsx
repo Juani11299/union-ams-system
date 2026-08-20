@@ -14,6 +14,9 @@ import { Manual10maPre9naView } from '@/features/metodologia/ltad/Manual10maPre9
 import { Manual9na8vaView } from '@/features/metodologia/ltad/Manual9na8vaView'
 import { Manual7ma6taView } from '@/features/metodologia/ltad/Manual7ma6taView'
 import { Manual5ta4taView } from '@/features/metodologia/ltad/Manual5ta4taView'
+import { AthleteProfileView } from '@/features/testing/AthleteProfileView'
+import { MedicalDashboardView } from '@/features/medical/MedicalDashboardView'
+import { MacrocycleView } from '@/features/periodization/MacrocycleView'
 
 function App() {
   return (
@@ -33,6 +36,9 @@ function App() {
         <Route path="/metodologia/ltad-7ma-6ta" element={<Manual7ma6taView />} />
         <Route path="/metodologia/ltad-5ta-4ta" element={<Manual5ta4taView />} />
         <Route path="/admin" element={<AdminView />} />
+        <Route path="/testing/perfil" element={<AthleteProfileView />} />
+        <Route path="/medico/rtp" element={<MedicalDashboardView />} />
+        <Route path="/coordinacion/macro" element={<MacrocycleView />} />
       </Route>
     </Routes>
   )
