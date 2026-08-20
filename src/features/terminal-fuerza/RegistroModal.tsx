@@ -12,18 +12,6 @@ interface RegistroModalProps {
   onClose: () => void
 }
 
-interface FilaSerie {
-  id: string
-  reps: number
-  pesoKg: number
-}
-
-let contadorFila = 0
-function nuevaFilaId(): string {
-  contadorFila += 1
-  return `fila-${contadorFila}`
-}
-
 /** Extrae el primer número de un campo libre de la planilla (ej. "6" o "8-10" → 8, 6). */
 function parsearNumero(texto: string, fallback: number): number {
   const match = texto.match(/\d+([.,]\d+)?/)
@@ -32,15 +20,21 @@ function parsearNumero(texto: string, fallback: number): number {
   return Number.isFinite(valor) && valor > 0 ? Math.round(valor) : fallback
 }
 
+const SERIES_DEFAULT = 3
 const REPS_DEFAULT = 8
 const PESO_INICIAL_DEFAULT = 20
 
 /**
- * Modal táctil a pantalla completa ("fat-finger UI", Fase 17) — sólo
- * botones grandes [-]/[+], nunca un `<input>` ni el teclado nativo. Series
- * dinámicas: no se pregunta "cuántas series", se arranca con una fila
- * precargada (reps de la planilla, kg del último registro de este ejercicio
- * para este jugador) y "+ AGREGAR SERIE" agrega filas abajo.
+ * Modal táctil a pantalla completa ("Top Set Tracking", Fase 29) — el
+ * cuello de botella real de "40 atletas en 40 minutos" no era la UI táctil
+ * en sí (ya eran botones grandes, Fase 17), sino pedir CADA serie una por
+ * una. En fuerza, lo único que un jugador necesita reportar rápido es el
+ * peso de su serie efectiva (Top Set); series y repeticiones ya están
+ * decididas en la planificación y sólo se ajustan si hoy se desvió del
+ * plan — por eso son un stepper chico y secundario, no el foco. El foco
+ * táctil (stepper gigante) es sólo el peso. Guarda igual `setsData` con N
+ * series idénticas al Top Set (mismo tonelaje/`GymExternalLoad` que antes,
+ * sólo cambia cómo se carga).
  */
 export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: RegistroModalProps) {
   const gymExternalLoads = useAppStore((s) => s.gymExternalLoads)
@@ -63,40 +57,31 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
     )
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
 
-  const repsIniciales = parsearNumero(ejercicio.repeticiones, REPS_DEFAULT)
-  const pesoInicial = ultimoRegistroDelEjercicio?.setsData[0]?.weightKg ?? PESO_INICIAL_DEFAULT
+  const seriesPlanificadas = parsearNumero(ejercicio.series, SERIES_DEFAULT)
+  const repsPlanificadas = parsearNumero(ejercicio.repeticiones, REPS_DEFAULT)
+  const pesoSugerido =
+    ultimoRegistroDelEjercicio && ultimoRegistroDelEjercicio.setsData.length > 0
+      ? Math.max(...ultimoRegistroDelEjercicio.setsData.map((s) => s.weightKg))
+      : PESO_INICIAL_DEFAULT
 
-  const [filas, setFilas] = useState<FilaSerie[]>(() => {
-    if (registroExistente) {
-      return registroExistente.setsData.map((s) => ({ id: nuevaFilaId(), reps: s.reps, pesoKg: s.weightKg }))
-    }
-    return [{ id: nuevaFilaId(), reps: repsIniciales, pesoKg: pesoInicial }]
-  })
+  const [series, setSeries] = useState(() =>
+    registroExistente ? registroExistente.setsData.length : seriesPlanificadas,
+  )
+  const [reps, setReps] = useState(() =>
+    registroExistente ? (registroExistente.setsData[0]?.reps ?? repsPlanificadas) : repsPlanificadas,
+  )
+  const [topSetKg, setTopSetKg] = useState(() =>
+    registroExistente && registroExistente.setsData.length > 0
+      ? Math.max(...registroExistente.setsData.map((s) => s.weightKg))
+      : pesoSugerido,
+  )
 
-  const tonelaje = useMemo(() => filas.reduce((acc, f) => acc + f.reps * f.pesoKg, 0), [filas])
-
-  function actualizarFila(id: string, cambios: Partial<FilaSerie>) {
-    setFilas((prev) => prev.map((f) => (f.id === id ? { ...f, ...cambios } : f)))
-  }
-
-  function agregarFila() {
-    setFilas((prev) => {
-      const ultima = prev[prev.length - 1]
-      return [
-        ...prev,
-        { id: nuevaFilaId(), reps: ultima?.reps ?? repsIniciales, pesoKg: ultima?.pesoKg ?? pesoInicial },
-      ]
-    })
-  }
-
-  function quitarFila(id: string) {
-    setFilas((prev) => (prev.length > 1 ? prev.filter((f) => f.id !== id) : prev))
-  }
+  const tonelaje = useMemo(() => series * reps * topSetKg, [series, reps, topSetKg])
 
   async function handleGuardar() {
     setGuardando(true)
     try {
-      const setsData: GymSet[] = filas.map((f) => ({ reps: f.reps, weightKg: f.pesoKg }))
+      const setsData: GymSet[] = Array.from({ length: series }, () => ({ reps, weightKg: topSetKg }))
       await submitGymExternalLoad({
         athleteId: jugador.id,
         sessionId: sesionId,
@@ -104,7 +89,7 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
         setsData,
         totalTonnage: tonelaje,
       })
-      showToast('success', `¡${jugador.nombre.split(' ')[0]} registró su entrenamiento!`)
+      showToast('success', `¡${jugador.nombre.split(' ')[0]} registró su Top Set!`)
       onClose()
     } catch (err) {
       showToast('error', getErrorMessage(err, 'No se pudo guardar el entrenamiento.'))
@@ -133,75 +118,65 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div className="flex flex-col gap-3">
-          {filas.map((fila, i) => (
-            <div key={fila.id} className="flex items-center gap-2 rounded-2xl bg-white/5 p-3">
-              <span className="w-8 shrink-0 text-center text-lg font-bold text-white/40">{i + 1}</span>
-
-              <div className="flex flex-1 flex-wrap items-center justify-center gap-4 sm:justify-between">
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">Reps</span>
-                  <div className="flex items-center gap-2">
-                    <StepperButton
-                      aria-label="Restar una repetición"
-                      onClick={() => actualizarFila(fila.id, { reps: Math.max(1, fila.reps - 1) })}
-                    >
-                      −
-                    </StepperButton>
-                    <span className="w-14 text-center text-3xl font-black tabular-nums">{fila.reps}</span>
-                    <StepperButton
-                      aria-label="Sumar una repetición"
-                      onClick={() => actualizarFila(fila.id, { reps: fila.reps + 1 })}
-                    >
-                      +
-                    </StepperButton>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">Kg</span>
-                  <div className="flex items-center gap-2">
-                    <StepperButton
-                      aria-label="Restar 2.5 kg"
-                      onClick={() => actualizarFila(fila.id, { pesoKg: Math.max(0, fila.pesoKg - 2.5) })}
-                    >
-                      −
-                    </StepperButton>
-                    <span className="w-16 text-center text-3xl font-black tabular-nums">{fila.pesoKg}</span>
-                    <StepperButton
-                      aria-label="Sumar 2.5 kg"
-                      onClick={() => actualizarFila(fila.id, { pesoKg: fila.pesoKg + 2.5 })}
-                    >
-                      +
-                    </StepperButton>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => quitarFila(fila.id)}
-                disabled={filas.length === 1}
-                aria-label="Quitar serie"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/40 hover:bg-white/10 hover:text-white disabled:opacity-30"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+      <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-4 py-6">
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-sm font-bold uppercase tracking-widest text-white/60">
+            🔥 Peso del Top Set
+          </span>
+          <div className="flex items-center gap-4">
+            <StepperButton
+              aria-label="Restar 2.5 kg"
+              size="xl"
+              onClick={() => setTopSetKg((v) => Math.max(0, v - 2.5))}
+            >
+              −
+            </StepperButton>
+            <span className="w-40 text-center text-7xl font-black tabular-nums">{topSetKg}</span>
+            <StepperButton aria-label="Sumar 2.5 kg" size="xl" onClick={() => setTopSetKg((v) => v + 2.5)}>
+              +
+            </StepperButton>
+          </div>
+          <span className="text-lg font-semibold text-white/40">kg</span>
         </div>
 
-        <button
-          type="button"
-          onClick={agregarFila}
-          className="mt-4 w-full rounded-2xl border-2 border-dashed border-white/20 py-5 text-lg font-bold text-white/70 hover:border-union-red-400 hover:text-union-red-400"
-        >
-          + AGREGAR SERIE
-        </button>
+        <div className="flex items-center gap-8 rounded-2xl bg-white/5 px-6 py-4">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">Series</span>
+            <div className="flex items-center gap-1.5">
+              <StepperButton
+                aria-label="Restar una serie"
+                size="sm"
+                onClick={() => setSeries((v) => Math.max(1, v - 1))}
+              >
+                −
+              </StepperButton>
+              <span className="w-8 text-center text-xl font-bold tabular-nums">{series}</span>
+              <StepperButton aria-label="Sumar una serie" size="sm" onClick={() => setSeries((v) => v + 1)}>
+                +
+              </StepperButton>
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">Reps</span>
+            <div className="flex items-center gap-1.5">
+              <StepperButton
+                aria-label="Restar una repetición"
+                size="sm"
+                onClick={() => setReps((v) => Math.max(1, v - 1))}
+              >
+                −
+              </StepperButton>
+              <span className="w-8 text-center text-xl font-bold tabular-nums">{reps}</span>
+              <StepperButton aria-label="Sumar una repetición" size="sm" onClick={() => setReps((v) => v + 1)}>
+                +
+              </StepperButton>
+            </div>
+          </div>
+        </div>
 
-        <p className="mt-4 text-center text-sm text-white/40">
-          Tonelaje total: <span className="font-semibold text-white/70">{tonelaje.toLocaleString('es-AR')} kg</span>
+        <p className="text-center text-sm text-white/40">
+          Tonelaje total ({series}×{reps}×{topSetKg}kg):{' '}
+          <span className="font-semibold text-white/70">{tonelaje.toLocaleString('es-AR')} kg</span>
         </p>
       </div>
 
@@ -212,7 +187,7 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
           disabled={guardando}
           className="w-full rounded-2xl bg-union-red-600 py-6 text-2xl font-black uppercase tracking-wide text-white hover:bg-union-red-700 disabled:opacity-60"
         >
-          {guardando ? 'Guardando…' : 'Guardar Entrenamiento'}
+          {guardando ? 'Guardando…' : 'Guardar Top Set'}
         </button>
       </div>
     </div>
@@ -222,17 +197,23 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
 function StepperButton({
   onClick,
   children,
+  size = 'xl',
   ...props
 }: {
   onClick: () => void
   children: ReactNode
+  size?: 'xl' | 'sm'
   'aria-label': string
 }) {
+  const clases =
+    size === 'xl'
+      ? 'h-20 w-20 text-4xl'
+      : 'h-9 w-9 text-lg'
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-3xl font-black text-white hover:bg-white/20 active:bg-union-red-600"
+      className={`flex shrink-0 items-center justify-center rounded-2xl bg-white/10 font-black text-white hover:bg-white/20 active:bg-union-red-600 ${clases}`}
       {...props}
     >
       {children}

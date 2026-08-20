@@ -5,6 +5,7 @@ import {
   useSessionExecutionsActivas,
   useAthletesActivos,
   useStrengthAssignmentsActivas,
+  useGymExternalLoadsActivos,
 } from '@/store/useAppStore'
 import { DetailedWeeklyPdfExport } from '@/features/planificador/DetailedWeeklyPdfExport'
 import { useToastStore } from '@/store/useToastStore'
@@ -19,6 +20,7 @@ import { GymSheetEditor } from '@/features/planificador/GymSheetEditor'
 import { GpsObjetivoForm } from '@/features/planificador/GpsObjetivoForm'
 import { TemplateLibraryPanel, DRAG_MIME_PLANTILLA } from '@/features/planificador/TemplateLibraryPanel'
 import { VitaminaAssignmentModal } from '@/features/planificador/VitaminaAssignmentModal'
+import { RackOrganizerModal } from '@/features/external-load/RackOrganizerModal'
 import {
   compararConObjetivo,
   calcularCargaEjecutadaReal,
@@ -1242,6 +1244,7 @@ export function PlanificadorView() {
   const assignTemplateToDay = useAppStore((s) => s.assignTemplateToDay)
   const createSessionPlan = useAppStore((s) => s.createSessionPlan)
   const athletes = useAthletesActivos()
+  const gymExternalLoads = useGymExternalLoadsActivos()
   const showToast = useToastStore((s) => s.showToast)
   const activeSeasonId = useAppStore((s) => s.activeSeasonId)
   const activeCategoryId = useAppStore((s) => s.activeCategoryId)
@@ -1258,6 +1261,7 @@ export function PlanificadorView() {
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
   const [bibliotecaAbierta, setBibliotecaAbierta] = useState(false)
   const [exportandoSemana, setExportandoSemana] = useState(false)
+  const [organizadorAbierto, setOrganizadorAbierto] = useState(false)
   const categoriaActiva = categories.find((c) => c.id === activeCategoryId)
   const [vitaminaPendiente, setVitaminaPendiente] = useState<{
     templateId: string
@@ -1333,17 +1337,26 @@ export function PlanificadorView() {
             Microciclo semanal: tocá un día para ver y planificar sus tareas en detalle.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setBibliotecaAbierta((v) => !v)}
-          className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-            bibliotecaAbierta
-              ? 'border-union-red-500 bg-union-red-50 text-union-red-700 dark:bg-union-red-500/10 dark:text-union-red-400'
-              : 'border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
-          }`}
-        >
-          📚 Biblioteca de Plantillas {bibliotecaAbierta ? '▴' : '▾'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setOrganizadorAbierto(true)}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            🗂️ Organizador de Racks
+          </button>
+          <button
+            type="button"
+            onClick={() => setBibliotecaAbierta((v) => !v)}
+            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+              bibliotecaAbierta
+                ? 'border-union-red-500 bg-union-red-50 text-union-red-700 dark:bg-union-red-500/10 dark:text-union-red-400'
+                : 'border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
+            }`}
+          >
+            📚 Biblioteca de Plantillas {bibliotecaAbierta ? '▴' : '▾'}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1464,6 +1477,15 @@ export function PlanificadorView() {
           strengthAssignments={strengthAssignments}
           strengthTemplates={strengthTemplates}
           onClose={() => setExportandoSemana(false)}
+        />
+      )}
+
+      {organizadorAbierto && (
+        <RackOrganizerModal
+          athletes={athletes}
+          gymExternalLoads={gymExternalLoads}
+          sessionPlans={sessionPlans}
+          onClose={() => setOrganizadorAbierto(false)}
         />
       )}
     </div>
