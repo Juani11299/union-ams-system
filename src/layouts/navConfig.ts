@@ -63,20 +63,6 @@ export const navItems: NavItem[] = [
   },
   { to: '/admin', label: 'Administración', shortLabel: 'Admin', icon: '⚙️' },
   {
-    to: '/testing/perfil',
-    label: 'Perfil de Rendimiento 360°',
-    shortLabel: 'Testing',
-    icon: '🎯',
-    group: 'Evaluaciones',
-  },
-  {
-    to: '/medico/rtp',
-    label: 'Dashboard RTP (Kinesiología)',
-    shortLabel: 'RTP',
-    icon: '🩹',
-    group: 'Área Médica',
-  },
-  {
     to: '/coordinacion/macro',
     label: 'Torre de Control de Temporada',
     shortLabel: 'Macrociclo',
