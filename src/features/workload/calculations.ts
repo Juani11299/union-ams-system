@@ -254,15 +254,24 @@ export function calcularStrain(cargaTotalSemanal: number, monotonia: number | nu
 
 export interface PuntoSerieDiaria {
   fecha: string
-  carga: number
+  /** sRPE total del día (UA) — siempre igual a `rpe * duracionMin` por construcción. */
+  srpe: number
+  /** RPE crudo (0-10) autoreportado ese día. 0 si el jugador no reportó nada. */
+  rpe: number
+  /** Minutos totales que explican el sRPE del día (suma de `duracionRealMin` de las sesiones, o minutos jugados si fue Partido). */
+  duracionMin: number
 }
 
 /**
  * Serie diaria de sRPE de un atleta sobre una ventana arbitraria de días
- * (Fase 27, "Athlete Trend Analysis") — a diferencia de
- * `calcularSerieUltimos7Dias` (siempre 7 días, sin fechas), ésta devuelve la
- * fecha de cada punto para poder graficarla con Recharts (eje X con fechas
- * reales, no sólo un índice 0-6).
+ * (Fase 27, "Athlete Trend Analysis"; desglose RPE×Tiempo agregado en Fase
+ * 34, ver AthleteDetailModal) — a diferencia de `calcularSerieUltimos7Dias`
+ * (siempre 7 días, sin fechas), ésta devuelve la fecha de cada punto para
+ * poder graficarla con Recharts (eje X con fechas reales, no sólo un índice
+ * 0-6). `duracionMin` se deriva de `srpe / rpe` en vez de recalcular el
+ * matching de sesiones del día — es exacto porque `calcularCargaEjecutadaReal`
+ * SIEMPRE construye el sRPE como ese mismo producto, así el desglose que ve
+ * el profe nunca puede desincronizarse del número total.
  */
 export function calcularSerieDiasAtleta(
   ejecuciones: SessionExecution[],
@@ -278,10 +287,16 @@ export function calcularSerieDiasAtleta(
     const d = new Date(fechaReferencia)
     d.setDate(d.getDate() - i)
     const fecha = fechaHoyLocal(d)
-    const carga = propias
-      .filter((e) => e.fecha === fecha)
-      .reduce((sum, e) => sum + (calcularCargaEjecutadaReal(e, sessionPlans) ?? 0), 0)
-    resultado.push({ fecha, carga })
+    const ejecucionDelDia = propias.find((e) => e.fecha === fecha)
+
+    if (!ejecucionDelDia) {
+      resultado.push({ fecha, srpe: 0, rpe: 0, duracionMin: 0 })
+      continue
+    }
+
+    const srpe = calcularCargaEjecutadaReal(ejecucionDelDia, sessionPlans) ?? 0
+    const duracionMin = ejecucionDelDia.rpe > 0 ? Math.round(srpe / ejecucionDelDia.rpe) : 0
+    resultado.push({ fecha, srpe, rpe: ejecucionDelDia.rpe, duracionMin })
   }
 
   return resultado

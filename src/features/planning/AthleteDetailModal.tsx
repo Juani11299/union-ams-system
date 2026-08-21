@@ -11,9 +11,10 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
+import type { TooltipProps } from 'recharts'
 import { Avatar } from '@/components/Avatar'
 import { Badge, type BadgeTone } from '@/components/Badge'
-import { calcularSerieDiasAtleta } from '@/features/workload/calculations'
+import { calcularSerieDiasAtleta, colorRpe } from '@/features/workload/calculations'
 import { calcularSerieWellnessAtleta, obtenerWellnessDelDia } from '@/features/wellness/calculations'
 import { diagnosticarWellness, type TipoDiagnostico } from './wellnessDiagnostico'
 import { formatFechaCorta } from '@/utils/fecha'
@@ -38,6 +39,46 @@ function colorPorValor(valor: number): string {
   if (valor <= 2) return '#f43f5e'
   if (valor === 3) return AMARILLO
   return VERDE
+}
+
+/** Semáforo del Readiness (Wellness /20) — mismo corte crítico (≤12) que `UMBRAL_WELLNESS_CRITICO` de riskAssessment.ts. */
+function colorReadiness20(score: number): string {
+  if (score <= 12) return '#f43f5e'
+  if (score <= 15) return AMARILLO
+  return VERDE
+}
+
+interface PuntoTendenciaDia {
+  fecha: string
+  srpe: number
+  rpe: number
+  duracionMin: number
+  wellness: number | null
+}
+
+/** Tooltip personalizado del gráfico de tendencia (Fase 34) — desglosa el sRPE en RPE crudo × Tiempo, no sólo el total. */
+function TooltipTendencia({ active, payload }: TooltipProps<number, string>) {
+  if (!active || !payload || payload.length === 0) return null
+  const d = payload[0]?.payload as PuntoTendenciaDia | undefined
+  if (!d) return null
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-800">
+      <p className="mb-1 font-semibold text-slate-700 dark:text-slate-200">{d.fecha}</p>
+      <p className="text-slate-600 dark:text-slate-300">
+        Readiness:{' '}
+        <span className="font-medium" style={{ color: d.wellness !== null ? colorReadiness20(d.wellness) : undefined }}>
+          {d.wellness !== null ? `${d.wellness} / 20` : 'Sin registro'}
+        </span>
+      </p>
+      <p className="font-medium" style={{ color: UNION_ROJO }}>
+        sRPE Total: {d.srpe} UA
+      </p>
+      <p className="text-slate-400">
+        Desglose: {d.rpe > 0 ? `RPE ${d.rpe} × ${d.duracionMin} min` : 'Sin entrenamiento registrado'}
+      </p>
+    </div>
+  )
 }
 
 const DIAGNOSTICO_TONE: Record<TipoDiagnostico, string> = {
@@ -81,11 +122,14 @@ export function AthleteDetailModal({
 }: AthleteDetailModalProps) {
   const serieSRpe = calcularSerieDiasAtleta(sessionExecutions, sessionPlans, athlete.id, DIAS_TENDENCIA)
   const serieWellness = calcularSerieWellnessAtleta(wellnessEntries, athlete.id, DIAS_TENDENCIA)
-  const datosTendencia = serieSRpe.map((punto, i) => ({
+  const datosTendencia: PuntoTendenciaDia[] = serieSRpe.map((punto, i) => ({
     fecha: formatFechaCorta(punto.fecha),
-    sRpe: punto.carga,
+    srpe: punto.srpe,
+    rpe: punto.rpe,
+    duracionMin: punto.duracionMin,
     wellness: serieWellness[i]?.score ?? null,
   }))
+  const historialReciente = [...datosTendencia].reverse()
 
   const diagnostico = diagnosticarWellness(serieWellness)
 
@@ -140,12 +184,12 @@ export function AthleteDetailModal({
                     tick={{ fontSize: 11 }}
                     allowDecimals={false}
                   />
-                  <Tooltip />
+                  <Tooltip content={<TooltipTendencia />} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line
                     yAxisId="left"
                     type="monotone"
-                    dataKey="sRpe"
+                    dataKey="srpe"
                     name="sRPE"
                     stroke={UNION_ROJO}
                     strokeWidth={2}
@@ -191,6 +235,57 @@ export function AthleteDetailModal({
               </div>
             )}
           </div>
+
+          <details className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800" open>
+            <summary className="cursor-pointer select-none rounded-xl px-4 py-3 text-xs font-semibold text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800/60">
+              📋 Historial Detallado (Últimos {DIAS_TENDENCIA} días)
+            </summary>
+            <div className="max-h-64 overflow-y-auto border-t border-slate-100 dark:border-slate-800">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400 dark:bg-slate-800">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Fecha</th>
+                    <th className="px-3 py-2 font-medium">Duración</th>
+                    <th className="px-3 py-2 font-medium">RPE</th>
+                    <th className="px-3 py-2 font-medium">Carga (UA)</th>
+                    <th className="px-3 py-2 font-medium">Readiness</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {historialReciente.map((d, i) => (
+                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-300">{d.fecha}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-500 dark:text-slate-400">
+                        {d.duracionMin > 0 ? `${d.duracionMin} min` : '—'}
+                      </td>
+                      <td
+                        className="px-3 py-2 font-semibold"
+                        style={{ color: d.rpe > 0 ? colorRpe(d.rpe) : undefined }}
+                      >
+                        {d.rpe > 0 ? d.rpe : '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 text-slate-600 dark:text-slate-300">
+                        {d.srpe > 0 ? `${d.srpe} UA` : '—'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        {d.wellness !== null ? (
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className="h-2 w-2 shrink-0 rounded-full"
+                              style={{ background: colorReadiness20(d.wellness) }}
+                            />
+                            {d.wellness} / 20
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-600">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
         </div>
 
         <div className="flex justify-end border-t border-slate-100 px-5 py-4 dark:border-slate-800">
