@@ -1,27 +1,21 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { Card } from '@/components/Card'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
+import { useEvaluationsDashboardStore } from '@/stores/useEvaluationsDashboardStore'
 
 /**
  * Dashboard Analítico de Evaluaciones de Rendimiento (Fase 33.2, ver
  * docs/Propuesta_Integracion_NSCA.md sección 1) — a diferencia de
  * `CsvImportTab` (GPS, columnas fijas), acá el CSV puede traer CUALQUIER
  * batería de test (CMJ_Height, Fuerza_Max, Asimetria_RSI, etc.): se
- * clasifican las columnas en runtime (metadata vs. métrica numérica), se
- * filtra por Categoría/Posición y se compara cada jugador contra la media
- * del grupo filtrado (mismo método de z-score del Cap. 13 NSCA que ya usa el
- * resto de la app). No se persiste a ningún store — es visualización rápida
- * de un reporte externo (VALD, Hawkin Dynamics, planilla propia).
+ * clasifican las columnas en runtime (metadata vs. métrica numérica, ver
+ * `useEvaluationsDashboardStore`), se filtra por Categoría/Posición y se
+ * compara cada jugador contra la media del grupo filtrado (mismo método de
+ * z-score del Cap. 13 NSCA que ya usa el resto de la app). El CSV parseado y
+ * su clasificación persisten en IndexedDB — sobreviven a un F5.
  */
-const PATRONES_METADATA = {
-  jugador: ['jugador', 'player', 'nombre', 'atleta', 'name'],
-  fechaNacimiento: ['fechanacimiento', 'birthdate', 'dob', 'nacimiento', 'fechadenacimiento'],
-  categoria: ['categoria', 'category', 'division'],
-  posicion: ['posicion', 'position', 'pos'],
-}
-
 function normalizar(texto: string): string {
   return texto
     .trim()
@@ -30,7 +24,7 @@ function normalizar(texto: string): string {
     .replace(/[̀-ͯ]/g, '')
 }
 
-/** Clave de matching más agresiva que `normalizar` — también saca espacios/guiones para que "Fecha_Nacimiento" y "Fecha Nacimiento" calcen con el mismo patrón. */
+/** Clave de matching más agresiva que `normalizar` — también saca espacios/guiones. */
 function normalizarClave(texto: string): string {
   return normalizar(texto).replace(/[^a-z0-9]/g, '')
 }
@@ -38,43 +32,6 @@ function normalizarClave(texto: string): string {
 function parsearNumero(valor: unknown): number {
   const num = Number(String(valor ?? '').replace(',', '.'))
   return Number.isFinite(num) ? num : 0
-}
-
-function esValorNumerico(valor: string): boolean {
-  const limpio = valor.trim().replace(',', '.')
-  return limpio !== '' && Number.isFinite(Number(limpio))
-}
-
-/** Una columna es "métrica" si NO es metadata y al menos 80% de sus valores no vacíos parsean como número — así una columna de fecha de nacimiento o de club nunca aparece en el selector de métricas. */
-function esColumnaNumerica(columna: string, filas: Record<string, string>[]): boolean {
-  const valores = filas.map((f) => (f[columna] ?? '').trim()).filter((v) => v !== '')
-  if (valores.length === 0) return false
-  const numericos = valores.filter(esValorNumerico).length
-  return numericos / valores.length >= 0.8
-}
-
-interface ClasificacionCsv {
-  columnaJugador: string
-  columnaCategoria: string | null
-  columnaPosicion: string | null
-  metricas: string[]
-}
-
-function clasificarColumnas(columnas: string[], filas: Record<string, string>[]): ClasificacionCsv {
-  const claves = columnas.map((c) => ({ original: c, clave: normalizarClave(c) }))
-  const encontrar = (patrones: string[]) => claves.find((c) => patrones.includes(c.clave))?.original ?? null
-
-  const columnaJugador = encontrar(PATRONES_METADATA.jugador) ?? columnas[0]
-  const columnaCategoria = encontrar(PATRONES_METADATA.categoria)
-  const columnaPosicion = encontrar(PATRONES_METADATA.posicion)
-  const columnaFechaNacimiento = encontrar(PATRONES_METADATA.fechaNacimiento)
-
-  const metadata = new Set(
-    [columnaJugador, columnaCategoria, columnaPosicion, columnaFechaNacimiento].filter((c): c is string => c !== null),
-  )
-  const metricas = columnas.filter((c) => !metadata.has(c) && esColumnaNumerica(c, filas))
-
-  return { columnaJugador, columnaCategoria, columnaPosicion, metricas }
 }
 
 /** "Asimetria_RSI", "Asym_Force", "Imbalance_pct" → true. En estas métricas MENOS es mejor, al revés que el resto. */
@@ -134,12 +91,15 @@ export function EvaluacionesRendimientoTab() {
   const showToast = useToastStore((s) => s.showToast)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const [filas, setFilas] = useState<Record<string, string>[]>([])
-  const [clasificacion, setClasificacion] = useState<ClasificacionCsv | null>(null)
+  const filas = useEvaluationsDashboardStore((s) => s.filas)
+  const clasificacion = useEvaluationsDashboardStore((s) => s.clasificacion)
+  const nombreArchivo = useEvaluationsDashboardStore((s) => s.nombreArchivo)
+  const cargarCsv = useEvaluationsDashboardStore((s) => s.cargarCsv)
+  const borrarDatos = useEvaluationsDashboardStore((s) => s.borrarDatos)
+
   const [metricaSeleccionada, setMetricaSeleccionada] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
   const [posicionFiltro, setPosicionFiltro] = useState('')
-  const [nombreArchivo, setNombreArchivo] = useState('')
 
   function procesarArchivo(file: File) {
     Papa.parse<Record<string, string>>(file, {
@@ -151,23 +111,37 @@ export function EvaluacionesRendimientoTab() {
           showToast('error', 'El CSV no tiene columnas reconocibles.')
           return
         }
-        const clasif = clasificarColumnas(cols, resultado.data)
+        const clasif = cargarCsv(cols, resultado.data, file.name)
         if (clasif.metricas.length === 0) {
           showToast('error', 'No se encontró ninguna columna numérica para graficar en este CSV.')
         }
 
-        setFilas(resultado.data)
-        setClasificacion(clasif)
         setMetricaSeleccionada(clasif.metricas[0] ?? '')
         setCategoriaFiltro('')
         setPosicionFiltro('')
-        setNombreArchivo(file.name)
       },
       error: (err) => {
         showToast('error', getErrorMessage(err, 'No se pudo leer el archivo CSV.'))
       },
     })
   }
+
+  function handleBorrarDatos() {
+    borrarDatos()
+    setMetricaSeleccionada('')
+    setCategoriaFiltro('')
+    setPosicionFiltro('')
+  }
+
+  // Si el CSV persistido se hidrata desde IndexedDB después del primer render
+  // (F5), `metricaSeleccionada` arranca vacío porque es estado local, no
+  // persistido — sin esto, el select muestra la primera métrica pero el
+  // dashboard queda en el estado "sin datos" hasta que el profe la retoca a mano.
+  useEffect(() => {
+    if (clasificacion && !metricaSeleccionada && clasificacion.metricas.length > 0) {
+      setMetricaSeleccionada(clasificacion.metricas[0])
+    }
+  }, [clasificacion, metricaSeleccionada])
 
   const categoriasUnicas = useMemo(() => {
     if (!clasificacion?.columnaCategoria) return []
@@ -236,82 +210,95 @@ export function EvaluacionesRendimientoTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar evaluaciones (CSV)</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Cualquier CSV con columnas de metadatos (Jugador, Categoría, Posición, Fecha de Nacimiento) y columnas de
-          métricas numéricas (ej. CMJ_Height, Fuerza_Max, Asimetria_RSI). Se clasifican automáticamente.
-        </p>
-
-        <div
-          onClick={() => inputRef.current?.click()}
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-8 text-center transition-colors hover:border-union-red-400 dark:border-slate-700"
-        >
-          <span className="text-2xl">📈</span>
-          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            {nombreArchivo || 'Hacé clic para elegir un archivo .csv'}
+      {!clasificacion ? (
+        <Card className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar evaluaciones (CSV)</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Cualquier CSV con columnas de metadatos (Jugador, Categoría, Posición, Fecha de Nacimiento) y columnas de
+            métricas numéricas (ej. CMJ_Height, Fuerza_Max, Asimetria_RSI). Se clasifican automáticamente.
           </p>
-          {clasificacion && (
-            <p className="text-xs text-slate-400">
-              Jugador: {clasificacion.columnaJugador} · {clasificacion.metricas.length} métrica(s) numérica(s)
-              detectada(s)
+
+          <div
+            onClick={() => inputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-8 text-center transition-colors hover:border-union-red-400 dark:border-slate-700"
+          >
+            <span className="text-2xl">📈</span>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              Hacé clic para elegir un archivo .csv
             </p>
-          )}
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) procesarArchivo(file)
-              e.target.value = ''
-            }}
-          />
-        </div>
-      </Card>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) procesarArchivo(file)
+                e.target.value = ''
+              }}
+            />
+          </div>
+        </Card>
+      ) : (
+        <Card className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{nombreArchivo}</h2>
+              <p className="text-xs text-slate-400">
+                Jugador: {clasificacion.columnaJugador} · {clasificacion.metricas.length} métrica(s) numérica(s)
+                detectada(s)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleBorrarDatos}
+              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-union-red-400 hover:bg-union-red-50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-union-red-500/10 dark:hover:text-union-red-400"
+            >
+              🗑️ Borrar Datos
+            </button>
+          </div>
 
-      {clasificacion && (
-        <Card className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-slate-700 dark:text-slate-300">Métrica a visualizar</span>
-            <select className={selectClass} value={metricaSeleccionada} onChange={(e) => setMetricaSeleccionada(e.target.value)}>
-              {clasificacion.metricas.length === 0 && <option value="">Sin métricas numéricas</option>}
-              {clasificacion.metricas.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {clasificacion.columnaCategoria && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Categoría</span>
-              <select className={selectClass} value={categoriaFiltro} onChange={(e) => setCategoriaFiltro(e.target.value)}>
-                <option value="">Todas</option>
-                {categoriasUnicas.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+              <span className="font-medium text-slate-700 dark:text-slate-300">Métrica a visualizar</span>
+              <select className={selectClass} value={metricaSeleccionada} onChange={(e) => setMetricaSeleccionada(e.target.value)}>
+                {clasificacion.metricas.length === 0 && <option value="">Sin métricas numéricas</option>}
+                {clasificacion.metricas.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
                   </option>
                 ))}
               </select>
             </label>
-          )}
 
-          {clasificacion.columnaPosicion && (
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-medium text-slate-700 dark:text-slate-300">Posición</span>
-              <select className={selectClass} value={posicionFiltro} onChange={(e) => setPosicionFiltro(e.target.value)}>
-                <option value="">Todas</option>
-                {posicionesUnicas.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+            {clasificacion.columnaCategoria && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-300">Categoría</span>
+                <select className={selectClass} value={categoriaFiltro} onChange={(e) => setCategoriaFiltro(e.target.value)}>
+                  <option value="">Todas</option>
+                  {categoriasUnicas.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {clasificacion.columnaPosicion && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-medium text-slate-700 dark:text-slate-300">Posición</span>
+                <select className={selectClass} value={posicionFiltro} onChange={(e) => setPosicionFiltro(e.target.value)}>
+                  <option value="">Todas</option>
+                  {posicionesUnicas.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
         </Card>
       )}
 
