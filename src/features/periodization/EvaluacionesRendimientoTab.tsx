@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { Card } from '@/components/Card'
 import { useToastStore } from '@/store/useToastStore'
+import { useAppStore } from '@/store/useAppStore'
 import { getErrorMessage } from '@/utils/errors'
 import { useEvaluationsDashboardStore } from '@/stores/useEvaluationsDashboardStore'
 
@@ -97,6 +98,17 @@ export function EvaluacionesRendimientoTab() {
   const cargarCsv = useEvaluationsDashboardStore((s) => s.cargarCsv)
   const borrarDatos = useEvaluationsDashboardStore((s) => s.borrarDatos)
 
+  // Categoría activa del selector global del club (Paso 1) — el nombre tiene
+  // que calzar carácter por carácter con los valores que resuelve el Smart
+  // Matcher (`smartEntityMatcher.ts`), por eso ese motor nunca le agrega
+  // sufijos como "(estimado)" al nombre de la categoría.
+  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+  const categoriesDelClub = useAppStore((s) => s.categories)
+  const categoriaActivaNombre = useMemo(
+    () => categoriesDelClub.find((c) => c.id === activeCategoryId)?.nombre ?? null,
+    [categoriesDelClub, activeCategoryId],
+  )
+
   const [metricaSeleccionada, setMetricaSeleccionada] = useState('')
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
   const [posicionFiltro, setPosicionFiltro] = useState('')
@@ -148,6 +160,17 @@ export function EvaluacionesRendimientoTab() {
     const col = clasificacion.columnaCategoria
     return Array.from(new Set(filas.map((f) => f[col]).filter((v): v is string => !!v?.trim()))).sort()
   }, [filas, clasificacion])
+
+  // Paso 1: si el profe cambia la categoría en el header principal (o recién
+  // cargó un CSV que incluye la categoría activa), el filtro de este
+  // dashboard la sigue automáticamente — sin esto, "8va División" quedaría
+  // seleccionada en el resto de la app pero Evaluaciones seguiría mostrando
+  // "Todas" hasta que alguien la tocara a mano.
+  useEffect(() => {
+    if (categoriaActivaNombre && categoriasUnicas.includes(categoriaActivaNombre)) {
+      setCategoriaFiltro(categoriaActivaNombre)
+    }
+  }, [categoriaActivaNombre, categoriasUnicas])
 
   const posicionesUnicas = useMemo(() => {
     if (!clasificacion?.columnaPosicion) return []

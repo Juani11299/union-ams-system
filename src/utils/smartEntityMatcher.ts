@@ -108,7 +108,12 @@ export function resolverCategoriaClub(
   if (anioNacimientoTexto) {
     const anio = extraerAnioNacimiento(anioNacimientoTexto)
     if (anio !== null) {
-      return { nombre: `${mapearAnioACategoriaAfa(anio)} (estimado)`, fuente: 'mapeo-afa' }
+      // `nombre` queda LIMPIO (sin sufijo "(estimado)") a propósito: tiene
+      // que calzar carácter por carácter con `categories[].nombre` del store
+      // global para que el filtro se pueda sincronizar con el selector de
+      // categoría del header (Paso 1). `fuente: 'mapeo-afa'` sigue
+      // disponible para quien quiera distinguir confirmado vs. estimado.
+      return { nombre: mapearAnioACategoriaAfa(anio), fuente: 'mapeo-afa' }
     }
   }
 
