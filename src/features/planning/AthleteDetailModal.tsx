@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { Avatar } from '@/components/Avatar'
 import { Badge, type BadgeTone } from '@/components/Badge'
 import { calcularSerieDiasAtleta, colorRpe } from '@/features/workload/calculations'
@@ -57,7 +57,7 @@ interface PuntoTendenciaDia {
 }
 
 /** Tooltip personalizado del gráfico de tendencia (Fase 34) — desglosa el sRPE en RPE crudo × Tiempo, no sólo el total. */
-function TooltipTendencia({ active, payload }: TooltipProps<number, string>) {
+function TooltipTendencia({ active, payload }: TooltipContentProps) {
   if (!active || !payload || payload.length === 0) return null
   const d = payload[0]?.payload as PuntoTendenciaDia | undefined
   if (!d) return null
@@ -184,7 +184,7 @@ export function AthleteDetailModal({
                     tick={{ fontSize: 11 }}
                     allowDecimals={false}
                   />
-                  <Tooltip content={<TooltipTendencia />} />
+                  <Tooltip content={(props) => <TooltipTendencia {...props} />} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line
                     yAxisId="left"
