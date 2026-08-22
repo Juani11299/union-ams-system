@@ -5,6 +5,7 @@ import { getErrorMessage } from '@/utils/errors'
 import { formatFechaCorta } from '@/utils/fecha'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
 import { AiPlanModal } from './AiPlanModal'
+import { MesocycleProgressionModal } from './MesocycleProgressionModal'
 import type { SessionPlan, GymSheetData, GymSheetBloque } from '@/types'
 
 function nuevoId(): string {
@@ -60,6 +61,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
   const [sheet, setSheet] = useState<GymSheetData>(() => sheetInicial(plan))
   const [guardando, setGuardando] = useState(false)
   const [mostrarModalIA, setMostrarModalIA] = useState(false)
+  const [mostrarMesociclo, setMostrarMesociclo] = useState(false)
 
   const categoria = categories.find((c) => c.id === plan.category_id)
 
@@ -199,6 +201,14 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
               className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
             >
               📥 Pegar Planilla
+            </button>
+            <button
+              type="button"
+              onClick={() => setMostrarMesociclo(true)}
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold hover:bg-sky-700"
+              title="Clona esta sesión hacia las próximas semanas con sobrecarga progresiva y descarga automáticas"
+            >
+              🔁 Generar Mesociclo
             </button>
             <button
               type="button"
@@ -434,6 +444,15 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
           categoriaNombre={categoria?.nombre ?? 'Sin categoría'}
           onGenerado={(data) => setSheet(data)}
           onClose={() => setMostrarModalIA(false)}
+        />
+      )}
+
+      {mostrarMesociclo && (
+        <MesocycleProgressionModal
+          plan={plan}
+          gymSheetBase={sheet}
+          onClose={() => setMostrarMesociclo(false)}
+          onGenerado={() => setMostrarMesociclo(false)}
         />
       )}
     </div>
