@@ -4,7 +4,11 @@ import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
 import { inputClass } from '@/components/FormField'
 import { ComplementaryPlanPdfExport } from './ComplementaryPlanPdfExport'
-import { generarPlanDesdeObjetivo } from './complementaryGenerator'
+import {
+  generarPlanDesdeObjetivo,
+  METODOS_HIPERTROFIA_OPCIONES,
+  type MetodoHipertrofia,
+} from './complementaryGenerator'
 import type { ComplementaryPlan, ComplementaryPlanExercise } from '@/types'
 
 const MIN_SEMANAS = 1
@@ -63,6 +67,7 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
   const [guardando, setGuardando] = useState(false)
   const [exportando, setExportando] = useState(false)
   const [promptObjetivo, setPromptObjetivo] = useState('')
+  const [metodo, setMetodo] = useState<MetodoHipertrofia>('tradicional')
 
   function handleCambiarSemanas(valor: number) {
     if (!Number.isFinite(valor)) return
@@ -122,9 +127,16 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
 
   function handleGenerarConVaritaMagica() {
     if (!promptObjetivo.trim()) return
-    const nuevos = generarPlanDesdeObjetivo(promptObjetivo, semanas)
-    setEjercicios(nuevos)
-    showToast('success', `¡Planilla generada! ${nuevos.length} ejercicio(s) con progresión de ${semanas} semana(s).`)
+    const nuevos = generarPlanDesdeObjetivo(promptObjetivo, semanas, metodo)
+    // Append, nunca sobrescribe — el profe puede correr la varita varias
+    // veces (distintos objetivos/métodos) e ir acumulando ejercicios.
+    setEjercicios((prev) => [...prev, ...nuevos])
+    showToast('success', `¡Agregados ${nuevos.length} ejercicio(s) (${metodo}) con progresión de ${semanas} semana(s)!`)
+  }
+
+  function handleLimpiar() {
+    setEjercicios([])
+    setPromptObjetivo('')
   }
 
   const semanasArray = Array.from({ length: semanas }, (_, i) => i + 1)
@@ -171,21 +183,47 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
               Ejercicios de Hipertrofia y Vitamina con progresión de volumen automática — nunca fuerza máxima ni
               potencia neural.
             </p>
-            <textarea
-              value={promptObjetivo}
-              onChange={(e) => setPromptObjetivo(e.target.value)}
-              rows={2}
-              placeholder="¿Qué querés lograr con este plan? (Ej: Empuje tren superior y zona media)"
-              className="mt-2 w-full resize-none rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-violet-500/30 dark:bg-slate-800 dark:text-slate-100"
-            />
-            <button
-              type="button"
-              onClick={handleGenerarConVaritaMagica}
-              disabled={!promptObjetivo.trim()}
-              className="mt-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              ✨ Generar Planilla
-            </button>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <textarea
+                value={promptObjetivo}
+                onChange={(e) => setPromptObjetivo(e.target.value)}
+                rows={2}
+                placeholder="¿Qué querés lograr con este plan? (Ej: Empuje tren superior y zona media)"
+                className="w-full flex-1 resize-none rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-violet-500/30 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <label className="flex w-full flex-col gap-1 text-xs sm:w-44">
+                <span className="font-medium text-violet-700 dark:text-violet-400">Método de Hipertrofia</span>
+                <select
+                  value={metodo}
+                  onChange={(e) => setMetodo(e.target.value as MetodoHipertrofia)}
+                  className="h-full rounded-lg border border-violet-200 bg-white px-2 py-2 text-sm text-slate-900 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-violet-500/30 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  {METODOS_HIPERTROFIA_OPCIONES.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleGenerarConVaritaMagica}
+                disabled={!promptObjetivo.trim()}
+                className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ✨ Generar Planilla
+              </button>
+              <button
+                type="button"
+                onClick={handleLimpiar}
+                disabled={ejercicios.length === 0 && !promptObjetivo.trim()}
+                className="rounded-lg border border-violet-300 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-500/40 dark:text-violet-400 dark:hover:bg-violet-500/10"
+              >
+                🗑️ Limpiar
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-end gap-3">

@@ -148,50 +148,94 @@ export function seleccionarEjerciciosPorObjetivo(prompt: string): EjercicioCatal
   return seleccionados.length > 0 ? seleccionados : CATALOGO_GENERICO
 }
 
+export type MetodoHipertrofia = 'tradicional' | 'rest-pause' | 'drop-sets' | 'tut'
+
+/** Para el `<select>` del editor — orden = orden de aparición en el dropdown. */
+export const METODOS_HIPERTROFIA_OPCIONES: { value: MetodoHipertrofia; label: string }[] = [
+  { value: 'tradicional', label: 'Tradicional' },
+  { value: 'rest-pause', label: 'Rest-Pause' },
+  { value: 'drop-sets', label: 'Drop Sets' },
+  { value: 'tut', label: 'Tiempo Bajo Tensión (TUT)' },
+]
+
 /**
  * Progresión de hipertrofia predeterminada (Paso 3) — para un bloque de 4
  * semanas reproduce EXACTO el ejemplo pedido: 3x10@7 → 3x12@7.5 → 4x10@8 →
  * 3x8@6 (descarga). La última semana del plan siempre es descarga; las
  * anteriores ciclan por este patrón de 3 pasos, sumando 1 serie extra cada
  * vez que el ciclo se repite completo — así un mesociclo más largo que 4
- * semanas sigue progresando en vez de repetir números idénticos.
+ * semanas sigue progresando en vez de repetir números idénticos. Sólo el
+ * método Tradicional tiene esta escalada numérica: es el único con una
+ * estructura limpia series×reps×RPE — los otros 3 métodos (abajo) tienen
+ * formatos de texto propios (clusters de Rest-Pause, "+Fallo" de Drop Sets,
+ * tempo de TUT) que no se prestan a la misma aritmética, así que sólo ciclan.
  */
-const PROGRESION_HIPERTROFIA_BASE = [
+const PROGRESION_TRADICIONAL_BASE = [
   { series: 3, reps: 10, rpe: 7 },
   { series: 3, reps: 12, rpe: 7.5 },
   { series: 4, reps: 10, rpe: 8 },
 ]
-const DELOAD = { series: 3, reps: 8, rpe: 6 }
+const DELOAD_TRADICIONAL = { series: 3, reps: 8, rpe: 6 }
 
 function formatearPrescripcion(p: { series: number; reps: number; rpe: number }): string {
   return `${p.series}x${p.reps} @ RPE ${p.rpe}`
 }
 
-export function generarProgresionSemanal(semanas: number): string[] {
-  if (semanas <= 1) return [formatearPrescripcion(PROGRESION_HIPERTROFIA_BASE[0])]
+/** Pasos de carga (se ciclan sin escalar en planes de más de 3 semanas de carga) de los métodos no-Tradicionales. */
+const PASOS_CARGA_POR_METODO: Record<Exclude<MetodoHipertrofia, 'tradicional'>, string[]> = {
+  'rest-pause': ['1x(12+4+4)', '1x(12+5+5)', '1x(15+5+5)'],
+  'drop-sets': ['3x(8+Fallo)', '3x(10+Fallo)', '4x(8+Fallo)'],
+  tut: ['3x8 (Tempo 4010)', '3x10 (Tempo 4010)', '4x8 (Tempo 4010)'],
+}
+const DESCARGA_POR_METODO: Record<Exclude<MetodoHipertrofia, 'tradicional'>, string> = {
+  'rest-pause': '1x(12) Descarga',
+  'drop-sets': '3x8 Normal (Descarga)',
+  tut: '3x8 Normal (Descarga)',
+}
+
+export function generarProgresionSemanal(semanas: number, metodo: MetodoHipertrofia = 'tradicional'): string[] {
+  if (metodo === 'tradicional') {
+    if (semanas <= 1) return [formatearPrescripcion(PROGRESION_TRADICIONAL_BASE[0])]
+
+    const resultado: string[] = []
+    const semanasCarga = semanas - 1
+    for (let i = 0; i < semanasCarga; i++) {
+      const vuelta = Math.floor(i / PROGRESION_TRADICIONAL_BASE.length)
+      const base = PROGRESION_TRADICIONAL_BASE[i % PROGRESION_TRADICIONAL_BASE.length]
+      resultado.push(formatearPrescripcion({ ...base, series: base.series + vuelta }))
+    }
+    resultado.push(formatearPrescripcion(DELOAD_TRADICIONAL))
+    return resultado
+  }
+
+  const pasosCarga = PASOS_CARGA_POR_METODO[metodo]
+  const descarga = DESCARGA_POR_METODO[metodo]
+
+  if (semanas <= 1) return [pasosCarga[0]]
 
   const resultado: string[] = []
   const semanasCarga = semanas - 1
-
   for (let i = 0; i < semanasCarga; i++) {
-    const vuelta = Math.floor(i / PROGRESION_HIPERTROFIA_BASE.length)
-    const base = PROGRESION_HIPERTROFIA_BASE[i % PROGRESION_HIPERTROFIA_BASE.length]
-    resultado.push(formatearPrescripcion({ ...base, series: base.series + vuelta }))
+    resultado.push(pasosCarga[i % pasosCarga.length])
   }
-
-  resultado.push(formatearPrescripcion(DELOAD))
+  resultado.push(descarga)
   return resultado
 }
 
 /**
  * Genera la matriz completa del plan (Pasos 2+3) — ejercicios elegidos por
- * el objetivo en lenguaje natural, con la progresión de hipertrofia
- * inyectada en cada semana. El caller (`ComplementaryPlanEditor`) es quien
- * sobrescribe el estado `ejercicios` con el resultado (Paso 4).
+ * el objetivo en lenguaje natural, con la progresión del método de
+ * hipertrofia elegido inyectada en cada semana. El caller
+ * (`ComplementaryPlanEditor`) hace el append sobre el estado `ejercicios`
+ * existente con el resultado (Paso 3 de esta fase — ya no sobrescribe).
  */
-export function generarPlanDesdeObjetivo(prompt: string, semanas: number): ComplementaryPlanExercise[] {
+export function generarPlanDesdeObjetivo(
+  prompt: string,
+  semanas: number,
+  metodo: MetodoHipertrofia = 'tradicional',
+): ComplementaryPlanExercise[] {
   const ejerciciosSeleccionados = seleccionarEjerciciosPorObjetivo(prompt)
-  const progresionPorSemana = generarProgresionSemanal(semanas)
+  const progresionPorSemana = generarProgresionSemanal(semanas, metodo)
 
   return ejerciciosSeleccionados.map((ej) => {
     const progressions: Record<string, string> = {}
