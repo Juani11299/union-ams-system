@@ -4,6 +4,7 @@ import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
 import { inputClass } from '@/components/FormField'
 import { ComplementaryPlanPdfExport } from './ComplementaryPlanPdfExport'
+import { generarPlanDesdeObjetivo } from './complementaryGenerator'
 import type { ComplementaryPlan, ComplementaryPlanExercise } from '@/types'
 
 const MIN_SEMANAS = 1
@@ -61,6 +62,7 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
   )
   const [guardando, setGuardando] = useState(false)
   const [exportando, setExportando] = useState(false)
+  const [promptObjetivo, setPromptObjetivo] = useState('')
 
   function handleCambiarSemanas(valor: number) {
     if (!Number.isFinite(valor)) return
@@ -118,6 +120,13 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
     if (await guardar()) setExportando(true)
   }
 
+  function handleGenerarConVaritaMagica() {
+    if (!promptObjetivo.trim()) return
+    const nuevos = generarPlanDesdeObjetivo(promptObjetivo, semanas)
+    setEjercicios(nuevos)
+    showToast('success', `¡Planilla generada! ${nuevos.length} ejercicio(s) con progresión de ${semanas} semana(s).`)
+  }
+
   const semanasArray = Array.from({ length: semanas }, (_, i) => i + 1)
 
   return (
@@ -154,6 +163,31 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
         </div>
 
         <div className="flex-1 overflow-auto p-4">
+          <div className="mb-4 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 p-4 dark:border-violet-500/30 dark:bg-violet-500/5">
+            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-violet-700 dark:text-violet-400">
+              🪄 Autocompletado Inteligente
+            </h3>
+            <p className="mt-1 text-xs text-violet-600/80 dark:text-violet-400/70">
+              Ejercicios de Hipertrofia y Vitamina con progresión de volumen automática — nunca fuerza máxima ni
+              potencia neural.
+            </p>
+            <textarea
+              value={promptObjetivo}
+              onChange={(e) => setPromptObjetivo(e.target.value)}
+              rows={2}
+              placeholder="¿Qué querés lograr con este plan? (Ej: Empuje tren superior y zona media)"
+              className="mt-2 w-full resize-none rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 dark:border-violet-500/30 dark:bg-slate-800 dark:text-slate-100"
+            />
+            <button
+              type="button"
+              onClick={handleGenerarConVaritaMagica}
+              disabled={!promptObjetivo.trim()}
+              className="mt-2 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ✨ Generar Planilla
+            </button>
+          </div>
+
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-sm">
               <span className="font-medium text-slate-700 dark:text-slate-300">Título del plan</span>
