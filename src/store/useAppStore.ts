@@ -25,6 +25,7 @@ import type {
   StrengthAssignmentAthlete,
   GymExternalLoad,
   Posicion,
+  ComplementaryPlan,
 } from '@/types'
 import type { GrupoPosicion } from '@/utils/posicion'
 import { supabase, isSupabaseConfigured } from '@/utils/supabase'
@@ -61,6 +62,9 @@ import {
   strengthAssignmentAthleteFromRow,
   gymExternalLoadFromRow,
   gymExternalLoadToUpsertRow,
+  complementaryPlanFromRow,
+  complementaryPlanToInsertRow,
+  complementaryPlanToUpdateRow,
   type AthleteRow,
   type AthleteInput,
   type SessionPlanRow,
@@ -88,6 +92,9 @@ import {
   type StrengthAssignmentAthleteRow,
   type GymExternalLoadRow,
   type NuevoGymExternalLoadInput,
+  type ComplementaryPlanRow,
+  type NuevoComplementaryPlanInput,
+  type ComplementaryPlanUpdateInput,
 } from '@/utils/supabaseMappers'
 
 const SUPABASE_NO_CONFIGURADO =
@@ -148,6 +155,7 @@ interface AppState {
   strengthAssignments: StrengthAssignment[]
   strengthAssignmentAthletes: StrengthAssignmentAthlete[]
   gymExternalLoads: GymExternalLoad[]
+  complementaryPlans: ComplementaryPlan[]
   activeSeasonId: string | null
   activeCategoryId: string | null
   /** Link mágico con `?locked=true` (Fase 19) — mientras esté en `true`, el
@@ -215,6 +223,10 @@ interface AppState {
   deleteStrengthAssignment: (id: string) => Promise<void>
   /** Alta/corrección del registro de la Terminal de Fuerza (Fase 17) — upsert por `(athleteId, sessionId)`. */
   submitGymExternalLoad: (input: NuevoGymExternalLoadInput) => Promise<void>
+  /** Devuelve el plan creado — el editor lo necesita de inmediato para seguir editando sin recargar. */
+  createComplementaryPlan: (input: NuevoComplementaryPlanInput) => Promise<ComplementaryPlan>
+  updateComplementaryPlan: (id: string, input: ComplementaryPlanUpdateInput) => Promise<void>
+  deleteComplementaryPlan: (id: string) => Promise<void>
 }
 
 /** Lanza y deja el mensaje en `error` del store si Supabase no está configurado. */
@@ -244,6 +256,7 @@ export const useAppStore = create<AppState>()(
   strengthAssignments: [],
   strengthAssignmentAthletes: [],
   gymExternalLoads: [],
+  complementaryPlans: [],
   activeSeasonId: null,
   activeCategoryId: null,
   categoryLocked: false,
@@ -297,6 +310,7 @@ export const useAppStore = create<AppState>()(
           supabase.from('strength_assignments').select('*'),
           supabase.from('strength_assignment_athletes').select('*'),
           supabase.from('gym_external_loads').select('*'),
+          supabase.from('complementary_plans').select('*'),
         ]),
         timeout,
       ])
@@ -319,6 +333,7 @@ export const useAppStore = create<AppState>()(
         strengthAssignmentsRes,
         strengthAssignmentAthletesRes,
         gymExternalLoadsRes,
+        complementaryPlansRes,
       ] = resultados
 
       // Resiliente a fallas parciales: una tabla que falle (RLS mal configurada, tabla
@@ -342,6 +357,7 @@ export const useAppStore = create<AppState>()(
         strengthAssignmentsRes,
         strengthAssignmentAthletesRes,
         gymExternalLoadsRes,
+        complementaryPlansRes,
       ].find((r) => r.error)?.error
 
       const seasons = (seasonsRes.data ?? []) as Season[]
@@ -391,6 +407,9 @@ export const useAppStore = create<AppState>()(
         ).map(strengthAssignmentAthleteFromRow),
         gymExternalLoads: ((gymExternalLoadsRes.data ?? []) as GymExternalLoadRow[]).map(
           gymExternalLoadFromRow,
+        ),
+        complementaryPlans: ((complementaryPlansRes.data ?? []) as ComplementaryPlanRow[]).map(
+          complementaryPlanFromRow,
         ),
         activeSeasonId,
         activeCategoryId,
@@ -1196,6 +1215,61 @@ export const useAppStore = create<AppState>()(
       gymExternalLoads: [...state.gymExternalLoads.filter((g) => g.id !== guardado.id), guardado],
     }))
   },
+
+  createComplementaryPlan: async (input) => {
+    exigirSupabase(set)
+
+    const { data, error } = await supabase
+      .from('complementary_plans')
+      .insert(complementaryPlanToInsertRow(input))
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const creado = complementaryPlanFromRow(data as ComplementaryPlanRow)
+    set((state) => ({ complementaryPlans: [...state.complementaryPlans, creado] }))
+    return creado
+  },
+
+  updateComplementaryPlan: async (id, input) => {
+    exigirSupabase(set)
+
+    const { data, error } = await supabase
+      .from('complementary_plans')
+      .update(complementaryPlanToUpdateRow(input))
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const actualizado = complementaryPlanFromRow(data as ComplementaryPlanRow)
+    set((state) => ({
+      complementaryPlans: state.complementaryPlans.map((p) => (p.id === id ? actualizado : p)),
+    }))
+  },
+
+  deleteComplementaryPlan: async (id) => {
+    exigirSupabase(set)
+
+    const { error } = await supabase.from('complementary_plans').delete().eq('id', id)
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    set((state) => ({
+      complementaryPlans: state.complementaryPlans.filter((p) => p.id !== id),
+    }))
+  },
     }),
     {
       name: 'soma-app-store',
@@ -1224,6 +1298,7 @@ export const useAppStore = create<AppState>()(
         strengthAssignments: state.strengthAssignments,
         strengthAssignmentAthletes: state.strengthAssignmentAthletes,
         gymExternalLoads: state.gymExternalLoads,
+        complementaryPlans: state.complementaryPlans,
         activeSeasonId: state.activeSeasonId,
         activeCategoryId: state.activeCategoryId,
       }),
@@ -1246,6 +1321,17 @@ export function useAthletesActivos(): Athlete[] {
     )
     return athletes.filter((a) => idsActivos.has(a.id))
   }, [athletes, rosters, activeSeasonId, activeCategoryId])
+}
+
+/** Planes Complementarios de la categoría activa — biblioteca de club, no de temporada (mismo criterio que `strengthTemplates`). */
+export function useComplementaryPlansActivos(): ComplementaryPlan[] {
+  const complementaryPlans = useAppStore((s) => s.complementaryPlans)
+  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+
+  return useMemo(
+    () => complementaryPlans.filter((p) => p.categoryId === activeCategoryId),
+    [complementaryPlans, activeCategoryId],
+  )
 }
 
 /** Sesiones planificadas de la categoría/temporada activa. */

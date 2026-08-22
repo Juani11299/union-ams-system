@@ -21,6 +21,7 @@ import { GpsObjetivoForm } from '@/features/planificador/GpsObjetivoForm'
 import { TemplateLibraryPanel, DRAG_MIME_PLANTILLA } from '@/features/planificador/TemplateLibraryPanel'
 import { VitaminaAssignmentModal } from '@/features/planificador/VitaminaAssignmentModal'
 import { RackOrganizerModal } from '@/features/external-load/RackOrganizerModal'
+import { ComplementaryPlansPanel } from '@/features/planificador/ComplementaryPlansPanel'
 import {
   compararConObjetivo,
   calcularCargaEjecutadaReal,
@@ -1266,6 +1267,7 @@ export function PlanificadorView() {
   const [bibliotecaAbierta, setBibliotecaAbierta] = useState(false)
   const [exportandoSemana, setExportandoSemana] = useState(false)
   const [organizadorAbierto, setOrganizadorAbierto] = useState(false)
+  const [complementariosAbierto, setComplementariosAbierto] = useState(false)
   const categoriaActiva = categories.find((c) => c.id === activeCategoryId)
   const [vitaminaPendiente, setVitaminaPendiente] = useState<{
     templateId: string
@@ -1359,6 +1361,14 @@ export function PlanificadorView() {
             }`}
           >
             📚 Biblioteca de Plantillas {bibliotecaAbierta ? '▴' : '▾'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setComplementariosAbierto(true)}
+            disabled={!activeCategoryId}
+            className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            🎒 Planes Extra-Club (Complementarios)
           </button>
         </div>
       </div>
@@ -1490,6 +1500,14 @@ export function PlanificadorView() {
           gymExternalLoads={gymExternalLoads}
           sessionPlans={sessionPlans}
           onClose={() => setOrganizadorAbierto(false)}
+        />
+      )}
+
+      {complementariosAbierto && activeCategoryId && (
+        <ComplementaryPlansPanel
+          categoryId={activeCategoryId}
+          categoriaNombre={categoriaActiva?.nombre ?? 'Sin categoría'}
+          onClose={() => setComplementariosAbierto(false)}
         />
       )}
     </div>

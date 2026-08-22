@@ -26,6 +26,8 @@ import type {
   TipoTarea,
   WellnessEntry,
   WellnessRating,
+  ComplementaryPlan,
+  ComplementaryPlanData,
 } from '@/types'
 
 // Las tablas `clubs`, `seasons`, `team_categories` y `rosters` ya usan snake_case
@@ -760,5 +762,55 @@ export function gymExternalLoadToUpsertRow(input: NuevoGymExternalLoadInput) {
     exercise_name: input.exerciseName,
     sets_data: input.setsData.map((s) => ({ reps: s.reps, weight_kg: s.weightKg })),
     total_tonnage: input.totalTonnage,
+  }
+}
+
+export interface ComplementaryPlanRow {
+  id: string
+  category_id: string
+  title: string
+  duration_weeks: number
+  plan_data: ComplementaryPlanData
+  created_at: string
+}
+
+export function complementaryPlanFromRow(row: ComplementaryPlanRow): ComplementaryPlan {
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    title: row.title,
+    durationWeeks: row.duration_weeks,
+    planData: row.plan_data,
+    createdAt: row.created_at,
+  }
+}
+
+export interface NuevoComplementaryPlanInput {
+  categoryId: string
+  title: string
+  durationWeeks: number
+  planData: ComplementaryPlanData
+}
+
+export function complementaryPlanToInsertRow(input: NuevoComplementaryPlanInput) {
+  return {
+    category_id: input.categoryId,
+    title: input.title,
+    duration_weeks: input.durationWeeks,
+    plan_data: input.planData,
+  }
+}
+
+export interface ComplementaryPlanUpdateInput {
+  title: string
+  durationWeeks: number
+  planData: ComplementaryPlanData
+}
+
+export function complementaryPlanToUpdateRow(input: ComplementaryPlanUpdateInput) {
+  return {
+    title: input.title,
+    duration_weeks: input.durationWeeks,
+    plan_data: input.planData,
   }
 }
