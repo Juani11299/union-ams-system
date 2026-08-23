@@ -142,7 +142,14 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
   const semanasArray = Array.from({ length: semanas }, (_, i) => i + 1)
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 py-6 print:hidden">
+    // Fragment a propósito: `ComplementaryPlanPdfExport` (su `.print-area`)
+    // tiene que vivir FUERA del div `print:hidden` de abajo. `print:hidden`
+    // es `display:none` en @media print, y a diferencia de `visibility`,
+    // `display:none` en un ancestro no lo puede "revertir" ningún
+    // descendiente — así que si el export quedara anidado ahí adentro, el
+    // PDF se imprimía en blanco aunque el `.print-area` en sí estuviera bien.
+    <>
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 py-6 print:hidden">
       <div className="flex max-h-[90vh] w-full max-w-6xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl bg-slate-900 px-4 py-3 text-white">
           <span className="text-sm font-medium">🎒 {plan.title}</span>
@@ -324,6 +331,7 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
           </button>
         </div>
       </div>
+      </div>
 
       {exportando && (
         <ComplementaryPlanPdfExport
@@ -333,6 +341,6 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
           onClose={() => setExportando(false)}
         />
       )}
-    </div>
+    </>
   )
 }
