@@ -4,6 +4,7 @@ import { useToastStore } from '@/store/useToastStore'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { getErrorMessage } from '@/utils/errors'
 import { ComplementaryPlanEditor } from './ComplementaryPlanEditor'
+import { ClonePlanModal } from './ClonePlanModal'
 import type { ComplementaryPlan } from '@/types'
 
 interface ComplementaryPlansPanelProps {
@@ -29,6 +30,7 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
   const [planEnEdicion, setPlanEnEdicion] = useState<ComplementaryPlan | null>(null)
   const [confirmandoEliminar, setConfirmandoEliminar] = useState<ComplementaryPlan | null>(null)
   const [eliminando, setEliminando] = useState(false)
+  const [planAClonar, setPlanAClonar] = useState<ComplementaryPlan | null>(null)
 
   async function handleCrear() {
     setCreando(true)
@@ -101,14 +103,25 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
                       {plan.durationWeeks} semanas · {plan.planData.exercises.length} ejercicio(s)
                     </p>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmandoEliminar(plan)}
-                    aria-label="Eliminar plan"
-                    className="shrink-0 text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPlanAClonar(plan)}
+                      aria-label="Clonar a otra categoría"
+                      title="📋 Clonar a otra Categoría"
+                      className="rounded-md px-1.5 py-1 text-sm text-slate-400 hover:bg-slate-100 hover:text-union-red-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-union-red-400"
+                    >
+                      📋
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmandoEliminar(plan)}
+                      aria-label="Eliminar plan"
+                      className="text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -130,6 +143,14 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
           plan={planEnEdicion}
           categoriaNombre={categoriaNombre}
           onClose={() => setPlanEnEdicion(null)}
+        />
+      )}
+
+      {planAClonar && (
+        <ClonePlanModal
+          plan={planAClonar}
+          onClonado={() => setPlanAClonar(null)}
+          onClose={() => setPlanAClonar(null)}
         />
       )}
 

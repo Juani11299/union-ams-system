@@ -227,6 +227,12 @@ interface AppState {
   createComplementaryPlan: (input: NuevoComplementaryPlanInput) => Promise<ComplementaryPlan>
   updateComplementaryPlan: (id: string, input: ComplementaryPlanUpdateInput) => Promise<void>
   deleteComplementaryPlan: (id: string) => Promise<void>
+  /** Clona un plan a otra categoría (Fase 39, "Clonado entre Categorías") — mismo `planData`/`durationWeeks`, categoría y título nuevos. Devuelve el plan clonado ya creado en Supabase. */
+  cloneComplementaryPlan: (
+    planOrigen: ComplementaryPlan,
+    categoryIdDestino: string,
+    tituloNuevo: string,
+  ) => Promise<ComplementaryPlan>
 }
 
 /** Lanza y deja el mensaje en `error` del store si Supabase no está configurado. */
@@ -1269,6 +1275,15 @@ export const useAppStore = create<AppState>()(
     set((state) => ({
       complementaryPlans: state.complementaryPlans.filter((p) => p.id !== id),
     }))
+  },
+
+  cloneComplementaryPlan: async (planOrigen, categoryIdDestino, tituloNuevo) => {
+    return get().createComplementaryPlan({
+      categoryId: categoryIdDestino,
+      title: tituloNuevo,
+      durationWeeks: planOrigen.durationWeeks,
+      planData: planOrigen.planData,
+    })
   },
     }),
     {
