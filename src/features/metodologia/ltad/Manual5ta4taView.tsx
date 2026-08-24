@@ -274,9 +274,70 @@ export function Manual5ta4taView() {
         </Hoja>
 
         <Hoja>
-          <Encabezado eyebrow="06 — Referencias Bibliográficas" />
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Titulo>06. Fundamentos Fisiológicos y Biomecánicos (NSCA)</Titulo>
+          <P>
+            Los capítulos anteriores establecieron que esta etapa deja de "construir capacidad"
+            para pasar a "transferir capacidad" al rendimiento competitivo específico. Este
+            capítulo desarrolla el fundamento bioenergético de esa transferencia, apoyado en el
+            marco curricular de la NSCA (Haff &amp; Triplett, 2017): la especificidad metabólica
+            del entrenamiento y el mecanismo periférico de la fatiga que ese entrenamiento debe
+            aprender a manejar.
+          </P>
+          <Titulo>6.1 Especificidad metabólica y transferencia de potencia</Titulo>
+          <P>
+            El principio de especificidad metabólica establece que la adaptación al
+            entrenamiento es máxima cuando el sistema energético predominante del estímulo de
+            entrenamiento coincide con el sistema energético predominante de la demanda
+            competitiva real. El fútbol de alto rendimiento exige, de forma repetida y en
+            secuencia impredecible, potencia máxima de corta duración (sprints, saltos, duelos)
+            sostenida sobre 90+ minutos — una combinación de demanda del sistema del fosfágeno
+            (la acción puntual) y del sistema glucolítico/aeróbico (la capacidad de repetir esa
+            acción con mínima degradación). En esta etapa, con la capacidad estructural de fuerza
+            y RFD ya construida en las categorías anteriores (Manual 7ma y 6ta, Sección 1.4), el
+            objetivo del entrenamiento deja de ser desarrollar esa capacidad desde cero y pasa a
+            ser <span className="font-semibold text-union-charcoal">transferirla</span> —
+            expresarla en gestos y velocidades específicas del fútbol competitivo, bajo el mismo
+            perfil metabólico que exige el partido real, no bajo el perfil metabólico genérico
+            de un programa de fuerza de gimnasio.
+          </P>
+          <Titulo>6.2 Fatiga periférica y acidosis metabólica</Titulo>
+          <P>
+            La fatiga periférica —a diferencia de la fatiga central, de origen en el sistema
+            nervioso— ocurre directamente en el tejido muscular, y uno de sus mecanismos mejor
+            documentados en el marco de la NSCA es la acumulación de metabolitos de la
+            glucólisis anaeróbica, en particular iones de hidrógeno (H+), que reducen el pH
+            intramuscular (acidosis metabólica). Esa acidificación interfiere directamente con el
+            ciclo de los puentes cruzados de miosina-actina (Capítulo 6 del Manual Metodológico
+            Oficial): reduce la sensibilidad al calcio de las proteínas contráctiles y la tasa a
+            la que los puentes cruzados pueden ciclarse, disminuyendo tanto la fuerza máxima
+            disponible como la velocidad de producción de esa fuerza — el correlato bioquímico
+            exacto de por qué un jugador fatigado en el minuto 80 no solo "siente" cansancio,
+            produce objetivamente menos fuerza y a menor velocidad que en el minuto 10. Entrenar
+            la tolerancia a este mecanismo —sin comprometer la calidad de fuerza y potencia ya
+            construida— es el objetivo metabólico específico de esta última etapa del recorrido
+            LTAD del club.
+          </P>
+          <blockquote className="mt-3 border-l-4 border-union-red-600 bg-slate-50 py-2 pl-4 pr-3 text-[11px] italic leading-relaxed text-slate-600 break-inside-avoid">
+            Concepto clave NSCA: transferir capacidad al rendimiento específico exige que el
+            estímulo de entrenamiento respete la especificidad metabólica de la demanda
+            competitiva, y que el jugador entrene explícitamente su tolerancia a la acidosis
+            metabólica que produce la fatiga periférica — la misma acidificación que, a nivel del
+            sarcómero, interfiere con el ciclo de los puentes cruzados que sostiene toda
+            producción de fuerza.
+            <footer className="mt-1 text-[10px] font-semibold not-italic text-union-charcoal">
+              Haff, G.G., &amp; Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and
+              Conditioning (4th ed.). National Strength and Conditioning Association / Human
+              Kinetics.
+            </footer>
+          </blockquote>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
+              'Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.',
               'Añon, P. (2026). Entrenamiento de la fuerza en niños y adolescentes.',
               'Gathercole, R., Sporer, B., Stellingwerff, T., & Sleivert, G. (2015). Citado en material de estudio del Máster en Alto Rendimiento — Real Madrid ("Fuerza de Frenado como predictor de Fatiga"); referencia secundaria sin datos bibliográficos completos disponibles en la fuente original.',
               'Robles, J. I. (s.f.). Alteraciones en las fases del salto con contramovimiento (CMJ) como indicador de la fatiga neuromuscular en deportes de conjunto [Trabajo de Fin de Máster, Máster en Alto Rendimiento Deportivo]. Tutor: Javier Olaya Cuartero.',
@@ -434,7 +495,8 @@ const INDICE: { numero: string; titulo: string }[] = [
   { numero: '03', titulo: 'Metodología de Aprendizaje' },
   { numero: '04', titulo: 'Desarrollo de la Fuerza — Cómo Atacarla' },
   { numero: '05', titulo: 'Plan de Acción — Proyección LTAD' },
-  { numero: '06', titulo: 'Referencias Bibliográficas' },
+  { numero: '06', titulo: 'Fundamentos Fisiológicos y Biomecánicos (NSCA)' },
+  { numero: '07', titulo: 'Referencias Bibliográficas' },
 ]
 
 function Indice() {

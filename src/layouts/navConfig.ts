@@ -20,6 +20,13 @@ export const navItems: NavItem[] = [
   { to: '/carga-externa', label: 'Control de Carga Externa', shortLabel: 'Carga Externa', icon: '📡' },
   { to: '/medical', label: 'Área Médica', shortLabel: 'Médica', icon: '🩺' },
   {
+    to: '/metodologia',
+    label: 'Biblioteca de Manuales',
+    shortLabel: 'Manuales',
+    icon: '📚',
+    group: 'Estructura de Trabajo',
+  },
+  {
     to: '/metodologia/isometria',
     label: 'Escuela de Movimiento (Isometría)',
     shortLabel: 'Isometría',

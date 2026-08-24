@@ -370,9 +370,62 @@ export function Manual10maPre9naView() {
         </Hoja>
 
         <Hoja>
-          <Encabezado eyebrow="06 — Referencias Bibliográficas" />
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Titulo>06. Fundamentos Fisiológicos y Biomecánicos (NSCA)</Titulo>
+          <P>
+            Los capítulos anteriores justificaron la alfabetización motora en términos de
+            entrenabilidad neural. Este capítulo suma el fundamento biomecánico complementario,
+            apoyado en el marco curricular de la NSCA (Haff &amp; Triplett, 2017): durante el
+            estirón puberal, el cuerpo del jugador no crece de forma proporcional ni sincronizada
+            — y esa asincronía cambia literalmente las palancas con las que el sistema nervioso
+            tiene que aprender a moverse.
+          </P>
+          <Titulo>6.1 Palancas biomecánicas en transformación</Titulo>
+          <P>
+            Un segmento óseo actúa, mecánicamente, como una palanca: la longitud de ese segmento
+            determina el brazo de momento sobre el que un músculo aplica torque en la
+            articulación. Durante el Pico de Velocidad de Crecimiento (PHV), los huesos largos
+            —fémur, tibia— crecen en longitud a una velocidad mucho mayor que la del tronco, y de
+            forma marcadamente más rápida que la capacidad del sistema neuromuscular de
+            recalibrar la coordinación intermuscular necesaria para controlar esa nueva palanca.
+            El resultado, ampliamente documentado en el marco curricular de la NSCA, es una
+            ventana de torpeza motora transitoria (<span className="italic">adolescent awkwardness</span>):
+            patrones que el jugador dominaba con su cuerpo anterior dejan de ejecutarse con la
+            misma eficiencia, no por regresión de capacidad sino porque la relación entre
+            longitud de palanca y fuerza muscular disponible cambió más rápido de lo que el
+            control motor pudo recalibrar.
+          </P>
+          <Titulo>6.2 El cartílago de crecimiento como límite estructural real</Titulo>
+          <P>
+            A diferencia del adulto, el hueso de un jugador de 12-13 años conserva placas de
+            crecimiento (cartílago epifisario) activas en los extremos de los huesos largos —el
+            tejido responsable del propio crecimiento longitudinal, y estructuralmente más débil
+            frente a cargas de cizallamiento y compresión axial repetida que el hueso maduro que
+            eventualmente lo reemplaza. Es la razón biomecánica, no solo prudencial, por la que
+            este manual (Capítulo 4) prioriza el dominio técnico del propio peso corporal por
+            sobre la carga externa: cualquier sobrecarga axial alta aplicada sobre una palanca
+            ósea todavía inmadura, con cartílago de crecimiento activo, expone al jugador a un
+            riesgo estructural que no existe de la misma forma en categorías post-PHV.
+          </P>
+          <blockquote className="mt-3 border-l-4 border-union-red-600 bg-slate-50 py-2 pl-4 pr-3 text-[11px] italic leading-relaxed text-slate-600 break-inside-avoid">
+            Concepto clave NSCA: la alfabetización motora de esta etapa no es una elección
+            metodológica conservadora — es la respuesta biomecánica correcta a un cuerpo cuyas
+            palancas óseas cambian de longitud más rápido de lo que el sistema nervioso puede
+            recalibrar el control motor, sobre un tejido (cartílago de crecimiento) que todavía
+            no tiene la resistencia estructural del hueso adulto.
+            <footer className="mt-1 text-[10px] font-semibold not-italic text-union-charcoal">
+              Haff, G.G., &amp; Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and
+              Conditioning (4th ed.). National Strength and Conditioning Association / Human
+              Kinetics.
+            </footer>
+          </blockquote>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
+              'Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.',
               'Añon, P. (2026). Entrenamiento de la fuerza en niños y adolescentes.',
               'Baker, J., et al. (2018). Citado en material del Máster en Alto Rendimiento — Real Madrid; referencia secundaria sin datos bibliográficos completos disponibles en la fuente.',
               'Balyi, I., & Way, R. (2009). The role of monitoring growth in Long-Term Athlete Development. Canadian Sport for Life.',
@@ -583,7 +636,8 @@ const INDICE: { numero: string; titulo: string }[] = [
   { numero: '03', titulo: 'Metodología de Aprendizaje' },
   { numero: '04', titulo: 'Desarrollo de la Fuerza — Cómo Atacarla' },
   { numero: '05', titulo: 'Plan de Acción — Proyección LTAD' },
-  { numero: '06', titulo: 'Referencias Bibliográficas' },
+  { numero: '06', titulo: 'Fundamentos Fisiológicos y Biomecánicos (NSCA)' },
+  { numero: '07', titulo: 'Referencias Bibliográficas' },
 ]
 
 function Indice() {

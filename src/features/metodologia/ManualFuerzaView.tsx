@@ -135,14 +135,206 @@ export function ManualFuerzaView() {
           <Encabezado eyebrow="05.3 — LTAD: 6ta y 5ta División" />
           <CategoriaLtad {...LTAD_65} />
         </Hoja>
-        <Hoja ultima>
+        <Hoja>
           <Encabezado eyebrow="05.4 — LTAD: 4ta División y Reserva" />
           <CategoriaLtad {...LTAD_4R} />
+        </Hoja>
+
+        {/* Capítulo 6 — Fundamentos Fisiológicos y Biomecánicos (NSCA) (2 hojas) */}
+        <Hoja>
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Cap6Intro />
+          <Cap6Bioenergeticos />
+        </Hoja>
+        <Hoja>
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Cap6FuerzaVelocidad />
+          <Cap6Filamentos />
+        </Hoja>
+
+        {/* Capítulo 7 — Referencias Bibliográficas */}
+        <Hoja ultima>
+          <Encabezado eyebrow="07 — Referencias Bibliográficas" />
+          <Cap7Referencias />
           <Cierre />
           <Pie />
         </Hoja>
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Capítulo 6 — Fundamentos Fisiológicos y Biomecánicos (NSCA)
+// ---------------------------------------------------------------------------
+
+function Cap6Intro() {
+  return (
+    <section>
+      <Titulo>06. Fundamentos Fisiológicos y Biomecánicos (NSCA)</Titulo>
+      <P>
+        Los capítulos anteriores describieron el "qué" y el "cuándo" del entrenamiento de
+        fuerza en la Metodología UNIÓN — RFD, CEA, arquitectura de sesión, periodización por
+        microciclo. Este capítulo cierra el círculo con el "por qué" celular y mecánico: tres
+        pilares de fisiología del ejercicio y biomecánica muscular que la NSCA (National
+        Strength and Conditioning Association) establece como base curricular obligatoria de
+        todo profesional certificado en fuerza y acondicionamiento físico, siguiendo la
+        referencia canónica del campo (Haff &amp; Triplett, 2017).
+      </P>
+    </section>
+  )
+}
+
+function Cap6Bioenergeticos() {
+  return (
+    <section className="mt-5">
+      <Titulo>6.1 Sistemas bioenergéticos: Fosfágeno vs. Glucólisis</Titulo>
+      <P>
+        Toda contracción muscular depende de la resíntesis continua de ATP, y el fútbol exige
+        que esa resíntesis ocurra bajo demandas de intensidad y duración radicalmente distintas
+        dentro de la misma sesión — de ahí que los sistemas energéticos descriptos por la NSCA
+        (Haff &amp; Triplett, 2017) no compitan entre sí, sino que se activen de forma
+        superpuesta, con predominancia relativa según la duración e intensidad del esfuerzo.
+      </P>
+      <P>
+        El <span className="font-semibold text-union-charcoal">sistema del fosfágeno</span>{' '}
+        (ATP-PCr) domina los primeros 6-10 segundos de un esfuerzo máximo: no requiere oxígeno
+        ni una cadena metabólica compleja — la fosfocreatina almacenada en el músculo dona un
+        grupo fosfato directamente al ADP para regenerar ATP casi instantáneamente. Es el
+        sistema que sostiene un sprint de 20-30 metros, un salto, un primer paso de aceleración
+        o una repetición pesada de sentadilla en el gimnasio. El{' '}
+        <span className="font-semibold text-union-charcoal">sistema glucolítico</span>{' '}
+        (glucólisis anaeróbica) toma el relevo a partir de esfuerzos de 10 segundos y hasta
+        aproximadamente 2 minutos: metaboliza glucógeno muscular sin oxígeno, produciendo ATP a
+        una tasa menor que el fosfágeno pero sosteniendo esfuerzos más prolongados, con
+        acumulación progresiva de metabolitos (lactato, iones de hidrógeno) que eventualmente
+        limitan la producción de fuerza — el sustrato dominante de una secuencia de duelos y
+        transiciones repetidas en un lapso corto de juego.
+      </P>
+      <P>
+        La implicación metodológica directa es que el trabajo de fuerza de esta plataforma —
+        series de baja a moderada repetición, con pausas completas entre series (Sección 2.1)
+        — está diseñado deliberadamente para operar dentro de la ventana del sistema del
+        fosfágeno, no del glucolítico: el objetivo es tensión mecánica e intención máxima de
+        producción de fuerza, no acumulación metabólica. Confundir ambos sistemas —por ejemplo,
+        prescribiendo series largas con pausas cortas buscando "fuerza"— entrena en realidad
+        tolerancia metabólica, un objetivo legítimo pero distinto, y ajeno al Plan GENERAL de
+        esta plataforma.
+      </P>
+    </section>
+  )
+}
+
+function Cap6FuerzaVelocidad() {
+  return (
+    <section className="mt-5">
+      <Titulo>6.2 La relación fuerza-velocidad</Titulo>
+      <P>
+        La relación fuerza-velocidad, formalizada originalmente por Hill (1938) y adoptada como
+        marco curricular estándar por la NSCA (Haff &amp; Triplett, 2017), describe una curva
+        hiperbólica inversa: cuanto mayor es la carga externa que un músculo debe vencer, menor
+        es la velocidad máxima a la que puede acortarse, y viceversa. En sus dos extremos, la
+        curva define las dos cualidades "puras" del entrenamiento de fuerza — fuerza máxima
+        (carga altísima, velocidad cercana a cero, como una sentadilla al 1RM) y velocidad
+        máxima (carga externa mínima o nula, como un sprint) — y todo punto intermedio de la
+        curva (potencia, definida como el producto de fuerza por velocidad) representa una
+        combinación específica de ambas.
+      </P>
+      <P>
+        Esta curva no es sólo un modelo teórico: es la justificación biomecánica directa de por
+        qué la Metodología UNIÓN entrena, en distintos días del microciclo (Capítulo 4), puntos
+        deliberadamente distintos de esa curva. El día de Tensión/Fuerza Máxima (MD-4) ataca el
+        extremo de alta fuerza-baja velocidad; el día de Potencia (MD-3) ataca la zona media —
+        fuerza y velocidad combinadas— vía movimientos balísticos y derivados de levantamiento;
+        el día de Reactividad/Velocidad (MD-2) ataca el extremo opuesto, de baja fuerza y
+        velocidad máxima. Entrenar sólo un punto de la curva —por ejemplo, fuerza máxima todo el
+        año— produce una adaptación real pero acotada a esa zona específica: no transfiere
+        automáticamente a la velocidad máxima, porque ambos extremos dependen de mecanismos
+        neuromusculares parcialmente distintos. Es la razón fisiológica de fondo por la que
+        ningún día del microciclo de esta plataforma es redundante con otro.
+      </P>
+    </section>
+  )
+}
+
+function Cap6Filamentos() {
+  return (
+    <section className="mt-5">
+      <Titulo>6.3 Teoría de los filamentos deslizantes</Titulo>
+      <P>
+        La Teoría de los Filamentos Deslizantes (<span className="italic">Sliding Filament
+        Theory</span>), formulada por Huxley &amp; Niedergerke (1954) y por Huxley &amp; Hanson
+        (1954) de forma independiente y consolidada como el mecanismo estándar de la contracción
+        muscular en el marco curricular de la NSCA (Haff &amp; Triplett, 2017), explica la
+        producción de fuerza a nivel del sarcómero: los filamentos gruesos (miosina) y delgados
+        (actina) no se acortan individualmente — se deslizan uno sobre el otro. Los puentes
+        cruzados de miosina se unen a sitios activos de la actina, rotan generando fuerza (el
+        "golpe de fuerza" o <span className="italic">power stroke</span>), se liberan mediante
+        hidrólisis de ATP, y vuelven a unirse más adelante en un ciclo repetido miles de veces
+        por segundo a través de todo el músculo — acortando el sarcómero sin que ninguno de los
+        dos filamentos cambie su propia longitud.
+      </P>
+      <P>
+        Esta teoría tiene una consecuencia práctica directa sobre la curva longitud-tensión: la
+        fuerza máxima que un músculo puede producir depende del grado de superposición entre
+        filamentos gruesos y delgados, que a su vez depende del ángulo articular en el momento
+        de la contracción — es la base biomecánica de por qué la técnica de un ejercicio (el
+        rango articular exacto en el que se busca la máxima producción de fuerza) no es un
+        detalle estético, es una variable que determina cuánta fuerza real está disponible en
+        cada punto del movimiento. Junto con la relación fuerza-velocidad (Sección 6.2), la
+        Teoría de los Filamentos Deslizantes completa el marco mecánico de por qué esta
+        plataforma prioriza la calidad técnica del gesto sobre el kilaje absoluto en todas las
+        categorías formativas (Capítulo 5).
+      </P>
+      <CitaVerificada fuente="Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.">
+        Concepto clave NSCA: la producción de fuerza muscular es, en su origen mecánico último,
+        el resultado del deslizamiento cíclico de los filamentos de actina y miosina impulsado
+        por hidrólisis de ATP — el mismo evento molecular que sostiene, en distintas escalas de
+        tiempo e intensidad, tanto una repetición máxima de sentadilla como un sprint de 30
+        metros.
+      </CitaVerificada>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Capítulo 7 — Referencias Bibliográficas
+// ---------------------------------------------------------------------------
+
+function Referencias({ items }: { items: string[] }) {
+  return (
+    <ol className="mt-2 flex flex-col gap-2.5">
+      {items.map((item, i) => (
+        <li key={i} className="text-[10.5px] leading-relaxed text-slate-600">
+          {item}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function Cap7Referencias() {
+  return (
+    <section>
+      <Titulo>07. Referencias Bibliográficas</Titulo>
+      <Referencias
+        items={[
+          'Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.',
+          'Aagaard, P., Simonsen, E.B., Andersen, J.L., Magnusson, P., & Dyhre-Poulsen, P. (2002). Increased rate of force development and neural drive of human skeletal muscle following resistance training. Journal of Applied Physiology, 93(4), 1318-1326.',
+          'Komi, P.V. (2000). Stretch-shortening cycle: a powerful model to study normal and fatigued muscle. Journal of Biomechanics, 33(10), 1197-1206.',
+          'Bosco, C., Komi, P.V., & Ito, A. (1981). Prestretch potentiation of human skeletal muscle during ballistic movement. Acta Physiologica Scandinavica, 111(2), 135-140.',
+          'Sale, D.G. (1988). Neural adaptation to resistance training. Medicine & Science in Sports & Exercise, 20(5 Suppl), S135-145.',
+          'Gabbett, T.J. (2016). The training-injury prevention paradox: should athletes be training smarter and harder? British Journal of Sports Medicine, 50(5), 273-280.',
+          'Croisier, J.L., Ganteaume, S., Binet, J., Genty, M., & Ferret, J.M. (2008). Strength imbalances and prevention of hamstring injury in professional soccer players: a prospective study. American Journal of Sports Medicine, 36(8), 1469-1475.',
+          'Balyi, I., Way, R., & Higgs, C. (2013). Long-Term Athlete Development. Human Kinetics.',
+          'Lloyd, R.S., & Oliver, J.L. (2012). The Youth Physical Development Model: A New Approach to Long-Term Athletic Development. Strength and Conditioning Journal, 34(3), 61-72.',
+          'Mirwald, R.L., Baxter-Jones, A.D., Bailey, D.A., & Beunen, G.P. (2002). An assessment of maturity from anthropometric measurements. Medicine & Science in Sports & Exercise, 34(4), 689-694.',
+          'Hill, A.V. (1938). The heat of shortening and the dynamic constants of muscle. Proceedings of the Royal Society of London B, 126(843), 136-195.',
+          'Huxley, A.F., & Niedergerke, R. (1954). Structural changes in muscle during contraction: interference microscopy of living muscle fibres. Nature, 173(4412), 971-973.',
+          'Huxley, H., & Hanson, J. (1954). Changes in the cross-striations of muscle during contraction and stretch and their structural interpretation. Nature, 173(4412), 973-976.',
+        ]}
+      />
+    </section>
   )
 }
 
@@ -263,6 +455,8 @@ const INDICE: { numero: string; titulo: string }[] = [
   { numero: '03', titulo: 'Escuela de Movimiento e Isometría' },
   { numero: '04', titulo: 'Periodización y Nomenclatura del Microciclo' },
   { numero: '05', titulo: 'Modelo LTAD — Desarrollo Atlético a Largo Plazo' },
+  { numero: '06', titulo: 'Fundamentos Fisiológicos y Biomecánicos (NSCA)' },
+  { numero: '07', titulo: 'Referencias Bibliográficas' },
 ]
 
 function Indice() {

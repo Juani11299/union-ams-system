@@ -296,9 +296,63 @@ export function Manual9na8vaView() {
         </Hoja>
 
         <Hoja>
-          <Encabezado eyebrow="06 — Referencias Bibliográficas" />
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Titulo>06. Fundamentos Fisiológicos y Biomecánicos (NSCA)</Titulo>
+          <P>
+            El Capítulo 1 introdujo el entorno hormonal post-PHV como justificación general de
+            la hipertrofia funcional en esta etapa. Este capítulo desarrolla el mecanismo celular
+            exacto, apoyado en el marco curricular de la NSCA (Haff &amp; Triplett, 2017): por
+            qué esta ventana —y no la anterior ni cualquier otra— es donde el estímulo de
+            hipertrofia empieza a traducirse en una ganancia estructural real de tejido
+            contráctil, y no sólo en eficiencia neural.
+          </P>
+          <Titulo>6.1 Área de sección transversal del músculo (CSA) como determinante de la fuerza</Titulo>
+          <P>
+            La fuerza máxima que un músculo puede producir es, en gran medida, proporcional a su
+            Área de Sección Transversal (<span className="italic">Cross-Sectional Area</span>, CSA)
+            — cuantas más unidades contráctiles (sarcómeros) actúan en paralelo dentro de un
+            mismo músculo, mayor es la fuerza total que ese músculo puede generar
+            simultáneamente. El incremento de CSA (hipertrofia) ocurre principalmente por síntesis
+            de proteína miofibrilar neta positiva: el músculo agrega sarcómeros en paralelo a los
+            ya existentes en respuesta a la tensión mecánica repetida, siempre que la síntesis de
+            proteína supere a la degradación en el balance neto post-entrenamiento. A diferencia
+            de la adaptación neural (Sección 1.5 del Manual Metodológico Oficial), que reorganiza
+            recursos ya existentes, la hipertrofia construye capacidad contráctil genuinamente
+            nueva.
+          </P>
+          <Titulo>6.2 El entorno anabólico post-PHV como condición habilitante</Titulo>
+          <P>
+            La síntesis de proteína miofibrilar no ocurre en el vacío hormonal: depende de un
+            entorno endócrino anabólico favorable —testosterona, hormona de crecimiento (GH) y
+            factor de crecimiento similar a la insulina tipo 1 (IGF-1)— que actúa como condición
+            habilitante, no como disparador por sí solo del proceso. El marco curricular de la
+            NSCA documenta que la concentración de estas hormonas anabólicas aumenta de forma
+            marcada en el período inmediatamente posterior al PHV, coincidiendo exactamente con
+            la ventana de 14-15 años de esta categoría. Es la razón fisiológica precisa —no una
+            convención arbitraria de edad— por la que este manual introduce recién ahora, y no
+            antes, el volumen de entrenamiento orientado específicamente a hipertrofia funcional
+            (Capítulo 4): el mismo estímulo mecánico aplicado antes del PHV encuentra un entorno
+            hormonal que todavía no favorece la misma magnitud de respuesta anabólica.
+          </P>
+          <blockquote className="mt-3 border-l-4 border-union-red-600 bg-slate-50 py-2 pl-4 pr-3 text-[11px] italic leading-relaxed text-slate-600 break-inside-avoid">
+            Concepto clave NSCA: la hipertrofia funcional requiere dos condiciones simultáneas —
+            tensión mecánica repetida sobre el tejido (el estímulo) y un entorno endócrino
+            anabólico capaz de traducir esa tensión en síntesis neta de proteína miofibrilar (la
+            condición habilitante). 9na y 8va división es la primera etapa del club donde ambas
+            condiciones coinciden con la magnitud necesaria.
+            <footer className="mt-1 text-[10px] font-semibold not-italic text-union-charcoal">
+              Haff, G.G., &amp; Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and
+              Conditioning (4th ed.). National Strength and Conditioning Association / Human
+              Kinetics.
+            </footer>
+          </blockquote>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
+              'Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.',
               'Añon, P. (2026). Entrenamiento de la fuerza en niños y adolescentes.',
               'Beunen, G., & Malina, R. (2008). Growth and biologic maturation: Relevance to athletic performance. In H. Hebestreit & O. Bar-Or (Eds.), The young athlete (1.ª ed., pp. 3–17). Blackwell.',
               'Faigenbaum, A., & Myer, G. (2010). Pediatric resistance training: Benefits, concerns, and program design considerations. Current Sports Medicine Reports, 9(3), 161–168.',
@@ -457,7 +511,8 @@ const INDICE: { numero: string; titulo: string }[] = [
   { numero: '03', titulo: 'Metodología de Aprendizaje' },
   { numero: '04', titulo: 'Desarrollo de la Fuerza — Cómo Atacarla' },
   { numero: '05', titulo: 'Plan de Acción — Proyección LTAD' },
-  { numero: '06', titulo: 'Referencias Bibliográficas' },
+  { numero: '06', titulo: 'Fundamentos Fisiológicos y Biomecánicos (NSCA)' },
+  { numero: '07', titulo: 'Referencias Bibliográficas' },
 ]
 
 function Indice() {

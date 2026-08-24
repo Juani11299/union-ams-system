@@ -561,12 +561,99 @@ export function MetodologiaIsometriaView() {
           />
         </Hoja>
 
-        {/* ================= CAPÍTULO 6 — REFERENCIAS ================= */}
+        {/* ================= CAPÍTULO 6 — FUNDAMENTOS NSCA ================= */}
 
         <Hoja>
-          <Encabezado eyebrow="06 — Referencias Bibliográficas" />
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Titulo>06. Fundamentos Fisiológicos y Biomecánicos (NSCA)</Titulo>
+          <P>
+            La clasificación de Natera (Overcoming/Yielding, Capítulos 3-4) describe el "qué" de
+            la isometría aplicada al fútbol. Este capítulo cierra el círculo con el "por qué"
+            neurofisiológico, apoyado en el marco curricular estándar de la NSCA (Haff &amp;
+            Triplett, 2017): dos reflejos propioceptivos — el Órgano Tendinoso de Golgi (OTG) y
+            el huso muscular — que explican, respectivamente, por qué el Overcoming entrena algo
+            que el sistema nervioso normalmente frena, y por qué el Yielding y la isometría
+            específica de sprint (Sección 3.4) construyen la rigidez reactiva que sostiene la
+            velocidad máxima.
+          </P>
+          <Titulo>6.1 El Órgano Tendinoso de Golgi y la inhibición autogénica</Titulo>
+          <P>
+            El Órgano Tendinoso de Golgi (OTG) es un propioceptor ubicado en la unión
+            miotendinosa que detecta la tensión que atraviesa el tendón durante la contracción
+            muscular. Cuando esa tensión supera un umbral crítico, el OTG dispara un reflejo de
+            <span className="font-semibold text-union-charcoal"> inhibición autogénica</span>: una
+            señal inhibitoria que reduce abruptamente la activación del propio músculo que generó
+            la tensión, como mecanismo protector para evitar que el tendón o el músculo se
+            desgarren bajo una carga potencialmente peligrosa. Es, en esencia, un freno de
+            seguridad instalado por el sistema nervioso central — y explica por qué, en una
+            persona sin entrenamiento, la fuerza voluntaria máxima está muy por debajo del límite
+            estructural real del tejido.
+          </P>
+          <Titulo>6.2 Overcoming Isometrics como superación voluntaria de ese freno</Titulo>
+          <P>
+            La evidencia recogida en el marco de la NSCA (Haff &amp; Triplett, 2017) documenta
+            que el entrenamiento de fuerza sostenido —y en particular el trabajo isométrico de
+            intención máxima contra una resistencia inamovible, exactamente la definición de
+            Overcoming Isometrics (Sección 3.1)— eleva progresivamente el umbral de disparo de la
+            inhibición autogénica del OTG. El atleta entrenado no "vence" al reflejo por fuerza de
+            voluntad en cada repetición: reeduca el umbral al que ese reflejo protector interviene,
+            permitiendo reclutar una proporción mayor del potencial contráctil real del músculo
+            antes de que el freno inhibitorio se active. Este es el mecanismo neural de fondo —no
+            sólo mecánico— detrás de por qué Overcoming mejora la producción de fuerza máxima
+            voluntaria y la RFD (Sección 1.2 del Manual Metodológico Oficial): no se construye
+            tejido nuevo en el corto plazo, se libera acceso a tejido contráctil que ya existía
+            pero que el sistema nervioso mantenía retenido por seguridad.
+          </P>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Titulo>6.3 Husos musculares, el reflejo miotático y la rigidez (stiffness) en el sprint</Titulo>
+          <P>
+            El huso muscular es un propioceptor intramuscular, dispuesto en paralelo a las fibras
+            contráctiles, que detecta tanto la longitud del músculo como la velocidad a la que esa
+            longitud cambia (estiramiento). Cuando el músculo se estira de forma súbita, el huso
+            dispara el <span className="font-semibold text-union-charcoal">reflejo miotático</span>{' '}
+            (reflejo de estiramiento): una señal excitatoria monosináptica que activa de forma
+            refleja —y muy rápida, sin mediar decisión consciente— al mismo músculo que se está
+            estirando, generando una contracción de resistencia casi instantánea.
+          </P>
+          <P>
+            Este reflejo es el sustrato neural directo de la rigidez músculo-tendinosa (
+            <span className="italic">stiffness</span>) que la Sección 1.3 del Manual Metodológico
+            Oficial identifica como el mecanismo dominante del Ciclo Estiramiento-Acortamiento
+            (CEA) rápido — el que ocurre en tiempos de contacto menores a 250ms, exactamente el
+            rango del apoyo en sprint a máxima velocidad (80-100ms). Cuanto mayor es la
+            sensibilidad y la velocidad de respuesta del huso muscular, mayor es la capacidad del
+            complejo tobillo-rodilla de comportarse, en ese instante de apoyo, como un resorte
+            rígido que devuelve energía elástica en vez de absorberla pasivamente — la base
+            fisiológica de por qué la isometría específica de sprint (Sección 3.4) entrena
+            tiempos de contacto cortos y no simplemente fuerza máxima: el objetivo es la velocidad
+            y la magnitud de la respuesta refleja del huso, no la tensión voluntaria sostenida.
+          </P>
+          <blockquote className="mt-3 border-l-4 border-union-red-600 bg-slate-50 py-2 pl-4 pr-3 text-[11px] italic leading-relaxed text-slate-600 break-inside-avoid">
+            Concepto clave NSCA: el Órgano Tendinoso de Golgi y el huso muscular son los dos
+            propioceptores que enmarcan, desde extremos opuestos, toda la lógica de este manual —
+            el OTG frena la producción de fuerza voluntaria para proteger el tejido (y el
+            entrenamiento Overcoming reeduca ese freno), mientras que el huso muscular dispara la
+            respuesta refleja involuntaria que sostiene la rigidez reactiva del sprint (y el
+            entrenamiento Yielding/específico de sprint la refina). No son mecanismos redundantes:
+            son las dos caras de la misma moneda neuromuscular.
+            <footer className="mt-1 text-[10px] font-semibold not-italic text-union-charcoal">
+              Haff, G.G., &amp; Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and
+              Conditioning (4th ed.). National Strength and Conditioning Association / Human
+              Kinetics.
+            </footer>
+          </blockquote>
+        </Hoja>
+
+        {/* ================= CAPÍTULO 7 — REFERENCIAS ================= */}
+
+        <Hoja>
+          <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
+              'Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.',
               'Manual Metodológico Oficial — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno, Sección 3, clasificación Yielding/Overcoming de Natera; Sección 1, RFD y ciclo estiramiento-acortamiento).',
               'Manual de 10ma y Pre 9na División — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno).',
               'Manual de 9na y 8va División — Área de Fuerza, Club Atlético Unión de Santa Fe (documento interno).',
@@ -780,7 +867,8 @@ const INDICE: { numero: string; titulo: string }[] = [
   { numero: '03', titulo: 'Overcoming Isometrics — Aceleración y Sprint' },
   { numero: '04', titulo: 'Yielding Isometrics — Frenado y Cambio de Dirección (COD)' },
   { numero: '05', titulo: 'Propuesta Metodológica y Progresión LTAD' },
-  { numero: '06', titulo: 'Referencias Bibliográficas' },
+  { numero: '06', titulo: 'Fundamentos Fisiológicos y Biomecánicos (NSCA)' },
+  { numero: '07', titulo: 'Referencias Bibliográficas' },
 ]
 
 function Indice() {

@@ -7,6 +7,7 @@ import { AdminView } from '@/features/admin/AdminView'
 import { ExternalLoadView } from '@/features/external-load/ExternalLoadView'
 import { MatchDayView } from '@/features/match-day/MatchDayView'
 import { MedicalView } from '@/features/medical/MedicalView'
+import { MetodologiaIndexView } from '@/features/metodologia/MetodologiaIndexView'
 import { MetodologiaIsometriaView } from '@/features/metodologia/MetodologiaIsometriaView'
 import { ManualFuerzaView } from '@/features/metodologia/ManualFuerzaView'
 import { TerminalFuerzaView } from '@/features/terminal-fuerza/TerminalFuerzaView'
@@ -27,6 +28,7 @@ function App() {
         <Route path="/match-day" element={<MatchDayView />} />
         <Route path="/carga-externa" element={<ExternalLoadView />} />
         <Route path="/medical" element={<MedicalView />} />
+        <Route path="/metodologia" element={<MetodologiaIndexView />} />
         <Route path="/metodologia/isometria" element={<MetodologiaIsometriaView />} />
         <Route path="/metodologia/manual-fuerza" element={<ManualFuerzaView />} />
         <Route path="/metodologia/ltad-10ma-pre9na" element={<Manual10maPre9naView />} />

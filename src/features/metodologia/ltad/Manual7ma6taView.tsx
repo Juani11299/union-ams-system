@@ -268,9 +268,64 @@ export function Manual7ma6taView() {
         </Hoja>
 
         <Hoja>
-          <Encabezado eyebrow="06 — Referencias Bibliográficas" />
+          <Encabezado eyebrow="06 — 📖 Fundamentos Fisiológicos y Biomecánicos (NSCA)" />
+          <Titulo>06. Fundamentos Fisiológicos y Biomecánicos (NSCA)</Titulo>
+          <P>
+            El Capítulo 1 estableció que esta etapa es la primera donde la RFD se convierte en
+            una cualidad directamente entrenable con pleno sentido fisiológico. Este capítulo
+            desarrolla el mecanismo neuromuscular exacto detrás de esa afirmación, apoyado en el
+            marco curricular de la NSCA (Haff &amp; Triplett, 2017): el orden de reclutamiento de
+            unidades motoras y el rol específico de las fibras de contracción rápida en la
+            producción de fuerza máxima y de RFD.
+          </P>
+          <Titulo>6.1 El Principio del Tamaño y el orden de reclutamiento</Titulo>
+          <P>
+            El sistema nervioso no recluta unidades motoras al azar: las recluta siguiendo el{' '}
+            <span className="font-semibold text-union-charcoal">Principio del Tamaño</span> de
+            Henneman —de menor a mayor umbral de activación—, comenzando por unidades motoras
+            pequeñas de Tipo I (fibras de contracción lenta, bajo umbral, alta resistencia a la
+            fatiga) y progresando, a medida que la demanda de fuerza aumenta, hacia unidades
+            motoras grandes de Tipo II (fibras de contracción rápida). Las unidades motoras
+            grandes de{' '}
+            <span className="font-semibold text-union-charcoal">Tipo IIx y IIa</span> —las de
+            mayor umbral de reclutamiento, mayor velocidad de conducción y mayor capacidad de
+            producción de fuerza por fibra— sólo se activan cuando la demanda de fuerza o de
+            velocidad de producción de fuerza es lo suficientemente alta: cargas cercanas al
+            máximo, o intención de movimiento explosiva incluso con cargas submáximas.
+          </P>
+          <Titulo>6.2 Por qué esta etapa es la ventana de reclutamiento pleno de Tipo IIx/IIa</Titulo>
+          <P>
+            Reclutar unidades motoras grandes de forma consistente y segura exige dos condiciones
+            que, según lo desarrollado en la Sección 1.2 de este tomo, recién convergen en 16-17
+            años: arquitectura muscular y tendinosa ya adaptada (mayor ángulo de penación, mayor
+            stiffness tendinoso) capaz de tolerar la tensión que esas fibras producen, y un
+            sistema neuromuscular con la sincronización y frecuencia de disparo necesarias para
+            activarlas de forma coordinada. La fuerza máxima depende de reclutar la mayor
+            proporción posible de estas unidades motoras de alto umbral; la RFD depende, además,
+            de la velocidad con la que ese reclutamiento ocurre en los primeros 100-250ms del
+            esfuerzo (Manual Metodológico Oficial, Sección 1.2) — ambas cualidades comparten el
+            mismo sustrato neuromuscular de fondo: el acceso pleno y veloz a las fibras Tipo
+            IIx/IIa, exactamente lo que el trabajo de fuerza máxima e isometría Overcoming de esta
+            etapa (Sección 4.3) entrena de forma directa.
+          </P>
+          <blockquote className="mt-3 border-l-4 border-union-red-600 bg-slate-50 py-2 pl-4 pr-3 text-[11px] italic leading-relaxed text-slate-600 break-inside-avoid">
+            Concepto clave NSCA: la fuerza máxima y la RFD no son cualidades independientes de las
+            fibras Tipo IIx/IIa — son dos expresiones distintas (cuánta fuerza vs. qué tan rápido)
+            del mismo evento neuromuscular: el reclutamiento pleno de las unidades motoras de
+            mayor umbral, disponible con plenitud fisiológica recién a partir de esta etapa.
+            <footer className="mt-1 text-[10px] font-semibold not-italic text-union-charcoal">
+              Haff, G.G., &amp; Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and
+              Conditioning (4th ed.). National Strength and Conditioning Association / Human
+              Kinetics.
+            </footer>
+          </blockquote>
+        </Hoja>
+
+        <Hoja>
+          <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
+              'Haff, G.G., & Triplett, N.T. (Eds.). (2017). Essentials of Strength Training and Conditioning (4th ed.). National Strength and Conditioning Association / Human Kinetics.',
               'Añon, P. (2026). Entrenamiento de la fuerza en niños y adolescentes.',
               'Beunen, G., & Malina, R. (2008). Growth and biologic maturation: Relevance to athletic performance. In H. Hebestreit & O. Bar-Or (Eds.), The young athlete (1.ª ed., pp. 3–17). Blackwell.',
               'Carvalho, H. M., et al. (2012). Citado en Añon, 2026, respecto al desfasaje temporal entre el pico de crecimiento de la masa muscular y el pico de fuerza en varones; referencia secundaria sin datos bibliográficos completos disponibles en la fuente.',
@@ -418,7 +473,8 @@ const INDICE: { numero: string; titulo: string }[] = [
   { numero: '03', titulo: 'Metodología de Aprendizaje' },
   { numero: '04', titulo: 'Desarrollo de la Fuerza — Cómo Atacarla' },
   { numero: '05', titulo: 'Plan de Acción — Proyección LTAD' },
-  { numero: '06', titulo: 'Referencias Bibliográficas' },
+  { numero: '06', titulo: 'Fundamentos Fisiológicos y Biomecánicos (NSCA)' },
+  { numero: '07', titulo: 'Referencias Bibliográficas' },
 ]
 
 function Indice() {
