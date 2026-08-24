@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAppStore } from '@/store/useAppStore'
+import { useAppStore, useComplementaryPlansActivos } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
 import { inputClass } from '@/components/FormField'
@@ -59,6 +59,12 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
   const club = useAppStore((s) => s.club)
   const showToast = useToastStore((s) => s.showToast)
 
+  // Resto de los planes de la misma categoría (Paso 2, "Referencia Cruzada")
+  // — así el profe ve de un vistazo qué grupos musculares ya están
+  // trabajados en los OTROS días antes de sumar ejercicios acá y duplicar
+  // el estímulo en la semana.
+  const otrosPlanes = useComplementaryPlansActivos().filter((p) => p.id !== plan.id)
+
   const [titulo, setTitulo] = useState(plan.title)
   const [semanas, setSemanas] = useState(plan.durationWeeks)
   const [ejercicios, setEjercicios] = useState<ComplementaryPlanExercise[]>(() =>
@@ -68,6 +74,7 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
   const [exportando, setExportando] = useState(false)
   const [promptObjetivo, setPromptObjetivo] = useState('')
   const [metodo, setMetodo] = useState<MetodoHipertrofia>('tradicional')
+  const [mostrarReferencias, setMostrarReferencias] = useState(true)
 
   function handleCambiarSemanas(valor: number) {
     if (!Number.isFinite(valor)) return
@@ -170,6 +177,15 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
             >
               🖨️ Descargar Tarjeta PDF
             </button>
+            {otrosPlanes.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMostrarReferencias((v) => !v)}
+                className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
+              >
+                {mostrarReferencias ? '👁️ Ocultar Otros Planes' : '👁️ Otros Planes (Evitar Duplicidad)'}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -181,6 +197,7 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
           </div>
         </div>
 
+        <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto p-4">
           <div className="mb-4 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50/50 p-4 dark:border-violet-500/30 dark:bg-violet-500/5">
             <h3 className="flex items-center gap-1.5 text-sm font-semibold text-violet-700 dark:text-violet-400">
@@ -330,6 +347,44 @@ export function ComplementaryPlanEditor({ plan, categoriaNombre, onClose }: Comp
             + Agregar ejercicio
           </button>
         </div>
+
+        {mostrarReferencias && otrosPlanes.length > 0 && (
+          <aside className="w-64 shrink-0 overflow-y-auto border-l border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              👁️ Otros Planes (Evitar Duplicidad)
+            </h4>
+            <p className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
+              {categoriaNombre} — ejercicios ya cargados en los demás planes.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {otrosPlanes.map((p) => {
+                const nombresEjercicios = p.planData.exercises
+                  .map((e) => e.exercise.trim())
+                  .filter(Boolean)
+                return (
+                  <div
+                    key={p.id}
+                    className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <p className="truncate text-xs font-semibold text-slate-700 dark:text-slate-200">{p.title}</p>
+                    {nombresEjercicios.length === 0 ? (
+                      <p className="mt-1 text-[11px] text-slate-400">Sin ejercicios cargados.</p>
+                    ) : (
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {nombresEjercicios.map((nombre, i) => (
+                          <li key={i} className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {nombre}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </aside>
+        )}
+      </div>
       </div>
       </div>
 

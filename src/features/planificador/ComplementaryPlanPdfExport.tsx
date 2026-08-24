@@ -29,41 +29,23 @@ function Casilleros({ texto }: { texto: string }) {
   )
 }
 
+interface ComplementaryPlanCardProps {
+  plan: ComplementaryPlan
+  clubNombre: string
+  categoriaNombre: string
+}
+
 /**
- * Tarjeta de Gimnasio del Plan Complementario (fuerza extra-club) — mismo
- * mecanismo que `DetailedWeeklyPdfExport`: vive oculto en pantalla
- * (`hidden print:block`) y sólo existe en el DOM durante el `window.print()`
- * que dispara al montarse, desmontándose al `afterprint`. Apaisado (A4
- * landscape) porque una tabla de N semanas necesita el ancho, a diferencia
- * del cuadernillo semanal que es A4 vertical.
+ * Contenido imprimible de UN plan (header + tabla + casilleros) — separado
+ * de `ComplementaryPlanPdfExport` para que `BulkComplementaryPdfExport`
+ * (Cartilla completa de la categoría) pueda reusarlo tal cual por cada plan,
+ * en vez de duplicar la tabla entera.
  */
-export function ComplementaryPlanPdfExport({
-  plan,
-  clubNombre,
-  categoriaNombre,
-  onClose,
-}: ComplementaryPlanPdfExportProps) {
-  useEffect(() => {
-    const styleEl = document.createElement('style')
-    styleEl.textContent = '@page { size: A4 landscape; margin: 10mm; }'
-    document.head.appendChild(styleEl)
-
-    function handleAfterPrint() {
-      onClose()
-    }
-    window.addEventListener('afterprint', handleAfterPrint)
-    window.print()
-
-    return () => {
-      styleEl.remove()
-      window.removeEventListener('afterprint', handleAfterPrint)
-    }
-  }, [onClose])
-
+export function ComplementaryPlanCard({ plan, clubNombre, categoriaNombre }: ComplementaryPlanCardProps) {
   const semanas = Array.from({ length: plan.durationWeeks }, (_, i) => i + 1)
 
   return (
-    <div className="hidden print-area print:block">
+    <>
       <div className="flex items-start justify-between gap-4 border-b-4 border-union-red-600 pb-3">
         <div className="flex items-center gap-3">
           <img src="/logo-union.png" alt="" className="h-14 w-14 shrink-0 object-contain" />
@@ -131,6 +113,44 @@ export function ComplementaryPlanPdfExport({
         Escribí con lapicera los kilos levantados en cada casillero. Devolvé esta tarjeta al Área de Fuerza al
         finalizar el mesociclo.
       </p>
+    </>
+  )
+}
+
+/**
+ * Tarjeta de Gimnasio del Plan Complementario (fuerza extra-club) — mismo
+ * mecanismo que `DetailedWeeklyPdfExport`: vive oculto en pantalla
+ * (`hidden print:block`) y sólo existe en el DOM durante el `window.print()`
+ * que dispara al montarse, desmontándose al `afterprint`. Apaisado (A4
+ * landscape) porque una tabla de N semanas necesita el ancho, a diferencia
+ * del cuadernillo semanal que es A4 vertical.
+ */
+export function ComplementaryPlanPdfExport({
+  plan,
+  clubNombre,
+  categoriaNombre,
+  onClose,
+}: ComplementaryPlanPdfExportProps) {
+  useEffect(() => {
+    const styleEl = document.createElement('style')
+    styleEl.textContent = '@page { size: A4 landscape; margin: 10mm; }'
+    document.head.appendChild(styleEl)
+
+    function handleAfterPrint() {
+      onClose()
+    }
+    window.addEventListener('afterprint', handleAfterPrint)
+    window.print()
+
+    return () => {
+      styleEl.remove()
+      window.removeEventListener('afterprint', handleAfterPrint)
+    }
+  }, [onClose])
+
+  return (
+    <div className="hidden print-area print:block">
+      <ComplementaryPlanCard plan={plan} clubNombre={clubNombre} categoriaNombre={categoriaNombre} />
     </div>
   )
 }

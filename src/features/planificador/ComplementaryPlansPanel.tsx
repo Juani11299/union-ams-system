@@ -5,6 +5,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { getErrorMessage } from '@/utils/errors'
 import { ComplementaryPlanEditor } from './ComplementaryPlanEditor'
 import { ClonePlanModal } from './ClonePlanModal'
+import { BulkComplementaryPdfExport } from './BulkComplementaryPdfExport'
 import type { ComplementaryPlan } from '@/types'
 
 interface ComplementaryPlansPanelProps {
@@ -24,6 +25,7 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
   const planes = useComplementaryPlansActivos()
   const createComplementaryPlan = useAppStore((s) => s.createComplementaryPlan)
   const deleteComplementaryPlan = useAppStore((s) => s.deleteComplementaryPlan)
+  const club = useAppStore((s) => s.club)
   const showToast = useToastStore((s) => s.showToast)
 
   const [creando, setCreando] = useState(false)
@@ -31,6 +33,7 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
   const [confirmandoEliminar, setConfirmandoEliminar] = useState<ComplementaryPlan | null>(null)
   const [eliminando, setEliminando] = useState(false)
   const [planAClonar, setPlanAClonar] = useState<ComplementaryPlan | null>(null)
+  const [exportandoCartilla, setExportandoCartilla] = useState(false)
 
   async function handleCrear() {
     setCreando(true)
@@ -75,14 +78,24 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
               {categoriaNombre} — mesociclos de fuerza para gimnasios externos al club.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-          >
-            ✕
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setExportandoCartilla(true)}
+              disabled={planes.length === 0}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              🖨️ Descargar Cartilla Completa (PDF)
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -151,6 +164,15 @@ export function ComplementaryPlansPanel({ categoryId, categoriaNombre, onClose }
           plan={planAClonar}
           onClonado={() => setPlanAClonar(null)}
           onClose={() => setPlanAClonar(null)}
+        />
+      )}
+
+      {exportandoCartilla && (
+        <BulkComplementaryPdfExport
+          plans={planes}
+          clubNombre={club?.nombre ?? 'C.A. Unión'}
+          categoriaNombre={categoriaNombre}
+          onClose={() => setExportandoCartilla(false)}
         />
       )}
 
