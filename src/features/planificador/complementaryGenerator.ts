@@ -52,6 +52,15 @@ const DICCIONARIO_TAGS: TagDefinicion[] = [
       { exercise: 'Press inclinado con mancuernas', notes: 'Hipertrofia — tempo controlado, RIR 2-3, nunca al fallo' },
       { exercise: 'Flexiones de brazos (lastradas o en banco)', notes: 'Vitamina — variante según nivel, foco en técnica' },
       { exercise: 'Press militar sentado con mancuernas', notes: 'Hipertrofia — core activo, evitar arqueo lumbar' },
+      { exercise: 'Flexiones asimétricas (una mano elevada)', notes: 'Vitamina — más carga unilateral, mantener cadera cuadrada' },
+      { exercise: 'Landmine press a un brazo', notes: 'Hipertrofia — trayectoria amigable de hombro, RIR alto' },
+      { exercise: 'Fondos en paralelas (asistidos)', notes: 'Hipertrofia — rango controlado, evitar dolor anterior de hombro' },
+      { exercise: 'Press de banca con mancuernas', notes: 'Hipertrofia — tempo controlado, RIR 2-3, nunca al fallo' },
+      { exercise: 'Flexiones declinadas (pies elevados)', notes: 'Vitamina — mayor exigencia de empuje superior, técnica antes que volumen' },
+      { exercise: 'Press Arnold con mancuernas', notes: 'Hipertrofia — rotación controlada, cargas livianas' },
+      { exercise: 'Press de banca con mancuerna a un brazo', notes: 'Hipertrofia — anti-rotación de tronco, unilateral' },
+      { exercise: 'Flexiones con apoyo en anillas o TRX', notes: 'Vitamina — mayor demanda de estabilidad de hombro' },
+      { exercise: 'Press pike (empuje vertical en el piso)', notes: 'Vitamina — preparatorio de press militar, sin carga externa' },
     ],
   },
   {
@@ -61,6 +70,15 @@ const DICCIONARIO_TAGS: TagDefinicion[] = [
       { exercise: 'Remo con mancuerna a un brazo', notes: 'Hipertrofia — pausa de 1s en la contracción' },
       { exercise: 'Jalón al pecho en polea', notes: 'Hipertrofia — controlar la fase excéntrica' },
       { exercise: 'Face pull con banda', notes: 'Vitamina — salud de hombro, cargas livianas' },
+      { exercise: 'Dominadas supinas asistidas', notes: 'Hipertrofia — asistencia según nivel, RIR 2-3' },
+      { exercise: 'Dominadas pronas asistidas', notes: 'Hipertrofia — asistencia según nivel, controlar la excéntrica' },
+      { exercise: 'Remo invertido en TRX', notes: 'Vitamina — ajustar ángulo del cuerpo según dificultad' },
+      { exercise: 'Remo en polea baja (Gironda)', notes: 'Hipertrofia — pausa en la contracción, espalda neutra' },
+      { exercise: 'Pullover en polea alta', notes: 'Hipertrofia — foco en dorsal, sin arquear lumbar' },
+      { exercise: 'Vuelos posteriores (pájaros) con mancuernas', notes: 'Vitamina — deltoides posterior, cargas mínimas' },
+      { exercise: 'Remo unilateral en polea baja', notes: 'Hipertrofia — anti-rotación de tronco' },
+      { exercise: 'Band pull-apart (apertura con banda)', notes: 'Vitamina — salud de hombro, entre bloques o como activación' },
+      { exercise: 'Remo en máquina con agarre neutro', notes: 'Hipertrofia — RIR alto, técnica antes que carga' },
     ],
   },
   {
@@ -70,15 +88,30 @@ const DICCIONARIO_TAGS: TagDefinicion[] = [
       { exercise: 'Plancha frontal con anti-extensión', notes: 'Vitamina — no perder la alineación lumbo-pélvica' },
       { exercise: 'Pallof press', notes: 'Vitamina — anti-rotación, clave para prevención lumbar' },
       { exercise: 'Dead bug', notes: 'Vitamina — control motor, baja fatiga residual' },
+      { exercise: 'Plancha frontal con sobrecarga (disco en la espalda)', notes: 'Vitamina — progresión de la plancha frontal, sostén por tiempo' },
+      { exercise: 'Plancha lateral con elevación de cadera', notes: 'Vitamina — oblicuos y cadena lateral, controlar el rango' },
+      { exercise: 'Paseo del granjero unilateral (Suitcase carry)', notes: 'Vitamina — anti-flexión lateral, cargar un solo lado' },
+      { exercise: 'Rueda abdominal (rodillas apoyadas)', notes: 'Vitamina — anti-extensión, progresar por rango, no por reps' },
+      { exercise: 'Woodchopper con polea', notes: 'Vitamina — rotación controlada, cargas livianas' },
+      { exercise: 'Bear crawl (desplazamiento en cuadrupedia)', notes: 'Vitamina — control motor y estabilidad de tronco' },
+      { exercise: 'Hollow body hold', notes: 'Vitamina — control lumbo-pélvico, sostén isométrico' },
+      { exercise: 'Bird dog', notes: 'Vitamina — control motor cruzado, baja fatiga residual' },
     ],
   },
   {
     tag: 'preventivo_aductor',
     gruposClave: [['aductor'], ['aductores'], ['copenhague']],
     ejercicios: [
-      { exercise: 'Copenhagen plank (rodilla o pie apoyado)', notes: 'Vitamina — prevención de pubalgia, progresar por tiempo de sostén' },
+      { exercise: 'Copenhagen plank corta (rodilla apoyada)', notes: 'Vitamina — prevención de pubalgia, progresar por tiempo de sostén' },
+      { exercise: 'Copenhagen plank larga (pie apoyado)', notes: 'Vitamina — prevención de pubalgia, progresión de la variante corta' },
       { exercise: 'Slide lateral (Cossack asistido)', notes: 'Vitamina — bajo impacto, controlar la excursión' },
       { exercise: 'Aducción de cadera con banda', notes: 'Vitamina — activación, sin buscar fatiga' },
+      { exercise: 'Sentadilla cosaca', notes: 'Vitamina — rango de aductor bajo control, sin buscar profundidad máxima' },
+      { exercise: 'Apretadas de disco entre rodillas', notes: 'Vitamina — isométrico, activación pre-entrenamiento' },
+      { exercise: 'Apretadas de pelota (isométrico, supino)', notes: 'Vitamina — isométrico de baja intensidad, sin fatiga' },
+      { exercise: 'Aductor en polea baja (unilateral)', notes: 'Vitamina — cargas livianas, controlar la fase excéntrica' },
+      { exercise: 'Elevación de cadera lateral (side-lying hip adduction)', notes: 'Vitamina — aductor aislado, sin carga externa' },
+      { exercise: 'Zancada lateral controlada', notes: 'Vitamina — rango progresivo, técnica antes que velocidad' },
     ],
   },
   {
@@ -88,6 +121,13 @@ const DICCIONARIO_TAGS: TagDefinicion[] = [
       { exercise: 'Nordic curl asistido (excéntrico)', notes: 'Vitamina — prevención de desgarros, progresar por rango, no por carga' },
       { exercise: 'Puente de glúteo unipodal', notes: 'Vitamina — foco en control excéntrico' },
       { exercise: 'Peso muerto rumano con mancuernas (carga liviana)', notes: 'Vitamina — nunca cerca del fallo, sin fatiga residual para el campo' },
+      { exercise: 'Peso muerto rumano unilateral con mancuerna', notes: 'Vitamina — exige equilibrio, cargas livianas' },
+      { exercise: 'Slider leg curl (deslizador)', notes: 'Vitamina — excéntrico controlado, baja carga axial' },
+      { exercise: 'Curl femoral en polea con tobillera', notes: 'Vitamina — aislado, RIR alto' },
+      { exercise: 'Puente de glúteo con banda (isométrico)', notes: 'Vitamina — activación, sin buscar fatiga' },
+      { exercise: 'Buenos días con banda', notes: 'Vitamina — carga mínima, foco en técnica de bisagra de cadera' },
+      { exercise: 'Hamstring walkout en TRX', notes: 'Vitamina — excéntrico asistido, progresar por rango' },
+      { exercise: 'Curl femoral en fitball (bilateral)', notes: 'Vitamina — control motor, baja fatiga residual' },
     ],
   },
   {
@@ -105,6 +145,14 @@ const DICCIONARIO_TAGS: TagDefinicion[] = [
       { exercise: 'Sentadilla goblet (carga liviana)', notes: 'Hipertrofia — RIR alto, minimizar fatiga residual para el campo' },
       { exercise: 'Step-up bajo con mancuernas', notes: 'Vitamina — unilateral, controlar la fase excéntrica' },
       { exercise: 'Puente de glúteo con barra (carga moderada)', notes: 'Hipertrofia — foco en glúteo, sin buscar 1RM' },
+      { exercise: 'Sentadilla búlgara (carga liviana)', notes: 'Hipertrofia — unilateral, RIR alto, minimizar fatiga residual' },
+      { exercise: 'Estocada reversa con mancuernas', notes: 'Hipertrofia — menor estrés de rodilla que la estocada frontal' },
+      { exercise: 'Hip thrust con barra (carga moderada)', notes: 'Hipertrofia — foco en glúteo, técnica antes que carga máxima' },
+      { exercise: 'Extensión de cuádriceps en máquina (aislado)', notes: 'Hipertrofia — carga liviana, sin fatiga residual para el campo' },
+      { exercise: 'Step-up alto unilateral', notes: 'Vitamina — mayor exigencia de control, sin carga externa si hace falta' },
+      { exercise: 'Sentadilla sumo con mancuerna', notes: 'Hipertrofia — foco en aductor y glúteo, RIR alto' },
+      { exercise: 'Prensa de piernas (rango completo, carga moderada)', notes: 'Hipertrofia — sin buscar 1RM, minimizar fatiga residual' },
+      { exercise: 'Zancada caminando con mancuernas', notes: 'Hipertrofia — cargas livianas, técnica antes que velocidad' },
     ],
   },
   {
@@ -128,7 +176,20 @@ function coincideGrupo(promptNormalizado: string, grupo: string[]): boolean {
   return grupo.every((palabra) => promptNormalizado.includes(normalizar(palabra)))
 }
 
-/** Selecciona hasta 3 ejercicios por cada tag que matchee el prompt (Paso 2) — nunca duplica un ejercicio entre tags. */
+/** Fisher-Yates — reordena una copia del array sin mutar el original, cada posición con probabilidad uniforme. */
+function shuffle<T>(array: T[]): T[] {
+  const resultado = [...array]
+  for (let i = resultado.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[resultado[i], resultado[j]] = [resultado[j], resultado[i]]
+  }
+  return resultado
+}
+
+/** Cuántos ejercicios se toman de cada tag que matchee — el mismo objetivo biomecánico, pero mezclado (Fisher-Yates) antes de cortar, así "Generar" no repite siempre los mismos 3 de una biblioteca ahora mucho más grande. */
+const EJERCICIOS_POR_TAG = 3
+
+/** Selecciona hasta `EJERCICIOS_POR_TAG` ejercicios por cada tag que matchee el prompt (Paso 2) — nunca duplica un ejercicio entre tags. */
 export function seleccionarEjerciciosPorObjetivo(prompt: string): EjercicioCatalogo[] {
   const promptNormalizado = normalizar(prompt)
   const seleccionados: EjercicioCatalogo[] = []
@@ -138,7 +199,7 @@ export function seleccionarEjerciciosPorObjetivo(prompt: string): EjercicioCatal
     const tagActivo = tagDef.gruposClave.some((grupo) => coincideGrupo(promptNormalizado, grupo))
     if (!tagActivo) continue
 
-    for (const ej of tagDef.ejercicios.slice(0, 3)) {
+    for (const ej of shuffle(tagDef.ejercicios).slice(0, EJERCICIOS_POR_TAG)) {
       if (yaElegidos.has(ej.exercise)) continue
       seleccionados.push(ej)
       yaElegidos.add(ej.exercise)
