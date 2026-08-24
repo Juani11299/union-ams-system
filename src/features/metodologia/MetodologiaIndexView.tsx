@@ -1,4 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { PresentationViewer } from '@/components/PresentationViewer'
+import { PRESENTATIONS, type Presentation } from '@/data/presentations'
 
 interface ManualBiblioteca {
   to: string
@@ -68,6 +71,8 @@ const MANUALES: ManualBiblioteca[] = [
 ]
 
 export function MetodologiaIndexView() {
+  const [presentacionActiva, setPresentacionActiva] = useState<Presentation | null>(null)
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -82,23 +87,46 @@ export function MetodologiaIndexView() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {MANUALES.map((manual) => (
-          <Link
-            key={manual.to}
-            to={manual.to}
-            className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-union-red-300 hover:bg-union-red-50/40 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-union-red-500/40 dark:hover:bg-union-red-500/5"
-          >
-            <span className="text-2xl" aria-hidden>
-              {manual.icon}
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{manual.titulo}</p>
-              <p className="text-xs font-medium uppercase tracking-wide text-union-red-600">{manual.subtitulo}</p>
+        {MANUALES.map((manual) => {
+          const presentacion = PRESENTATIONS.find((p) => p.manualTo === manual.to)
+          return (
+            <div
+              key={manual.to}
+              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+            >
+              <Link
+                to={manual.to}
+                className="flex flex-col gap-2 rounded-lg transition-colors hover:text-union-red-600"
+              >
+                <span className="text-2xl" aria-hidden>
+                  {manual.icon}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{manual.titulo}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-union-red-600">
+                    {manual.subtitulo}
+                  </p>
+                </div>
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{manual.descripcion}</p>
+              </Link>
+
+              {presentacion && (
+                <button
+                  type="button"
+                  onClick={() => setPresentacionActiva(presentacion)}
+                  className="mt-1 flex items-center justify-center gap-1.5 rounded-lg bg-union-red-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-union-red-700"
+                >
+                  📺 Iniciar Presentación
+                </button>
+              )}
             </div>
-            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">{manual.descripcion}</p>
-          </Link>
-        ))}
+          )
+        })}
       </div>
+
+      {presentacionActiva && (
+        <PresentationViewer presentation={presentacionActiva} onClose={() => setPresentacionActiva(null)} />
+      )}
     </div>
   )
 }
