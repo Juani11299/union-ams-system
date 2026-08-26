@@ -426,3 +426,14 @@ entrypoint = "./functions/generate-workout/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/generate-workout/*.html" ]
+
+[functions.send-reminders]
+enabled = true
+# true: nadie la llama desde el browser — sólo `pg_cron`/`pg_net`, que manda
+# la service_role key como Bearer token (ver el bloque SQL al pie de
+# `index.ts`). Esa key ES un JWT válido firmado con el secret del proyecto,
+# así que pasa la verificación igual, y de paso ningún tercero en internet
+# puede disparar el envío masivo sin esa key.
+verify_jwt = true
+import_map = "./functions/send-reminders/deno.json"
+entrypoint = "./functions/send-reminders/index.ts"

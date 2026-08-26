@@ -5,6 +5,7 @@ import { Card } from '@/components/Card'
 import { Avatar } from '@/components/Avatar'
 import { EmojiSlider } from '@/components/EmojiSlider'
 import { SearchableSelect } from '@/components/SearchableSelect'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { colorRpe } from '@/features/workload/calculations'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
@@ -141,6 +142,37 @@ interface FormularioProps {
   onCambiarJugador: () => void
 }
 
+/**
+ * Banner de suscripción a Web Push (Fase 31) — se oculta solo una vez que el
+ * navegador ya tiene el permiso concedido (`estado === 'granted'`), y
+ * directamente no se renderiza si el browser no soporta Push o falta la
+ * VAPID public key (`VITE_VAPID_PUBLIC_KEY`) en el build.
+ */
+function RecordatoriosBanner({ athleteId }: { athleteId: string }) {
+  const { disponible, estado, suscribiendo, error, suscribir } = usePushNotifications(athleteId)
+
+  if (!disponible || estado === 'granted') return null
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button
+        type="button"
+        onClick={suscribir}
+        disabled={suscribiendo}
+        className="flex w-full items-center justify-between gap-3 rounded-xl bg-union-red-50 px-4 py-3 text-left text-sm font-semibold text-union-red-700 ring-1 ring-union-red-600/20 transition-colors hover:bg-union-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-union-red-500/10 dark:text-union-red-400 dark:hover:bg-union-red-500/15"
+      >
+        <span>{suscribiendo ? 'Activando…' : '🔔 Activar Recordatorios Diarios'}</span>
+        {!suscribiendo && (
+          <span aria-hidden className="text-lg">
+            ›
+          </span>
+        )}
+      </button>
+      {error && <p className="px-1 text-xs text-rose-500 dark:text-rose-400">{error}</p>}
+    </div>
+  )
+}
+
 function EncabezadoJugador({ nombre, subtitulo, onCambiarJugador }: { nombre: string; subtitulo: string; onCambiarJugador: () => void }) {
   return (
     <div className="flex items-center justify-between gap-2">
@@ -226,6 +258,8 @@ function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugad
     <Pantalla titulo={titulo}>
       <div className="flex flex-col gap-4">
         <EncabezadoJugador nombre={nombre} subtitulo="Wellness de hoy" onCambiarJugador={onCambiarJugador} />
+
+        <RecordatoriosBanner athleteId={athleteId} />
 
         {error && (
           <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">
@@ -370,6 +404,8 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
           subtitulo="¿Qué tan dura sentiste la sesión de hoy?"
           onCambiarJugador={onCambiarJugador}
         />
+
+        <RecordatoriosBanner athleteId={athleteId} />
 
         {error && (
           <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-400">

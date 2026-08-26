@@ -38,6 +38,11 @@ export default defineConfig({
         // cubre el store persistido en IndexedDB, con su propio mapeo a los
         // tipos de la app, en vez de cachear las respuestas REST crudas.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Fase 31 — `importScripts` inyecta `push-sw.js` (listener de
+        // `push`/`notificationclick`) DENTRO del `sw.js` que genera Workbox,
+        // sin tener que pasar a la estrategia `injectManifest` (que exigiría
+        // mantener nosotros el precacheo del app shell a mano).
+        importScripts: ['push-sw.js'],
       },
     }),
   ],
