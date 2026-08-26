@@ -1,5 +1,5 @@
 import type { SessionExecution, WellnessEntry } from '@/types'
-import { calcularWellnessScore20 } from '@/features/wellness/calculations'
+import { calcularReadiness, calcularWellnessScore20 } from '@/features/wellness/calculations'
 import type { AcwrResult } from '@/features/workload/calculations'
 
 export const WELLNESS_SCORE_MAX = 20
@@ -44,6 +44,8 @@ export interface EvaluacionRiesgoAtleta {
   enZonaRoja: boolean
   /** Alerta de Fatiga (Fase 24) — Hooper + ACWR únicamente, sin RSI. */
   alertaFatiga: boolean
+  /** Alerta General de Riesgo (Fase 32) — cruce ACWR × Wellness, ver `calcularAlertaGeneralRiesgo`. */
+  alertaGeneral: AlertaGeneralRiesgo
 }
 
 export type NivelSemaforo = 'rojo' | 'amarillo' | 'verde'
@@ -52,6 +54,58 @@ export function nivelSemaforo(riskScore: number): NivelSemaforo {
   if (riskScore >= 20) return 'rojo'
   if (riskScore >= 8) return 'amarillo'
   return 'verde'
+}
+
+export type NivelRiesgoGeneral = 'critico' | 'alto' | 'moderado' | 'bajo'
+
+export interface AlertaGeneralRiesgo {
+  nivel: NivelRiesgoGeneral
+  /** Explicación corta del disparador (Paso 4, transparencia en la UI) — ej. "ACWR en Zona de Peligro (2.76 > 1.5)". */
+  motivo: string
+}
+
+/**
+ * Alerta General de Riesgo (Fase 32, auditoría científica) — tabla de
+ * decisión clínica explícita que cruza ACWR (Gabbett, 2016) con el
+ * Readiness/Wellness promedio (escala 1-5, Índice de Hooper,
+ * `clasificarReadiness`), en el orden de severidad pedido: se evalúa
+ * Crítico primero, y el primer nivel que matchea gana — así un ACWR de
+ * 2.76 dispara Crítico sin importar qué diga el Wellness ese día.
+ * Reemplaza al semáforo por puntaje ponderado (`nivelSemaforo`) como fuente
+ * del badge/borde que ve el cuerpo técnico; `nivelSemaforo`/`riskScore`
+ * siguen existiendo para el "Smart Sorting" y el desglose de factores.
+ */
+export function calcularAlertaGeneralRiesgo(acwr: AcwrResult, readiness: number | null): AlertaGeneralRiesgo {
+  const acwrValor = acwr.acwr
+  const acwrPeligro = acwrValor !== null && acwrValor > 1.5
+  const acwrPrecaucion = acwrValor !== null && acwrValor > 1.3 && acwrValor <= 1.5
+  const wellnessSevero = readiness !== null && readiness < 2.0
+  const wellnessModerado = readiness !== null && readiness >= 2.0 && readiness <= 2.9
+  const wellnessBajo3 = readiness !== null && readiness < 3.0
+
+  if (acwrPeligro || wellnessSevero) {
+    return {
+      nivel: 'critico',
+      motivo: acwrPeligro
+        ? `ACWR en Zona de Peligro (${acwrValor!.toFixed(2)} > 1.5)`
+        : `Wellness en Fatiga Severa (${readiness!.toFixed(1)} < 2.0)`,
+    }
+  }
+  if (acwrPrecaucion && wellnessBajo3) {
+    return {
+      nivel: 'alto',
+      motivo: `ACWR en Zona de Precaución (${acwrValor!.toFixed(2)}) + Wellness bajo (${readiness!.toFixed(1)} < 3.0)`,
+    }
+  }
+  if (acwrPrecaucion || wellnessModerado) {
+    return {
+      nivel: 'moderado',
+      motivo: acwrPrecaucion
+        ? `ACWR en Zona de Precaución (${acwrValor!.toFixed(2)})`
+        : `Wellness en Fatiga Moderada (${readiness!.toFixed(1)})`,
+    }
+  }
+  return { nivel: 'bajo', motivo: 'ACWR y Wellness dentro de rango seguro.' }
 }
 
 /**
@@ -135,5 +189,8 @@ export function evaluarRiesgoAtleta(params: {
     (!!wellnessHoy && (wellnessHoy.dolorMuscular <= UMBRAL_RATING_SEVERO || wellnessHoy.fatiga <= UMBRAL_RATING_SEVERO))
   const alertaFatiga = wellnessCritico || acwr.riesgo === 'alto'
 
-  return { riskScore, wellnessScore, rpeHoy, factores, enZonaRoja: factores.length > 0, alertaFatiga }
+  const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
+  const alertaGeneral = calcularAlertaGeneralRiesgo(acwr, readiness)
+
+  return { riskScore, wellnessScore, rpeHoy, factores, enZonaRoja: factores.length > 0, alertaFatiga, alertaGeneral }
 }

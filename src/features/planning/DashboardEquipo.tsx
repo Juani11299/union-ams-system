@@ -23,13 +23,13 @@ import {
   UMBRAL_MONOTONIA_ALTA,
   type NivelRiesgoAcwr,
 } from '@/features/workload/calculations'
-import { calcularReadiness, obtenerWellnessDelDia } from '@/features/wellness/calculations'
+import { calcularReadiness, clasificarReadiness, obtenerWellnessDelDia, type NivelReadiness } from '@/features/wellness/calculations'
 import { IngresoModal } from '@/features/wellness/IngresoModal'
 import { fechaHoyLocal } from '@/utils/fecha'
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { inputClass } from '@/components/FormField'
 import { GRUPOS_POSICION, grupoDePosicion } from '@/utils/posicion'
-import { evaluarRiesgoAtleta, nivelSemaforo, type NivelSemaforo } from './riskAssessment'
+import { evaluarRiesgoAtleta, type NivelRiesgoGeneral } from './riskAssessment'
 import { AnalisisGrupalModal } from './AnalisisGrupalModal'
 import { AthleteDetailModal } from './AthleteDetailModal'
 import type { Athlete, EstadoSalud } from '@/types'
@@ -46,8 +46,14 @@ const ESTADO_LABEL: Record<EstadoSalud, string> = {
   'Baja Médica': 'Baja Médica',
 }
 
+/**
+ * Cortes de ACWR (Fase 32, auditoría científica — Gabbett, 2016). El
+ * cálculo y la clasificación numérica viven en `calcularAcwr`
+ * (`workload/calculations.ts`); acá sólo se mapea cada nivel a su
+ * texto/color de UI.
+ */
 const RIESGO_TONE: Record<NivelRiesgoAcwr, BadgeTone> = {
-  bajo: 'blue',
+  bajo: 'gray',
   optimo: 'green',
   precaucion: 'yellow',
   alto: 'red',
@@ -55,31 +61,54 @@ const RIESGO_TONE: Record<NivelRiesgoAcwr, BadgeTone> = {
 }
 
 const RIESGO_LABEL: Record<NivelRiesgoAcwr, string> = {
-  bajo: 'Baja carga',
-  optimo: 'Óptimo',
-  precaucion: 'Precaución',
-  alto: 'Alto riesgo',
+  bajo: '⚪ Sub-entrenamiento',
+  optimo: '🟢 Zona Óptima',
+  precaucion: '🟡 Zona de Precaución',
+  alto: '🔴 Zona de Peligro',
   'sin-datos': 'Sin datos',
 }
 
 const RIESGO_BARRA: Record<NivelRiesgoAcwr, string> = {
-  bajo: 'bg-sky-500 dark:bg-sky-400',
+  bajo: 'bg-slate-400 dark:bg-slate-500',
   optimo: 'bg-emerald-500 dark:bg-emerald-400',
   precaucion: 'bg-amber-500 dark:bg-amber-400',
   alto: 'bg-rose-500 dark:bg-rose-400',
   'sin-datos': 'bg-slate-300 dark:bg-slate-600',
 }
 
-const CARD_BORDE_RIESGO: Record<NivelSemaforo, string> = {
-  rojo: 'border-rose-300 dark:border-rose-500/40',
-  amarillo: 'border-amber-300 dark:border-amber-500/40',
-  verde: '',
+/** Cortes del Readiness/Wellness promedio (Fase 32) — clasificación numérica en `clasificarReadiness`. */
+const READINESS_TEXTO: Record<NivelReadiness, string> = {
+  optimo: 'text-emerald-600 dark:text-emerald-400',
+  normal: 'text-amber-600 dark:text-amber-400',
+  moderado: 'text-orange-600 dark:text-orange-400',
+  severo: 'text-rose-600 dark:text-rose-400',
 }
 
-const RIESGO_SEMAFORO_BADGE: Record<NivelSemaforo, { tone: BadgeTone; label: string } | null> = {
-  rojo: { tone: 'red', label: '🔴 Riesgo alto' },
-  amarillo: { tone: 'yellow', label: '🟡 Riesgo moderado' },
-  verde: null,
+const READINESS_ICONO: Record<NivelReadiness, string> = {
+  optimo: '🟢',
+  normal: '🟡',
+  moderado: '🟠',
+  severo: '🔴',
+}
+
+/**
+ * Alerta General de Riesgo (Fase 32) — cruce ACWR × Wellness, ver
+ * `calcularAlertaGeneralRiesgo` en `riskAssessment.ts`. Reemplaza al
+ * semáforo por puntaje ponderado (`nivelSemaforo`) como fuente del
+ * badge/borde de cada tarjeta.
+ */
+const CARD_BORDE_RIESGO: Record<NivelRiesgoGeneral, string> = {
+  critico: 'border-rose-300 dark:border-rose-500/40',
+  alto: 'border-orange-300 dark:border-orange-500/40',
+  moderado: 'border-amber-300 dark:border-amber-500/40',
+  bajo: '',
+}
+
+const RIESGO_GENERAL_BADGE: Record<NivelRiesgoGeneral, { tone: BadgeTone; label: string } | null> = {
+  critico: { tone: 'red', label: '🔴 Riesgo Crítico' },
+  alto: { tone: 'orange', label: '🟠 Riesgo Alto' },
+  moderado: { tone: 'yellow', label: '🟡 Riesgo Moderado' },
+  bajo: null,
 }
 
 export function DashboardEquipo() {
@@ -265,8 +294,9 @@ export function DashboardEquipo() {
           const strain = calcularStrain(sRpeSemana, monotonia)
           const monotoniaAlta = monotonia !== null && monotonia >= UMBRAL_MONOTONIA_ALTA
           const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
-          const nivelRiesgo = nivelSemaforo(evaluacionRiesgo.riskScore)
-          const riesgoBadge = RIESGO_SEMAFORO_BADGE[nivelRiesgo]
+          const nivelReadiness = readiness !== null ? clasificarReadiness(readiness) : null
+          const nivelRiesgo = evaluacionRiesgo.alertaGeneral.nivel
+          const riesgoBadge = RIESGO_GENERAL_BADGE[nivelRiesgo]
 
           let comparacionHoy: ReturnType<typeof compararConObjetivo> | null = null
           let faltaTiempoHoy = false
@@ -314,6 +344,12 @@ export function DashboardEquipo() {
                   )}
                 </div>
               </div>
+
+              {riesgoBadge && (
+                <p className="-mt-3 text-right text-[10px] italic leading-snug text-slate-400 dark:text-slate-500">
+                  {evaluacionRiesgo.alertaGeneral.motivo}
+                </p>
+              )}
 
               {wellnessHoy?.comentarioDolor && (
                 <p className="-mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs italic leading-snug text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
@@ -452,9 +488,9 @@ export function DashboardEquipo() {
                     />
                   )}
                 </span>
-                {readiness !== null ? (
-                  <span className="font-medium text-slate-700 dark:text-slate-300">
-                    {readiness.toFixed(1)} / 5
+                {readiness !== null && nivelReadiness !== null ? (
+                  <span className={`font-medium ${READINESS_TEXTO[nivelReadiness]}`}>
+                    {READINESS_ICONO[nivelReadiness]} {readiness.toFixed(1)} / 5
                   </span>
                 ) : (
                   <span className="text-slate-400">Sin registro hoy</span>

@@ -17,13 +17,29 @@ import { useToastStore } from '@/store/useToastStore'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { calcularTendenciaTonelaje } from '@/features/external-load/calculations'
 import { calcularSerieEquipoUltimos7Dias, calcularTendenciaEquipo } from '@/features/workload/calculations'
-import { nivelSemaforo, type EvaluacionRiesgoAtleta } from './riskAssessment'
+import type { EvaluacionRiesgoAtleta, NivelRiesgoGeneral } from './riskAssessment'
+import type { BadgeTone } from '@/components/Badge'
 import { formatFechaCorta } from '@/utils/fecha'
 import type { Athlete, GymExternalLoad, SessionExecution, SessionPlan, WellnessEntry } from '@/types'
 
 const DIAS_TENDENCIA_EQUIPO = 14
 const UNION_ROJO = '#ed1c24'
 const VERDE = '#10b981'
+
+/** Alerta General de Riesgo (Fase 32) — mismo cruce ACWR × Wellness que `DashboardEquipo.tsx`, ver `calcularAlertaGeneralRiesgo`. */
+const RIESGO_GENERAL_BORDE: Record<NivelRiesgoGeneral, string> = {
+  critico: 'border-rose-300 dark:border-rose-500/40',
+  alto: 'border-orange-300 dark:border-orange-500/40',
+  moderado: 'border-amber-300 dark:border-amber-500/40',
+  bajo: 'border-amber-300 dark:border-amber-500/40',
+}
+
+const RIESGO_GENERAL_BADGE: Record<NivelRiesgoGeneral, { tone: BadgeTone; label: string }> = {
+  critico: { tone: 'red', label: '🔴 Crítico' },
+  alto: { tone: 'orange', label: '🟠 Alto' },
+  moderado: { tone: 'yellow', label: '🟡 Moderado' },
+  bajo: { tone: 'green', label: '🟢 Bajo' },
+}
 
 interface AnalisisGrupalModalProps {
   athletes: Athlete[]
@@ -324,13 +340,11 @@ export function AnalisisGrupalModal({
               <div className="mt-2 flex flex-col gap-3">
                 {zonaRoja.map(({ athlete, evaluacion }) => {
                   const tonelaje = calcularTendenciaTonelaje(gymExternalLoads, sessionPlans, athlete.id)
-                  const nivel = nivelSemaforo(evaluacion.riskScore)
+                  const riesgoBadge = RIESGO_GENERAL_BADGE[evaluacion.alertaGeneral.nivel]
                   return (
                     <Card
                       key={athlete.id}
-                      className={`flex flex-col gap-2.5 ${
-                        nivel === 'rojo' ? 'border-rose-300 dark:border-rose-500/40' : 'border-amber-300 dark:border-amber-500/40'
-                      }`}
+                      className={`flex flex-col gap-2.5 ${RIESGO_GENERAL_BORDE[evaluacion.alertaGeneral.nivel]}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5">
@@ -348,9 +362,12 @@ export function AnalisisGrupalModal({
                               {TENDENCIA_ICONO[tonelaje.tendencia]} Tonelaje gym
                             </span>
                           )}
-                          <Badge tone={nivel === 'rojo' ? 'red' : 'yellow'}>Riesgo {evaluacion.riskScore}</Badge>
+                          <Badge tone={riesgoBadge.tone}>{riesgoBadge.label}</Badge>
                         </div>
                       </div>
+                      <p className="-mt-1.5 text-[10px] italic leading-snug text-slate-400 dark:text-slate-500">
+                        {evaluacion.alertaGeneral.motivo}
+                      </p>
                       <ul className="flex flex-col gap-1.5">
                         {evaluacion.factores.map((factor) => (
                           <li

@@ -18,6 +18,22 @@ export function calcularReadiness(entry: WellnessInput): number {
   return Number(((entry.sueno + entry.dolorMuscular + entry.estres + entry.fatiga) / 4).toFixed(1))
 }
 
+export type NivelReadiness = 'optimo' | 'normal' | 'moderado' | 'severo'
+
+/**
+ * Puntos de corte del Readiness/Wellness promedio (Fase 32, auditoría
+ * científica) — escala 1-5 del Índice de Hooper donde 5 = óptimo, 1 =
+ * fatiga severa (misma convención normalizada de `calcularReadiness`).
+ * Único lugar donde tocar estos cortes; toda la UI del Wellness (texto,
+ * color, cruce con ACWR en `riskAssessment.ts`) los consume desde acá.
+ */
+export function clasificarReadiness(readiness: number): NivelReadiness {
+  if (readiness >= 4.0) return 'optimo'
+  if (readiness >= 3.0) return 'normal'
+  if (readiness >= 2.0) return 'moderado'
+  return 'severo'
+}
+
 /**
  * Puntuación total de Wellness del día sobre 20 (Fase 20) — mismos 4 campos
  * ya normalizados que `calcularReadiness`, sin promediar, para compararla
