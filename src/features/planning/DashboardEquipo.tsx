@@ -25,6 +25,7 @@ import {
 } from '@/features/workload/calculations'
 import { calcularReadiness, clasificarReadiness, obtenerWellnessDelDia, type NivelReadiness } from '@/features/wellness/calculations'
 import { IngresoModal } from '@/features/wellness/IngresoModal'
+import { useSoloLectura } from '@/hooks/useSoloLectura'
 import { fechaHoyLocal } from '@/utils/fecha'
 import { InfoTooltip } from '@/components/InfoTooltip'
 import { inputClass } from '@/components/FormField'
@@ -112,6 +113,7 @@ const RIESGO_GENERAL_BADGE: Record<NivelRiesgoGeneral, { tone: BadgeTone; label:
 }
 
 export function DashboardEquipo() {
+  const soloLectura = useSoloLectura()
   const athletes = useAthletesActivos()
   const sessionExecutions = useSessionExecutionsActivas()
   const sessionPlans = useSessionPlansActivos()
@@ -188,13 +190,15 @@ export function DashboardEquipo() {
           >
             📊 Análisis Grupal
           </button>
-          <button
-            type="button"
-            onClick={() => abrirModalIngreso('wellness')}
-            className="rounded-xl bg-union-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
-          >
-            + Ingresar Datos
-          </button>
+          {!soloLectura && (
+            <button
+              type="button"
+              onClick={() => abrirModalIngreso('wellness')}
+              className="rounded-xl bg-union-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
+            >
+              + Ingresar Datos
+            </button>
+          )}
         </div>
       </div>
 

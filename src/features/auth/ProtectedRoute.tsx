@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useAppStore } from '@/store/useAppStore'
 
 /**
  * Guardia de rutas administrativas (Fase 18) — envuelve sólo el grupo de
@@ -10,22 +11,42 @@ import { useAuthStore } from '@/store/useAuthStore'
  * — es una exclusión estructural (imposible de romper por accidente
  * agregando un prefijo a una whitelist), no una lista de regex de rutas.
  *
- * Única excepción deliberada (Fase 32): `/planificador?...&locked=true` es
- * la MISMA ruta que su versión protegida, así que acá sí hace falta un
- * chequeo puntual de `pathname`+query — no hay forma de resolverlo con
- * exclusión estructural pura cuando es la misma URL la que tiene que
- * comportarse distinto según un parámetro. El bloqueo real de edición para
- * ese caso vive en `useSoloLectura` (visto por `PlanificadorView` y sus
- * hijos), no acá — este guard sólo decide si se puede ENTRAR sin sesión.
+ * Excepción deliberada para links mágicos con `locked=true` (Fase 32/33) —
+ * dos señales, porque hay un problema de orden de arranque real:
+ *
+ * 1. `esEntradaPublicaPorUrl`: lee `locked=true` DIRECTO de la URL actual,
+ *    sólo para `/` o `/planificador`. Hace falta este chequeo puntual (no
+ *    sólo el flag del store de abajo) porque `categoryLocked` recién se fija
+ *    dentro de `useScopedCategoryFromUrl` — un hook que sólo corre una vez
+ *    que `MainLayout` ya montó. En el primerísimo render de una entrada
+ *    fresca por link (`/?category=X&locked=true`), el store todavía no
+ *    procesó la URL — sin este chequeo directo quedaría en un bucle: no se
+ *    puede entrar a `MainLayout` para fijar el flag, porque hace falta el
+ *    flag para entrar a `MainLayout`.
+ * 2. `categoryLocked` (store, persistido): una vez que la señal de arriba ya
+ *    lo fijó en `true`, sigue valiendo aunque el visitante navegue
+ *    DESPUÉS a otra ruta sin `locked=true` en su propia URL (ej. clickea
+ *    "Administración" en el Sidebar) — así llega hasta `MainLayout`, que es
+ *    quien de verdad decide qué se ve: `rutaPermitidaParaStaff` (ver
+ *    `staffAccess.ts`) muestra `LockedModuleView` para todo lo que no sea
+ *    `/`/`/planificador`, en vez de cortar acá con un redirect a `/login`
+ *    que sacaría al visitante de la app.
+ *
+ * El bloqueo real de EDICIÓN para este caso vive en `useSoloLectura` (visto
+ * por `DashboardEquipo`, `PlanificadorView` y sus hijos) — este guard sólo
+ * decide si se puede ENTRAR sin sesión.
  */
 export function ProtectedRoute() {
   const session = useAuthStore((s) => s.session)
   const isLoading = useAuthStore((s) => s.isLoading)
+  const categoryLocked = useAppStore((s) => s.categoryLocked)
   const location = useLocation()
 
-  const esPlanificadorPublico =
-    location.pathname === '/planificador' &&
-    new URLSearchParams(location.search).get('locked') === 'true'
+  const esEntradaPublicaPorUrl =
+    new URLSearchParams(location.search).get('locked') === 'true' &&
+    (location.pathname === '/' || location.pathname.startsWith('/planificador'))
+
+  const esLinkMagicoStaff = categoryLocked || esEntradaPublicaPorUrl
 
   if (isLoading) {
     return (
@@ -35,7 +56,7 @@ export function ProtectedRoute() {
     )
   }
 
-  if (!session && !esPlanificadorPublico) return <Navigate to="/login" replace />
+  if (!session && !esLinkMagicoStaff) return <Navigate to="/login" replace />
 
   return <Outlet />
 }
