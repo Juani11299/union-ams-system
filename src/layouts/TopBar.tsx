@@ -1,4 +1,5 @@
 import { useAppStore } from '@/store/useAppStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { ClubLogo } from '@/components/ClubLogo'
 import { useNetworkStatus } from '@/hooks/useNetworkStatus'
 
@@ -11,6 +12,7 @@ export function TopBar() {
   const categoryLocked = useAppStore((s) => s.categoryLocked)
   const setActiveSeason = useAppStore((s) => s.setActiveSeason)
   const setActiveCategory = useAppStore((s) => s.setActiveCategory)
+  const signOut = useAuthStore((s) => s.signOut)
   const isOnline = useNetworkStatus()
 
   return (
@@ -26,9 +28,17 @@ export function TopBar() {
       )}
 
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <span className="flex items-center md:hidden">
+        <div className="flex items-center justify-between md:hidden">
           <ClubLogo logoUrl={club?.logo_url} size="sm" />
-        </span>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            aria-label="Cerrar sesión"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+          >
+            🚪
+          </button>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <select

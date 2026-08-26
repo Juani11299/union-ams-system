@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { navItems, type NavItem } from './navConfig'
 import { useAppStore } from '@/store/useAppStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { ClubLogo } from '@/components/ClubLogo'
 import { rutaPermitidaParaStaff } from '@/utils/staffAccess'
 
@@ -24,6 +25,7 @@ function CandadoStaff() {
 export function Sidebar() {
   const club = useAppStore((s) => s.club)
   const categoryLocked = useAppStore((s) => s.categoryLocked)
+  const signOut = useAuthStore((s) => s.signOut)
   const gruposRenderizados = new Set<string>()
 
   return (
@@ -31,7 +33,7 @@ export function Sidebar() {
       <div className="flex items-center px-5 py-6">
         <ClubLogo logoUrl={club?.logo_url} size="lg" />
       </div>
-      <nav className="flex flex-col gap-1 px-3">
+      <nav className="flex flex-1 flex-col gap-1 px-3">
         {navItems.map((item) => {
           if (item.group) {
             if (gruposRenderizados.has(item.group)) return null
@@ -52,6 +54,16 @@ export function Sidebar() {
           )
         })}
       </nav>
+      <div className="border-t border-slate-200 px-3 py-3 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={() => signOut()}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          <span aria-hidden>🚪</span>
+          Cerrar sesión
+        </button>
+      </div>
     </aside>
   )
 }
