@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
+import { useSoloLectura } from '@/hooks/useSoloLectura'
 import { getErrorMessage } from '@/utils/errors'
 import { formatFechaCorta } from '@/utils/fecha'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
@@ -54,6 +55,7 @@ interface GymSheetEditorProps {
  * imprimir sólo `.print-area` vive en `src/index.css`).
  */
 export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
+  const soloLectura = useSoloLectura()
   const updateSessionPlanGymSheet = useAppStore((s) => s.updateSessionPlanGymSheet)
   const categories = useAppStore((s) => s.categories)
   const club = useAppStore((s) => s.club)
@@ -156,7 +158,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
   }
 
   async function handleDescargarPdf() {
-    await guardar()
+    if (!soloLectura) await guardar()
     window.print()
   }
 
@@ -188,53 +190,64 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
     <div className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 print:static print:overflow-visible print:bg-white">
       <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-3 p-4 print:p-0">
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-white print:hidden">
-          <span className="text-sm font-medium">📄 Planilla — {plan.titulo}</span>
+          <span className="text-sm font-medium">
+            📄 Planilla — {plan.titulo}
+            {soloLectura && (
+              <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                Sólo lectura
+              </span>
+            )}
+          </span>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleCopiar}
-              className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
-            >
-              📋 Copiar Planilla
-            </button>
-            <button
-              type="button"
-              onClick={handlePegar}
-              className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
-            >
-              📥 Pegar Planilla
-            </button>
-            <button
-              type="button"
-              onClick={() => setMostrarMesociclo(true)}
-              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold hover:bg-sky-700"
-              title="Clona esta sesión hacia las próximas semanas con sobrecarga progresiva y descarga automáticas"
-            >
-              🔁 Generar Mesociclo
-            </button>
-            <button
-              type="button"
-              onClick={() => setMostrarOlas(true)}
-              className="rounded-lg bg-gradient-to-r from-teal-500 to-emerald-600 px-3 py-1.5 text-xs font-semibold hover:from-teal-600 hover:to-emerald-700"
-              title="Genera una sesión de 3 bloques (Fuerza Velocidad, Fuerza Máxima, Auxiliares) según el vector de movimiento"
-            >
-              🪄 Generar Sesión por Vectores
-            </button>
-            <button
-              type="button"
-              onClick={() => setMostrarModalIA(true)}
-              className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-1.5 text-xs font-semibold hover:from-indigo-600 hover:to-violet-700"
-            >
-              🪄 Generar con IA
-            </button>
-            <button
-              type="button"
-              onClick={handleGuardar}
-              disabled={guardando}
-              className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20 disabled:opacity-60"
-            >
-              {guardando ? 'Guardando…' : '💾 Guardar'}
-            </button>
+            {!soloLectura && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleCopiar}
+                  className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
+                >
+                  📋 Copiar Planilla
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePegar}
+                  className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20"
+                >
+                  📥 Pegar Planilla
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarMesociclo(true)}
+                  className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold hover:bg-sky-700"
+                  title="Clona esta sesión hacia las próximas semanas con sobrecarga progresiva y descarga automáticas"
+                >
+                  🔁 Generar Mesociclo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarOlas(true)}
+                  className="rounded-lg bg-gradient-to-r from-teal-500 to-emerald-600 px-3 py-1.5 text-xs font-semibold hover:from-teal-600 hover:to-emerald-700"
+                  title="Genera una sesión de 3 bloques (Fuerza Velocidad, Fuerza Máxima, Auxiliares) según el vector de movimiento"
+                >
+                  🪄 Generar Sesión por Vectores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalIA(true)}
+                  className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-1.5 text-xs font-semibold hover:from-indigo-600 hover:to-violet-700"
+                >
+                  🪄 Generar con IA
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGuardar}
+                  disabled={guardando}
+                  className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium hover:bg-white/20 disabled:opacity-60"
+                >
+                  {guardando ? 'Guardando…' : '💾 Guardar'}
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={handleDescargarPdf}
@@ -265,6 +278,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                 <input
                   value={sheet.titulo}
                   onChange={(e) => setSheet((s) => ({ ...s, titulo: e.target.value }))}
+                  readOnly={soloLectura}
                   placeholder="Título de la planilla"
                   className="w-full border-none bg-transparent text-xl font-bold text-union-charcoal outline-none placeholder:text-slate-300 focus:bg-union-red-50 print:focus:bg-transparent"
                 />
@@ -287,6 +301,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
             <textarea
               value={sheet.objetivos}
               onChange={(e) => setSheet((s) => ({ ...s, objetivos: e.target.value }))}
+              readOnly={soloLectura}
               rows={2}
               placeholder="Ej: Fuerza máxima tren inferior + prevención isquiotibiales"
               className="w-full resize-none border-none bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-300 focus:bg-union-red-50 print:focus:bg-transparent"
@@ -299,15 +314,18 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                 <input
                   value={bloque.titulo}
                   onChange={(e) => actualizarBloque(bloque.id, { titulo: e.target.value })}
+                  readOnly={soloLectura}
                   className="w-full border-none bg-transparent text-sm font-bold uppercase tracking-wide text-white outline-none focus:bg-white/10"
                 />
-                <button
-                  type="button"
-                  onClick={() => quitarBloque(bloque.id)}
-                  className="shrink-0 text-xs font-medium text-white/60 hover:text-white print:hidden"
-                >
-                  ✕ Quitar bloque
-                </button>
+                {!soloLectura && (
+                  <button
+                    type="button"
+                    onClick={() => quitarBloque(bloque.id)}
+                    className="shrink-0 text-xs font-medium text-white/60 hover:text-white print:hidden"
+                  >
+                    ✕ Quitar bloque
+                  </button>
+                )}
               </div>
 
               <div className="overflow-x-auto">
@@ -320,8 +338,12 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                       <th className="w-20 px-2 py-1.5">Carga (Kg)</th>
                       <th className="w-20 px-2 py-1.5">Descanso</th>
                       <th className="w-32 py-1.5 pl-2">Notas / RIR-RPE</th>
-                      <th className="w-6 print:hidden" title="Ejercicio a medir en la Terminal de Fuerza" />
-                      <th className="w-6 print:hidden" />
+                      {!soloLectura && (
+                        <>
+                          <th className="w-6 print:hidden" title="Ejercicio a medir en la Terminal de Fuerza" />
+                          <th className="w-6 print:hidden" />
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -341,6 +363,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                             <input
                               value={ej.nombre}
                               onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'nombre', e.target.value)}
+                              readOnly={soloLectura}
                               placeholder="Ej. Sentadilla trasera"
                               className={`${inputPlanilla} placeholder:text-slate-300`}
                             />
@@ -350,6 +373,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                           <input
                             value={ej.series}
                             onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'series', e.target.value)}
+                            readOnly={soloLectura}
                             placeholder="4"
                             className={`${inputPlanilla} placeholder:text-slate-300`}
                           />
@@ -360,6 +384,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                             onChange={(e) =>
                               actualizarEjercicio(bloque.id, ej.id, 'repeticiones', e.target.value)
                             }
+                            readOnly={soloLectura}
                             placeholder="6"
                             className={`${inputPlanilla} placeholder:text-slate-300`}
                           />
@@ -368,6 +393,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                           <input
                             value={ej.cargaKg}
                             onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'cargaKg', e.target.value)}
+                            readOnly={soloLectura}
                             placeholder="70%"
                             className={`${inputPlanilla} placeholder:text-slate-300`}
                           />
@@ -376,6 +402,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                           <input
                             value={ej.descanso}
                             onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'descanso', e.target.value)}
+                            readOnly={soloLectura}
                             placeholder="90s"
                             className={`${inputPlanilla} placeholder:text-slate-300`}
                           />
@@ -384,60 +411,69 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
                           <input
                             value={ej.notas}
                             onChange={(e) => actualizarEjercicio(bloque.id, ej.id, 'notas', e.target.value)}
+                            readOnly={soloLectura}
                             placeholder="RIR 2"
                             className={`${inputPlanilla} placeholder:text-slate-300`}
                           />
                         </td>
-                        <td className="print:hidden">
-                          <button
-                            type="button"
-                            onClick={() => marcarTrackeado(bloque.id, ej.id)}
-                            aria-label={
-                              ej.isTracked
-                                ? 'Ejercicio trackeado en la Terminal de Fuerza — tocar para desmarcar'
-                                : 'Marcar como ejercicio a trackear en la Terminal de Fuerza'
-                            }
-                            title="Ejercicio a medir en la Terminal de Fuerza"
-                            className={`px-1 text-sm ${
-                              ej.isTracked ? 'text-union-red-600' : 'text-slate-300 hover:text-union-red-500'
-                            }`}
-                          >
-                            🎯
-                          </button>
-                        </td>
-                        <td className="print:hidden">
-                          <button
-                            type="button"
-                            onClick={() => quitarEjercicio(bloque.id, ej.id)}
-                            aria-label="Quitar ejercicio"
-                            className="px-1 text-slate-300 hover:text-rose-500"
-                          >
-                            ✕
-                          </button>
-                        </td>
+                        {!soloLectura && (
+                          <>
+                            <td className="print:hidden">
+                              <button
+                                type="button"
+                                onClick={() => marcarTrackeado(bloque.id, ej.id)}
+                                aria-label={
+                                  ej.isTracked
+                                    ? 'Ejercicio trackeado en la Terminal de Fuerza — tocar para desmarcar'
+                                    : 'Marcar como ejercicio a trackear en la Terminal de Fuerza'
+                                }
+                                title="Ejercicio a medir en la Terminal de Fuerza"
+                                className={`px-1 text-sm ${
+                                  ej.isTracked ? 'text-union-red-600' : 'text-slate-300 hover:text-union-red-500'
+                                }`}
+                              >
+                                🎯
+                              </button>
+                            </td>
+                            <td className="print:hidden">
+                              <button
+                                type="button"
+                                onClick={() => quitarEjercicio(bloque.id, ej.id)}
+                                aria-label="Quitar ejercicio"
+                                className="px-1 text-slate-300 hover:text-rose-500"
+                              >
+                                ✕
+                              </button>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              <button
-                type="button"
-                onClick={() => agregarEjercicio(bloque.id)}
-                className="mt-1 text-[11px] font-medium text-union-red-600 hover:underline print:hidden"
-              >
-                + Agregar ejercicio
-              </button>
+              {!soloLectura && (
+                <button
+                  type="button"
+                  onClick={() => agregarEjercicio(bloque.id)}
+                  className="mt-1 text-[11px] font-medium text-union-red-600 hover:underline print:hidden"
+                >
+                  + Agregar ejercicio
+                </button>
+              )}
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={agregarBloque}
-            className="mt-6 w-full rounded-lg border-2 border-dashed border-slate-200 py-2 text-xs font-medium text-slate-400 hover:border-union-red-400 hover:text-union-red-600 print:hidden"
-          >
-            + Agregar Bloque
-          </button>
+          {!soloLectura && (
+            <button
+              type="button"
+              onClick={agregarBloque}
+              className="mt-6 w-full rounded-lg border-2 border-dashed border-slate-200 py-2 text-xs font-medium text-slate-400 hover:border-union-red-400 hover:text-union-red-600 print:hidden"
+            >
+              + Agregar Bloque
+            </button>
+          )}
 
           <div className="mt-8 flex items-end justify-between border-t border-slate-200 pt-3">
             <p className="text-[10px] text-slate-400">
@@ -448,7 +484,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
         </div>
       </div>
 
-      {mostrarModalIA && (
+      {!soloLectura && mostrarModalIA && (
         <AiPlanModal
           categoryId={plan.category_id}
           categoriaNombre={categoria?.nombre ?? 'Sin categoría'}
@@ -457,7 +493,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
         />
       )}
 
-      {mostrarMesociclo && (
+      {!soloLectura && mostrarMesociclo && (
         <MesocycleProgressionModal
           plan={plan}
           gymSheetBase={sheet}
@@ -466,7 +502,7 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
         />
       )}
 
-      {mostrarOlas && (
+      {!soloLectura && mostrarOlas && (
         <WaveMethodologyModal
           tituloSesion={sheet.titulo}
           tieneContenidoPrevio={sheet.bloques.some((b) => b.ejercicios.some((e) => e.nombre.trim() !== ''))}

@@ -29,6 +29,7 @@ import {
 } from '@/features/workload/calculations'
 import { diasDeLaSemanaActual, formatFechaCorta, fechaHoyLocal } from '@/utils/fecha'
 import { getErrorMessage } from '@/utils/errors'
+import { useSoloLectura } from '@/hooks/useSoloLectura'
 import type {
   SessionPlan,
   SessionExecution,
@@ -258,6 +259,7 @@ function DiaVacio({
 // ---------------------------------------------------------------------------
 
 function ConfiguracionSesionDiaria({ plan }: { plan: SessionPlan }) {
+  const soloLectura = useSoloLectura()
   const updateSessionPlanConfig = useAppStore((s) => s.updateSessionPlanConfig)
   const showToast = useToastStore((s) => s.showToast)
   const [rpeEsperado, setRpeEsperado] = useState(plan.rpeEsperado ?? 5)
@@ -274,6 +276,24 @@ function ConfiguracionSesionDiaria({ plan }: { plan: SessionPlan }) {
   // `cargaObjetivo` al confirmar para que nunca quede desincronizado del
   // "Objetivo (UA)" mostrado en el resto de la app.
   const cargaProyectada = calcularCargaInterna(rpeEsperado, duracionRealMin)
+
+  if (soloLectura) {
+    return (
+      <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          ⚙️ Configuración de Sesión Diaria
+        </span>
+        <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span>RPE Esperado: <strong className="text-slate-700 dark:text-slate-300">{rpeEsperado}</strong></span>
+          <span>·</span>
+          <span>Tiempo Total: <strong className="text-slate-700 dark:text-slate-300">{duracionRealMin} min</strong></span>
+        </div>
+        <Badge tone="blue" className="self-start">
+          Carga Interna Proyectada (UA): {cargaProyectada}
+        </Badge>
+      </div>
+    )
+  }
 
   async function handleGuardar() {
     setGuardando(true)
@@ -381,9 +401,10 @@ interface TareaCardProps {
   onEliminar: () => void
   onEditar: () => void
   onAbrirDetalle: () => void
+  soloLectura: boolean
 }
 
-function TareaCard({ tarea, onEliminar, onEditar, onAbrirDetalle }: TareaCardProps) {
+function TareaCard({ tarea, onEliminar, onEditar, onAbrirDetalle, soloLectura }: TareaCardProps) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
       <div className="flex items-start justify-between gap-2">
@@ -393,24 +414,26 @@ function TareaCard({ tarea, onEliminar, onEditar, onAbrirDetalle }: TareaCardPro
           </p>
           <p className="text-xs text-slate-500 dark:text-slate-400">{tarea.objetivo}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={onEditar}
-            aria-label="Editar tarea"
-            className="text-slate-300 hover:text-union-red-500 dark:text-slate-600 dark:hover:text-union-red-400"
-          >
-            ✏️
-          </button>
-          <button
-            type="button"
-            onClick={onEliminar}
-            aria-label="Eliminar tarea"
-            className="text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400"
-          >
-            ✕
-          </button>
-        </div>
+        {!soloLectura && (
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onEditar}
+              aria-label="Editar tarea"
+              className="text-slate-300 hover:text-union-red-500 dark:text-slate-600 dark:hover:text-union-red-400"
+            >
+              ✏️
+            </button>
+            <button
+              type="button"
+              onClick={onEliminar}
+              aria-label="Eliminar tarea"
+              className="text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap gap-1.5 text-xs">
         <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
@@ -430,13 +453,15 @@ function TareaCard({ tarea, onEliminar, onEditar, onAbrirDetalle }: TareaCardPro
           </span>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onAbrirDetalle}
-        className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        Planificar Detalle de Tarea →
-      </button>
+      {!soloLectura && (
+        <button
+          type="button"
+          onClick={onAbrirDetalle}
+          className="self-start rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Planificar Detalle de Tarea →
+        </button>
+      )}
     </div>
   )
 }
@@ -630,6 +655,7 @@ function NuevaTareaForm({ sessionPlanId, tareaExistente, onClose }: NuevaTareaFo
 }
 
 function TareasDelDia({ plan }: { plan: SessionPlan }) {
+  const soloLectura = useSoloLectura()
   const dailyTasks = useAppStore((s) => s.dailyTasks)
   const deleteDailyTask = useAppStore((s) => s.deleteDailyTask)
   const showToast = useToastStore((s) => s.showToast)
@@ -664,7 +690,7 @@ function TareasDelDia({ plan }: { plan: SessionPlan }) {
               {tipo}
             </Badge>
             {tareas.map((t) =>
-              tareaEnEdicion?.id === t.id ? (
+              !soloLectura && tareaEnEdicion?.id === t.id ? (
                 <NuevaTareaForm
                   key={t.id}
                   sessionPlanId={plan.id}
@@ -678,6 +704,7 @@ function TareasDelDia({ plan }: { plan: SessionPlan }) {
                   onEliminar={() => handleEliminar(t.id)}
                   onEditar={() => setTareaEnEdicion(t)}
                   onAbrirDetalle={() => setTareaDetalle(t)}
+                  soloLectura={soloLectura}
                 />
               ),
             )}
@@ -685,19 +712,22 @@ function TareasDelDia({ plan }: { plan: SessionPlan }) {
         )
       })}
 
-      {agregando ? (
-        <NuevaTareaForm sessionPlanId={plan.id} onClose={() => setAgregando(false)} />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setAgregando(true)}
-          className="rounded-xl border-2 border-dashed border-slate-200 py-2 text-xs font-medium text-slate-400 hover:border-union-red-400 hover:text-union-red-600 dark:border-slate-700 dark:hover:border-union-red-500 dark:hover:text-union-red-400"
-        >
-          + Agregar tarea
-        </button>
-      )}
+      {!soloLectura &&
+        (agregando ? (
+          <NuevaTareaForm sessionPlanId={plan.id} onClose={() => setAgregando(false)} />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAgregando(true)}
+            className="rounded-xl border-2 border-dashed border-slate-200 py-2 text-xs font-medium text-slate-400 hover:border-union-red-400 hover:text-union-red-600 dark:border-slate-700 dark:hover:border-union-red-500 dark:hover:text-union-red-400"
+          >
+            + Agregar tarea
+          </button>
+        ))}
 
-      {tareaDetalle && <DetalleTareaModal tarea={tareaDetalle} onClose={() => setTareaDetalle(null)} />}
+      {!soloLectura && tareaDetalle && (
+        <DetalleTareaModal tarea={tareaDetalle} onClose={() => setTareaDetalle(null)} />
+      )}
     </div>
   )
 }
@@ -713,6 +743,7 @@ const TIPO_PLANTILLA_TONE: Record<TipoPlantillaFuerza, BadgeTone> = {
 }
 
 function PlanesDeFuerzaAsignados({ plan }: { plan: SessionPlan }) {
+  const soloLectura = useSoloLectura()
   const strengthAssignments = useAppStore((s) => s.strengthAssignments)
   const strengthTemplates = useAppStore((s) => s.strengthTemplates)
   const strengthAssignmentAthletes = useAppStore((s) => s.strengthAssignmentAthletes)
@@ -763,15 +794,17 @@ function PlanesDeFuerzaAsignados({ plan }: { plan: SessionPlan }) {
                   {template?.nombre ?? 'Plantilla eliminada'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleEliminar(asignacion.id)}
-                disabled={eliminandoId === asignacion.id}
-                aria-label="Quitar asignación"
-                className="shrink-0 text-slate-300 hover:text-rose-500 disabled:opacity-50 dark:text-slate-600 dark:hover:text-rose-400"
-              >
-                ✕
-              </button>
+              {!soloLectura && (
+                <button
+                  type="button"
+                  onClick={() => handleEliminar(asignacion.id)}
+                  disabled={eliminandoId === asignacion.id}
+                  aria-label="Quitar asignación"
+                  className="shrink-0 text-slate-300 hover:text-rose-500 disabled:opacity-50 dark:text-slate-600 dark:hover:text-rose-400"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {esTodoElPlantel ? 'Todo el plantel' : nombresAtletas.join(', ') || '—'}
@@ -1084,6 +1117,7 @@ function NuevaSesionForm({ fecha, seasonId, categoryId, matchDay, onClose }: Nue
 // ---------------------------------------------------------------------------
 
 function SesionDelDiaBlock({ plan, onEliminada }: { plan: SessionPlan; onEliminada: () => void }) {
+  const soloLectura = useSoloLectura()
   const deleteSessionPlan = useAppStore((s) => s.deleteSessionPlan)
   const showToast = useToastStore((s) => s.showToast)
   const [expandido, setExpandido] = useState(true)
@@ -1129,14 +1163,16 @@ function SesionDelDiaBlock({ plan, onEliminada }: { plan: SessionPlan; onElimina
             🖨️ Planilla PDF
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setConfirmandoEliminar(true)}
-          aria-label="Eliminar sesión"
-          className="shrink-0 text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400"
-        >
-          ✕
-        </button>
+        {!soloLectura && (
+          <button
+            type="button"
+            onClick={() => setConfirmandoEliminar(true)}
+            aria-label="Eliminar sesión"
+            className="shrink-0 text-slate-300 hover:text-rose-500 dark:text-slate-600 dark:hover:text-rose-400"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {expandido && (
@@ -1179,6 +1215,7 @@ interface DiaDetalleModalProps {
 }
 
 function DiaDetalleModal({ fecha, sesiones, seasonId, categoryId, onClose }: DiaDetalleModalProps) {
+  const soloLectura = useSoloLectura()
   const [agregandoSesion, setAgregandoSesion] = useState(false)
   const tituloModal =
     sesiones.length === 0 ? 'Nueva sesión' : sesiones.map((s) => s.titulo).join(' + ')
@@ -1205,30 +1242,35 @@ function DiaDetalleModal({ fecha, sesiones, seasonId, categoryId, onClose }: Dia
         </div>
 
         {sesiones.length === 0 ? (
-          <NuevoPlanForm fecha={fecha} seasonId={seasonId} categoryId={categoryId} onCreated={() => {}} />
+          soloLectura ? (
+            <p className="py-8 text-center text-sm text-slate-400">No hay sesión planificada este día.</p>
+          ) : (
+            <NuevoPlanForm fecha={fecha} seasonId={seasonId} categoryId={categoryId} onCreated={() => {}} />
+          )
         ) : (
           <div className="flex flex-col gap-3">
             {sesiones.map((plan) => (
               <SesionDelDiaBlock key={plan.id} plan={plan} onEliminada={() => {}} />
             ))}
 
-            {agregandoSesion ? (
-              <NuevaSesionForm
-                fecha={fecha}
-                seasonId={seasonId}
-                categoryId={categoryId}
-                matchDay={sesiones[0].matchDay}
-                onClose={() => setAgregandoSesion(false)}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAgregandoSesion(true)}
-                className="rounded-xl border-2 border-dashed border-slate-200 py-2.5 text-xs font-medium text-slate-400 hover:border-union-red-400 hover:text-union-red-600 dark:border-slate-700 dark:hover:border-union-red-500 dark:hover:text-union-red-400"
-              >
-                + Nueva Sesión
-              </button>
-            )}
+            {!soloLectura &&
+              (agregandoSesion ? (
+                <NuevaSesionForm
+                  fecha={fecha}
+                  seasonId={seasonId}
+                  categoryId={categoryId}
+                  matchDay={sesiones[0].matchDay}
+                  onClose={() => setAgregandoSesion(false)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAgregandoSesion(true)}
+                  className="rounded-xl border-2 border-dashed border-slate-200 py-2.5 text-xs font-medium text-slate-400 hover:border-union-red-400 hover:text-union-red-600 dark:border-slate-700 dark:hover:border-union-red-500 dark:hover:text-union-red-400"
+                >
+                  + Nueva Sesión
+                </button>
+              ))}
           </div>
         )}
       </div>
@@ -1241,6 +1283,7 @@ function DiaDetalleModal({ fecha, sesiones, seasonId, categoryId, onClose }: Dia
 // ---------------------------------------------------------------------------
 
 export function PlanificadorView() {
+  const soloLectura = useSoloLectura()
   const sessionPlans = useSessionPlansActivos()
   const sessionExecutions = useSessionExecutionsActivas()
   const dailyTasks = useAppStore((s) => s.dailyTasks)
@@ -1288,7 +1331,7 @@ export function PlanificadorView() {
    * ese día si existe, o 'MD-2' como default razonable para un día vacío.
    */
   async function handleDropTemplate(templateId: string, tipo: TipoPlantillaFuerza, fecha: string) {
-    if (!activeSeasonId || !activeCategoryId) return
+    if (soloLectura || !activeSeasonId || !activeCategoryId) return
 
     const sesionesDelDia = sessionPlans.filter((p) => p.fecha === fecha)
     let sesionGimnasio = sesionesDelDia.find((p) => p.tipo === 'Gimnasio')
@@ -1343,34 +1386,36 @@ export function PlanificadorView() {
             Microciclo semanal: tocá un día para ver y planificar sus tareas en detalle.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setOrganizadorAbierto(true)}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            🗂️ Organizador de Racks
-          </button>
-          <button
-            type="button"
-            onClick={() => setBibliotecaAbierta((v) => !v)}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
-              bibliotecaAbierta
-                ? 'border-union-red-500 bg-union-red-50 text-union-red-700 dark:bg-union-red-500/10 dark:text-union-red-400'
-                : 'border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
-            }`}
-          >
-            📚 Biblioteca de Plantillas {bibliotecaAbierta ? '▴' : '▾'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setComplementariosAbierto(true)}
-            disabled={!activeCategoryId}
-            className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            🎒 Planes Extra-Club (Complementarios)
-          </button>
-        </div>
+        {!soloLectura && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setOrganizadorAbierto(true)}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              🗂️ Organizador de Racks
+            </button>
+            <button
+              type="button"
+              onClick={() => setBibliotecaAbierta((v) => !v)}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                bibliotecaAbierta
+                  ? 'border-union-red-500 bg-union-red-50 text-union-red-700 dark:bg-union-red-500/10 dark:text-union-red-400'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'
+              }`}
+            >
+              📚 Biblioteca de Plantillas {bibliotecaAbierta ? '▴' : '▾'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setComplementariosAbierto(true)}
+              disabled={!activeCategoryId}
+              className="rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:from-indigo-600 hover:to-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              🎒 Planes Extra-Club (Complementarios)
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1423,7 +1468,7 @@ export function PlanificadorView() {
 
       {activeSeasonId && activeCategoryId && (
         <div className="flex flex-col gap-4 md:flex-row md:items-start">
-          {bibliotecaAbierta && <TemplateLibraryPanel />}
+          {!soloLectura && bibliotecaAbierta && <TemplateLibraryPanel />}
 
           <div className="-mx-4 flex-1 overflow-x-auto px-4 pb-2 lg:mx-0 lg:overflow-visible lg:px-0">
             <div className="grid w-max grid-flow-col auto-cols-[220px] gap-3 lg:w-full lg:auto-cols-fr">
@@ -1472,7 +1517,7 @@ export function PlanificadorView() {
         />
       )}
 
-      {vitaminaPendiente && (
+      {!soloLectura && vitaminaPendiente && (
         <VitaminaAssignmentModal
           templateId={vitaminaPendiente.templateId}
           templateNombre={vitaminaPendiente.templateNombre}
@@ -1494,7 +1539,7 @@ export function PlanificadorView() {
         />
       )}
 
-      {organizadorAbierto && (
+      {!soloLectura && organizadorAbierto && (
         <RackOrganizerModal
           athletes={athletes}
           gymExternalLoads={gymExternalLoads}
@@ -1503,7 +1548,7 @@ export function PlanificadorView() {
         />
       )}
 
-      {complementariosAbierto && activeCategoryId && (
+      {!soloLectura && complementariosAbierto && activeCategoryId && (
         <ComplementaryPlansPanel
           categoryId={activeCategoryId}
           categoriaNombre={categoriaActiva?.nombre ?? 'Sin categoría'}

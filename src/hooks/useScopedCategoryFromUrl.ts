@@ -3,12 +3,20 @@ import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/useAppStore'
 
 /**
- * Lee `?category=<uuid>&locked=true` de la URL (Fase 19, "links mágicos" del
- * staff) y, si están presentes, fija esa categoría como activa en el store
- * global y bloquea el selector de categoría del TopBar — así un profe que
- * abre el link de su categoría no puede, ni por error, cambiarse a otra.
- * Desde Fase 23 también determina el "Modo Staff" (`categoryLocked`) que usa
- * `MainLayout` para bloquear rutas fuera del allowlist — ver `staffAccess.ts`.
+ * Lee `?category=<uuid>&locked=true` de la URL (Fase 19) y, si están
+ * presentes, fija esa categoría como activa en el store global y bloquea el
+ * selector de categoría del TopBar — así quien abre el link no puede, ni por
+ * error, cambiarse a otra. Desde Fase 23 también determina el "Modo Staff"
+ * (`categoryLocked`) que usa `MainLayout` para restringir rutas fuera del
+ * allowlist — ver `staffAccess.ts`.
+ *
+ * Fase 32: `categoryLocked` ahora hace un segundo trabajo, más importante —
+ * es la señal que usa `useSoloLectura` para forzar modo sólo lectura en el
+ * Planificador (además de `ProtectedRoute`, que deja entrar sin sesión a
+ * `/planificador?locked=true`). Este hook no cambió: sigue leyendo la URL
+ * igual, sin importar si hay sesión de Supabase Auth o no — es justo esa
+ * independencia de la sesión la que permite que el mismo link sirva para un
+ * visitante 100% anónimo.
  *
  * Sólo aplica al árbol de rutas montado bajo `MainLayout` (donde vive el
  * selector global de `activeCategoryId`); la Terminal de Fuerza es una ruta
