@@ -69,6 +69,10 @@ export interface AcwrResult {
   cargaCronica: number
   acwr: number | null
   riesgo: NivelRiesgoAcwr
+  /** Días distintos con carga registrada dentro de la ventana crónica (28 días) — Fase 33, período de calibración. */
+  diasConDatos: number
+  /** `diasConDatos < UMBRAL_DIAS_CALIBRACION` (Fase 33) — con menos de 21 días de historial el denominador crónico está incompleto y el ACWR queda artificialmente inflado; no debe disparar alertas todavía (ver `calcularAlertaGeneralRiesgo`). */
+  enPeriodoGracia: boolean
 }
 
 const DIA_MS = 24 * 60 * 60 * 1000
@@ -90,6 +94,20 @@ function dentroDeVentana(fecha: string, referencia: Date, dias: number): boolean
  */
 const MINIMO_SESIONES_CRONICAS = 3
 
+/**
+ * Período de calibración (Fase 33, "Cold Start Problem") — con menos de 21
+ * días DISTINTOS de datos reales en la ventana crónica de 28 días, el
+ * denominador del ACWR está calculado sobre una base incompleta: un jugador
+ * nuevo con, por ejemplo, 10 días de historial ya no cae en el guard de
+ * `MINIMO_SESIONES_CRONICAS` (puede tener varias sesiones esos 10 días),
+ * pero su carga crónica sigue sin ser representativa de un mes real —
+ * cualquier semana aguda normal dispara un ACWR artificialmente alto. Con
+ * menos de 21 días el ACWR no debe disparar ninguna alerta; el riesgo a
+ * corto plazo se apoya en Wellness y Monotonía de Foster (ver
+ * `calcularAlertaGeneralRiesgo`).
+ */
+export const UMBRAL_DIAS_CALIBRACION = 21
+
 export function calcularAcwr(
   ejecuciones: SessionExecution[],
   sessionPlans: SessionPlan[],
@@ -108,12 +126,15 @@ export function calcularAcwr(
   )
   const cargaCronica = cargaCronicaTotal / 4
 
+  const diasConDatos = new Set(cronicas.map((e) => e.fecha)).size
+  const enPeriodoGracia = diasConDatos < UMBRAL_DIAS_CALIBRACION
+
   if (cronicas.length < MINIMO_SESIONES_CRONICAS || cargaCronica === 0) {
     // Período de gracia: `acwr: null` + `riesgo: 'sin-datos'` es una señal
     // explícita ("todavía recopilando historial"), no un número inventado —
     // ver el badge gris "Sin datos" y "Recopilando datos…" en el Dashboard,
     // y cómo `riskAssessment.ts` ignora este estado al armar el semáforo.
-    return { cargaAguda, cargaCronica, acwr: null, riesgo: 'sin-datos' }
+    return { cargaAguda, cargaCronica, acwr: null, riesgo: 'sin-datos', diasConDatos, enPeriodoGracia }
   }
 
   const acwr = cargaAguda / cargaCronica
@@ -124,7 +145,7 @@ export function calcularAcwr(
   else if (acwr <= 1.5) riesgo = 'precaucion'
   else riesgo = 'alto'
 
-  return { cargaAguda, cargaCronica, acwr, riesgo }
+  return { cargaAguda, cargaCronica, acwr, riesgo, diasConDatos, enPeriodoGracia }
 }
 
 export function calcularSRpeSemana(
@@ -239,6 +260,22 @@ export function calcularMonotonia(serieUltimos7Dias: number[]): number | null {
   if (desviacion === 0) return 99
 
   return Number((media / desviacion).toFixed(2))
+}
+
+export type NivelMonotonia = 'optimo' | 'precaucion' | 'peligro'
+
+/**
+ * Cortes científicos de Foster (1998) para la Monotonía (Fase 33) — misma
+ * fuente y misma serie de 7 días que `calcularMonotonia`. Independiente de
+ * `UMBRAL_MONOTONIA_ALTA` (el flag binario "alta" que ya usaba el badge
+ * "📈 Alta Monotonía" del Dashboard): esta clasificación de 3 niveles es la
+ * que alimenta el semáforo dedicado a Monotonía y la Alerta General de
+ * Riesgo durante el período de calibración del ACWR.
+ */
+export function clasificarMonotonia(monotonia: number): NivelMonotonia {
+  if (monotonia > 2.0) return 'peligro'
+  if (monotonia >= 1.5) return 'precaucion'
+  return 'optimo'
 }
 
 /**

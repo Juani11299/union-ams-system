@@ -2,6 +2,9 @@ import type { SessionExecution, WellnessEntry } from '@/types'
 import { calcularReadiness, calcularWellnessScore20 } from '@/features/wellness/calculations'
 import type { AcwrResult } from '@/features/workload/calculations'
 
+const UMBRAL_MONOTONIA_PELIGRO = 2.0
+const UMBRAL_MONOTONIA_PRECAUCION = 1.5
+
 export const WELLNESS_SCORE_MAX = 20
 export const UMBRAL_WELLNESS_BAJO = 12
 export const UMBRAL_RPE_ALTO = 8
@@ -65,47 +68,76 @@ export interface AlertaGeneralRiesgo {
 }
 
 /**
- * Alerta General de Riesgo (Fase 32, auditoría científica) — tabla de
- * decisión clínica explícita que cruza ACWR (Gabbett, 2016) con el
- * Readiness/Wellness promedio (escala 1-5, Índice de Hooper,
- * `clasificarReadiness`), en el orden de severidad pedido: se evalúa
- * Crítico primero, y el primer nivel que matchea gana — así un ACWR de
- * 2.76 dispara Crítico sin importar qué diga el Wellness ese día.
- * Reemplaza al semáforo por puntaje ponderado (`nivelSemaforo`) como fuente
- * del badge/borde que ve el cuerpo técnico; `nivelSemaforo`/`riskScore`
- * siguen existiendo para el "Smart Sorting" y el desglose de factores.
+ * Alerta General de Riesgo (Fase 32, extendida en Fase 33) — tabla de
+ * decisión clínica explícita que cruza ACWR (Gabbett, 2016), Readiness/
+ * Wellness promedio (escala 1-5, Índice de Hooper, `clasificarReadiness`) y
+ * Monotonía de Foster (1998, `clasificarMonotonia`), evaluada en orden de
+ * severidad: Crítico primero, y el primer nivel que matchea gana.
+ *
+ * Período de calibración del ACWR (`acwr.enPeriodoGracia`, Fase 33): con
+ * menos de 21 días de historial real el ACWR está artificialmente inflado
+ * (denominador crónico incompleto) — acá se lo trata directamente como
+ * "sin dato" (`acwrValor = null`), así nunca dispara ninguna rama de la
+ * alerta mientras el jugador es nuevo. El riesgo a corto plazo queda
+ * apoyado exclusivamente en Wellness y Monotonía, que no dependen de una
+ * ventana larga de historial. Pasado ese período, el ACWR vuelve a
+ * combinarse con las otras dos métricas en pie de igualdad.
  */
-export function calcularAlertaGeneralRiesgo(acwr: AcwrResult, readiness: number | null): AlertaGeneralRiesgo {
-  const acwrValor = acwr.acwr
+export function calcularAlertaGeneralRiesgo(
+  acwr: AcwrResult,
+  readiness: number | null,
+  monotonia: number | null,
+): AlertaGeneralRiesgo {
+  const acwrValor = acwr.enPeriodoGracia ? null : acwr.acwr
   const acwrPeligro = acwrValor !== null && acwrValor > 1.5
   const acwrPrecaucion = acwrValor !== null && acwrValor > 1.3 && acwrValor <= 1.5
   const wellnessSevero = readiness !== null && readiness < 2.0
   const wellnessModerado = readiness !== null && readiness >= 2.0 && readiness <= 2.9
   const wellnessBajo3 = readiness !== null && readiness < 3.0
+  const monotoniaPeligro = monotonia !== null && monotonia > UMBRAL_MONOTONIA_PELIGRO
+  const monotoniaPrecaucion = monotonia !== null && monotonia >= UMBRAL_MONOTONIA_PRECAUCION && monotonia <= UMBRAL_MONOTONIA_PELIGRO
 
-  if (acwrPeligro || wellnessSevero) {
-    return {
-      nivel: 'critico',
-      motivo: acwrPeligro
-        ? `ACWR en Zona de Peligro (${acwrValor!.toFixed(2)} > 1.5)`
-        : `Wellness en Fatiga Severa (${readiness!.toFixed(1)} < 2.0)`,
-    }
+  const motivoAcwrPeligro = () => `ACWR en Zona de Peligro (${acwrValor!.toFixed(2)} > 1.5)`
+  const motivoAcwrPrecaucion = () => `ACWR en Zona de Precaución (${acwrValor!.toFixed(2)})`
+  const motivoWellnessSevero = () => `Wellness en Fatiga Severa (${readiness!.toFixed(1)} < 2.0)`
+  const motivoWellnessModerado = () => `Wellness en Fatiga Moderada (${readiness!.toFixed(1)})`
+  const motivoWellnessBajo3 = () => `Wellness bajo (${readiness!.toFixed(1)} < 3.0)`
+  const motivoMonotoniaPeligro = () => `Monotonía en Zona de Peligro (${monotonia!.toFixed(2)} > 2.0)`
+  const motivoMonotoniaPrecaucion = () => `Monotonía en Zona de Precaución (${monotonia!.toFixed(2)})`
+
+  if (acwrPeligro || wellnessSevero || monotoniaPeligro) {
+    const razones = [
+      acwrPeligro && motivoAcwrPeligro(),
+      wellnessSevero && motivoWellnessSevero(),
+      monotoniaPeligro && motivoMonotoniaPeligro(),
+    ].filter((r): r is string => !!r)
+    return { nivel: 'critico', motivo: razones.join(' + ') }
   }
-  if (acwrPrecaucion && wellnessBajo3) {
-    return {
-      nivel: 'alto',
-      motivo: `ACWR en Zona de Precaución (${acwrValor!.toFixed(2)}) + Wellness bajo (${readiness!.toFixed(1)} < 3.0)`,
-    }
+
+  if ((acwrPrecaucion || monotoniaPrecaucion) && wellnessBajo3) {
+    const razones = [
+      acwrPrecaucion && motivoAcwrPrecaucion(),
+      monotoniaPrecaucion && motivoMonotoniaPrecaucion(),
+      motivoWellnessBajo3(),
+    ].filter((r): r is string => !!r)
+    return { nivel: 'alto', motivo: razones.join(' + ') }
   }
-  if (acwrPrecaucion || wellnessModerado) {
-    return {
-      nivel: 'moderado',
-      motivo: acwrPrecaucion
-        ? `ACWR en Zona de Precaución (${acwrValor!.toFixed(2)})`
-        : `Wellness en Fatiga Moderada (${readiness!.toFixed(1)})`,
-    }
+
+  if (acwrPrecaucion || wellnessModerado || monotoniaPrecaucion) {
+    const razones = [
+      acwrPrecaucion && motivoAcwrPrecaucion(),
+      wellnessModerado && motivoWellnessModerado(),
+      monotoniaPrecaucion && motivoMonotoniaPrecaucion(),
+    ].filter((r): r is string => !!r)
+    return { nivel: 'moderado', motivo: razones.join(' + ') }
   }
-  return { nivel: 'bajo', motivo: 'ACWR y Wellness dentro de rango seguro.' }
+
+  return {
+    nivel: 'bajo',
+    motivo: acwr.enPeriodoGracia
+      ? 'Wellness y Monotonía dentro de rango seguro (ACWR en calibración).'
+      : 'ACWR, Wellness y Monotonía dentro de rango seguro.',
+  }
 }
 
 /**
@@ -119,8 +151,10 @@ export function evaluarRiesgoAtleta(params: {
   wellnessHoy: WellnessEntry | null
   ejecucionesHoyAtleta: SessionExecution[]
   acwr: AcwrResult
+  /** Monotonía de Foster de los últimos 7 días (Fase 33) — ver `calcularMonotonia`. */
+  monotonia: number | null
 }): EvaluacionRiesgoAtleta {
-  const { wellnessHoy, ejecucionesHoyAtleta, acwr } = params
+  const { wellnessHoy, ejecucionesHoyAtleta, acwr, monotonia } = params
 
   const wellnessScore = wellnessHoy ? calcularWellnessScore20(wellnessHoy) : null
   const rpeHoy = ejecucionesHoyAtleta.length > 0 ? Math.max(...ejecucionesHoyAtleta.map((e) => e.rpe)) : null
@@ -158,20 +192,22 @@ export function evaluarRiesgoAtleta(params: {
     })
   }
 
-  // Fase 26 — "Cold start": `acwr.riesgo` sólo vale 'alto'/'precaucion' con
-  // suficiente historial (ver MINIMO_SESIONES_CRONICAS en
-  // `workload/calculations.ts`); durante el "período de gracia" viene
-  // 'sin-datos', que no matchea ninguna de las dos ramas de abajo — el ACWR
-  // no suma puntaje ni entra como factor mientras el atleta es nuevo, sin
-  // necesidad de un chequeo explícito acá.
-  if (acwr.riesgo === 'alto') {
+  // Fase 26 — "Cold start" (sesiones): `acwr.riesgo` sólo vale
+  // 'alto'/'precaucion' con suficiente historial (ver
+  // MINIMO_SESIONES_CRONICAS); durante ese período de gracia viene
+  // 'sin-datos'. Fase 33 — "Cold start" (días): además, aunque
+  // `acwr.riesgo` ya sea 'alto'/'precaucion', si el jugador todavía está en
+  // `enPeriodoGracia` (< 21 días distintos de historial) el ACWR sigue sin
+  // ser confiable — se lo excluye también acá para no sumar puntaje ni
+  // aparecer como factor mientras el jugador es nuevo.
+  if (!acwr.enPeriodoGracia && acwr.riesgo === 'alto') {
     riskScore += 20
     factores.push({
       clave: 'acwr-alto',
       etiqueta: 'ACWR en zona de riesgo (>1.5)',
       sugerencia: 'Sobrecarga aguda respecto a la crónica. Reducir volumen de la semana y priorizar recuperación.',
     })
-  } else if (acwr.riesgo === 'precaucion') {
+  } else if (!acwr.enPeriodoGracia && acwr.riesgo === 'precaucion') {
     riskScore += 8
     factores.push({
       clave: 'acwr-precaucion',
@@ -180,17 +216,17 @@ export function evaluarRiesgoAtleta(params: {
     })
   }
 
-  // Alerta de Fatiga (Fase 24, revisada en Fase 26): wellness crítico
+  // Alerta de Fatiga (Fase 24, revisada en Fase 26 y 33): wellness crítico
   // (≤12/20, o dolor/fatiga en rojo aunque el total no baje de 12) O ACWR en
-  // zona de peligro (>1.5) — en período de gracia, `acwr.riesgo` nunca es
-  // 'alto', así que el semáforo queda guiado únicamente por el Wellness.
+  // zona de peligro (>1.5), ignorando el ACWR mientras el jugador está en
+  // período de calibración (Fase 33).
   const wellnessCritico =
     (wellnessScore !== null && wellnessScore <= UMBRAL_WELLNESS_CRITICO) ||
     (!!wellnessHoy && (wellnessHoy.dolorMuscular <= UMBRAL_RATING_SEVERO || wellnessHoy.fatiga <= UMBRAL_RATING_SEVERO))
-  const alertaFatiga = wellnessCritico || acwr.riesgo === 'alto'
+  const alertaFatiga = wellnessCritico || (!acwr.enPeriodoGracia && acwr.riesgo === 'alto')
 
   const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
-  const alertaGeneral = calcularAlertaGeneralRiesgo(acwr, readiness)
+  const alertaGeneral = calcularAlertaGeneralRiesgo(acwr, readiness, monotonia)
 
   return { riskScore, wellnessScore, rpeHoy, factores, enZonaRoja: factores.length > 0, alertaFatiga, alertaGeneral }
 }

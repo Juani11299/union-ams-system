@@ -18,10 +18,13 @@ import {
   calcularSerieUltimos7Dias,
   calcularCargaEjecutadaReal,
   calcularMonotonia,
+  clasificarMonotonia,
   calcularStrain,
   compararConObjetivo,
   UMBRAL_MONOTONIA_ALTA,
+  UMBRAL_DIAS_CALIBRACION,
   type NivelRiesgoAcwr,
+  type NivelMonotonia,
 } from '@/features/workload/calculations'
 import { calcularReadiness, clasificarReadiness, obtenerWellnessDelDia, type NivelReadiness } from '@/features/wellness/calculations'
 import { IngresoModal } from '@/features/wellness/IngresoModal'
@@ -92,6 +95,25 @@ const READINESS_ICONO: Record<NivelReadiness, string> = {
   severo: '🔴',
 }
 
+/** Cortes de Monotonía de Foster (Fase 33) — clasificación numérica en `clasificarMonotonia`. */
+const MONOTONIA_TONE: Record<NivelMonotonia, BadgeTone> = {
+  optimo: 'green',
+  precaucion: 'yellow',
+  peligro: 'red',
+}
+
+const MONOTONIA_LABEL: Record<NivelMonotonia, string> = {
+  optimo: '🟢 Óptimo',
+  precaucion: '🟡 Precaución',
+  peligro: '🔴 Zona de Peligro',
+}
+
+const MONOTONIA_FONDO: Record<NivelMonotonia, string> = {
+  optimo: 'bg-emerald-50 dark:bg-emerald-500/10',
+  precaucion: 'bg-amber-50 dark:bg-amber-500/10',
+  peligro: 'bg-rose-50 dark:bg-rose-500/10',
+}
+
 /**
  * Alerta General de Riesgo (Fase 32) — cruce ACWR × Wellness, ver
  * `calcularAlertaGeneralRiesgo` en `riskAssessment.ts`. Reemplaza al
@@ -144,8 +166,13 @@ export function DashboardEquipo() {
     const acwr = calcularAcwr(sessionExecutions, sessionPlans, athlete.id)
     const wellnessHoy = obtenerWellnessDelDia(wellnessEntries, athlete.id, hoy)
     const ejecucionesHoyAtleta = sessionExecutions.filter((e) => e.athleteId === athlete.id && e.fecha === hoy)
-    const evaluacionRiesgo = evaluarRiesgoAtleta({ wellnessHoy, ejecucionesHoyAtleta, acwr })
-    return { athlete, acwr, wellnessHoy, evaluacionRiesgo }
+    // Fase 33: la Monotonía de Foster se calcula acá (no en el loop de
+    // render) porque `evaluarRiesgoAtleta` la necesita para la Alerta
+    // General — el render de la tarjeta reusa este mismo valor.
+    const serie = calcularSerieUltimos7Dias(sessionExecutions, sessionPlans, athlete.id)
+    const monotonia = calcularMonotonia(serie)
+    const evaluacionRiesgo = evaluarRiesgoAtleta({ wellnessHoy, ejecucionesHoyAtleta, acwr, monotonia })
+    return { athlete, acwr, wellnessHoy, evaluacionRiesgo, serie, monotonia }
   })
   const alertasAltoRiesgo = acwrPorAtleta.filter((a) => a.acwr.riesgo === 'alto').length
   const alertasFatiga = acwrPorAtleta.filter((a) => a.evaluacionRiesgo.alertaFatiga).length
@@ -291,12 +318,11 @@ export function DashboardEquipo() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {acwrFiltrado.map(({ athlete, acwr, wellnessHoy, evaluacionRiesgo }) => {
+        {acwrFiltrado.map(({ athlete, acwr, wellnessHoy, evaluacionRiesgo, serie, monotonia }) => {
           const sRpeSemana = calcularSRpeSemana(sessionExecutions, sessionPlans, athlete.id)
-          const serie = calcularSerieUltimos7Dias(sessionExecutions, sessionPlans, athlete.id)
-          const monotonia = calcularMonotonia(serie)
           const strain = calcularStrain(sRpeSemana, monotonia)
           const monotoniaAlta = monotonia !== null && monotonia >= UMBRAL_MONOTONIA_ALTA
+          const nivelMonotonia = monotonia !== null ? clasificarMonotonia(monotonia) : null
           const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
           const nivelReadiness = readiness !== null ? clasificarReadiness(readiness) : null
           const nivelRiesgo = evaluacionRiesgo.alertaGeneral.nivel
@@ -416,26 +442,66 @@ export function DashboardEquipo() {
                       cita="Gabbett, T.J. (2016). The training-injury prevention paradox: should athletes be training smarter and harder? British Journal of Sports Medicine. (Basado en deportes de equipo)."
                     />
                   </p>
-                  <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {acwr.acwr !== null ? (
-                      acwr.acwr.toFixed(2)
-                    ) : (
-                      <span className="text-sm font-normal text-slate-400">Recopilando datos…</span>
-                    )}
-                  </p>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                    <div
-                      className={`h-full rounded-full ${RIESGO_BARRA[acwr.riesgo]}`}
-                      style={{
-                        width: acwr.acwr !== null ? `${Math.min((acwr.acwr / 2) * 100, 100)}%` : '0%',
-                      }}
-                    />
-                  </div>
-                  <Badge tone={RIESGO_TONE[acwr.riesgo]} className="mt-2">
-                    {RIESGO_LABEL[acwr.riesgo]}
-                  </Badge>
+                  {acwr.enPeriodoGracia ? (
+                    <>
+                      <p className="text-sm font-normal text-slate-400">
+                        {acwr.acwr !== null ? acwr.acwr.toFixed(2) : '—'}
+                      </p>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                        <div
+                          className="h-full rounded-full bg-slate-400 dark:bg-slate-500"
+                          style={{ width: `${Math.min((acwr.diasConDatos / UMBRAL_DIAS_CALIBRACION) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <Badge tone="gray" className="mt-2 whitespace-nowrap">
+                        🔧 Calibrando (Día {acwr.diasConDatos}/{UMBRAL_DIAS_CALIBRACION})
+                      </Badge>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        {acwr.acwr !== null ? (
+                          acwr.acwr.toFixed(2)
+                        ) : (
+                          <span className="text-sm font-normal text-slate-400">Recopilando datos…</span>
+                        )}
+                      </p>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                        <div
+                          className={`h-full rounded-full ${RIESGO_BARRA[acwr.riesgo]}`}
+                          style={{
+                            width: acwr.acwr !== null ? `${Math.min((acwr.acwr / 2) * 100, 100)}%` : '0%',
+                          }}
+                        />
+                      </div>
+                      <Badge tone={RIESGO_TONE[acwr.riesgo]} className="mt-2">
+                        {RIESGO_LABEL[acwr.riesgo]}
+                      </Badge>
+                    </>
+                  )}
                 </div>
               </div>
+
+              {monotonia !== null && nivelMonotonia !== null && (
+                <div className={`flex items-center justify-between rounded-lg p-3 ${MONOTONIA_FONDO[nivelMonotonia]}`}>
+                  <span className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                    📊 Monotonía (Foster)
+                    <InfoTooltip
+                      titulo="Índice de Monotonía (Foster, 1998)"
+                      descripcion="Carga media diaria de los últimos 7 días / desvío estándar diario. Entrenar siempre con la misma intensidad, sin alternar días fuertes y suaves, es un factor de riesgo de sobreentrenamiento y enfermedad aunque la carga total no sea alta. < 1.5 óptimo, 1.5-2.0 precaución, > 2.0 zona de peligro."
+                      cita="Foster, C. (1998). Monitoring training in athletes with reference to overtraining syndrome. Medicine & Science in Sports & Exercise, 30(7), 1164-1168."
+                    />
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {monotonia.toFixed(2)}
+                    </span>
+                    <Badge tone={MONOTONIA_TONE[nivelMonotonia]} className="whitespace-nowrap">
+                      {MONOTONIA_LABEL[nivelMonotonia]}
+                    </Badge>
+                  </span>
+                </div>
+              )}
 
               {hayPlanHoy && comparacionHoy && (
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
