@@ -16,7 +16,7 @@ import { TagFilterPanel } from './TagFilterPanel'
 import { TacticalCanvas2D } from './TacticalCanvas2D'
 import { VideoReportExport } from './VideoReportExport'
 import { SmartPlaylistPanel } from './SmartPlaylistPanel'
-import type { VideoMatch, VideoTag, ZonaCancha } from '@/types'
+import type { AnalisisIA, VideoMatch, VideoTag, ZonaCancha } from '@/types'
 
 const TABS: TabItem[] = [
   { id: 'tagging', label: 'Tagging en Vivo', icon: '🏷️' },
@@ -139,6 +139,11 @@ export function VideoAnalysisView() {
   // la consume una sola vez (via `onZonaConsumida`) y agrega la ficha.
   const [zonaDestacada, setZonaDestacada] = useState<ZonaCancha | null>(null)
 
+  // Fase 34.3 — última lectura de Análisis Táctico por Visión (Claude), a la
+  // espera de que el profe la revise/confirme en `LiveTaggingView`. Nunca se
+  // usa para crear un tag directamente.
+  const [sugerenciaIA, setSugerenciaIA] = useState<{ resultado: AnalisisIA; timestampSegundos: number } | null>(null)
+
   function seleccionarClip(matchDelClip: VideoMatch, tag: VideoTag) {
     if (matchDelClip.id !== matchId) {
       setMatchId(matchDelClip.id)
@@ -155,6 +160,11 @@ export function VideoAnalysisView() {
     playerRef.current?.seekTo(tag.timestampSegundos)
     if (tag.zona) setZonaDestacada(tag.zona)
     setTabActiva('pizarra')
+  }
+
+  function handleAnalisisIA(resultado: AnalisisIA, timestampSegundos: number) {
+    setSugerenciaIA({ resultado, timestampSegundos })
+    setTabActiva('tagging')
   }
 
   async function handleEliminarPartido() {
@@ -224,7 +234,7 @@ export function VideoAnalysisView() {
 
       {match && (
         <>
-          <VideoPlayerModule ref={playerRef} videoUrl={match.videoUrl} />
+          <VideoPlayerModule ref={playerRef} videoUrl={match.videoUrl} onAnalisisIA={handleAnalisisIA} />
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Tabs tabs={TABS} activeId={tabActiva} onChange={setTabActiva} />
@@ -238,7 +248,13 @@ export function VideoAnalysisView() {
           </div>
 
           {tabActiva === 'tagging' && (
-            <LiveTaggingView match={match} playerRef={playerRef} onVerEnPizarra={verEnPizarra} />
+            <LiveTaggingView
+              match={match}
+              playerRef={playerRef}
+              onVerEnPizarra={verEnPizarra}
+              sugerenciaIA={sugerenciaIA}
+              onDescartarSugerenciaIA={() => setSugerenciaIA(null)}
+            />
           )}
           {tabActiva === 'filtros' && <TagFilterPanel onSeleccionarClip={seleccionarClip} />}
           {tabActiva === 'pizarra' && (

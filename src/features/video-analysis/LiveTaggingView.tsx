@@ -10,9 +10,10 @@ import {
   ATAJOS_TECLADO,
   formatTimestamp,
   sugerirContexto,
+  zonaLabel,
 } from './videoAnalysisConstants'
 import { ZonaPicker } from './ZonaPicker'
-import type { VideoMatch, VideoTag, EventoTipoTag, ZonaCancha } from '@/types'
+import type { VideoMatch, VideoTag, EventoTipoTag, ZonaCancha, AnalisisIA, FaseJuego } from '@/types'
 import type { VideoPlayerHandle } from './VideoPlayerModule'
 
 interface LiveTaggingViewProps {
@@ -21,6 +22,9 @@ interface LiveTaggingViewProps {
   playerRef: React.RefObject<VideoPlayerHandle | null>
   /** Fase 34.2 — click en un tag ya cargado salta a la Pizarra 2D y posiciona la ficha en su zona. */
   onVerEnPizarra: (tag: VideoTag) => void
+  /** Fase 34.3 — última lectura de Análisis Táctico por Visión (Claude) pendiente de revisión, o `null` si no hay ninguna. */
+  sugerenciaIA: { resultado: AnalisisIA; timestampSegundos: number } | null
+  onDescartarSugerenciaIA: () => void
 }
 
 /**
@@ -31,7 +35,7 @@ interface LiveTaggingViewProps {
  * mismo partido. El profe puede aceptar la sugerencia sin tocar nada más,
  * o corregirla con la grilla de zonas antes de confirmar.
  */
-export function LiveTaggingView({ match, playerRef, onVerEnPizarra }: LiveTaggingViewProps) {
+export function LiveTaggingView({ match, playerRef, onVerEnPizarra, sugerenciaIA, onDescartarSugerenciaIA }: LiveTaggingViewProps) {
   const athletes = useAthletesActivos()
   const tags = useVideoTagsDeMatch(match.id)
   const createVideoTag = useAppStore((s) => s.createVideoTag)
@@ -42,7 +46,24 @@ export function LiveTaggingView({ match, playerRef, onVerEnPizarra }: LiveTaggin
   const [nota, setNota] = useState('')
   const [guardandoTipo, setGuardandoTipo] = useState<EventoTipoTag | null>(null)
   const [zonaManual, setZonaManual] = useState<ZonaCancha | null>(null)
+  // Fase 34.3 — fase pisada a mano por una sugerencia de IA aceptada; tiene
+  // prioridad sobre `sugerirContexto` en `taggear`, igual que `zonaManual`.
+  const [faseManual, setFaseManual] = useState<FaseJuego | null>(null)
   const [ultimaSugerencia, setUltimaSugerencia] = useState<{ tipo: EventoTipoTag; fase: string; motivo: string } | null>(null)
+
+  // Fase 34.3 — cuando llega una lectura de IA nueva, prellena zona/fase/nota
+  // para que el profe sólo tenga que elegir el tipo de evento y confirmar
+  // (o corregir cualquier campo antes). Nunca crea el tag por su cuenta.
+  useEffect(() => {
+    if (!sugerenciaIA) return
+    const { resultado } = sugerenciaIA
+    setZonaManual(resultado.zona)
+    setFaseManual(resultado.fase)
+    setNota((prev) => {
+      const lecturaIA = `🧠 IA: ${resultado.descripcion} (${resultado.alertaTactica})`
+      return prev.trim() ? prev : lecturaIA
+    })
+  }, [sugerenciaIA])
 
   async function taggear(tipo: EventoTipoTag) {
     setGuardandoTipo(tipo)
@@ -50,24 +71,34 @@ export function LiveTaggingView({ match, playerRef, onVerEnPizarra }: LiveTaggin
       const segundo = playerRef.current?.getCurrentTime() ?? 0
       const sugerencia = sugerirContexto(tags, segundo, tipo)
       const zona = zonaManual ?? sugerencia.zona
+      const fase = faseManual ?? sugerencia.fase
       await createVideoTag({
         matchId: match.id,
         athleteId: athleteId || null,
         tipo,
-        fase: sugerencia.fase,
+        fase,
         timestampSegundos: segundo,
         zona,
         nota: nota.trim() || null,
       })
-      setUltimaSugerencia({ tipo, fase: FASE_LABEL[sugerencia.fase], motivo: sugerencia.motivo })
-      showToast('success', `${EVENTO_ICONO[tipo]} ${EVENTO_LABEL[tipo]} — ${formatTimestamp(segundo)} · ${FASE_LABEL[sugerencia.fase]}`)
+      setUltimaSugerencia({ tipo, fase: FASE_LABEL[fase], motivo: faseManual ? 'Fase confirmada desde la lectura de IA.' : sugerencia.motivo })
+      showToast('success', `${EVENTO_ICONO[tipo]} ${EVENTO_LABEL[tipo]} — ${formatTimestamp(segundo)} · ${FASE_LABEL[fase]}`)
       setNota('')
       setZonaManual(null)
+      setFaseManual(null)
+      onDescartarSugerenciaIA()
     } catch (err) {
       showToast('error', getErrorMessage(err, 'No se pudo registrar el evento.'))
     } finally {
       setGuardandoTipo(null)
     }
+  }
+
+  function descartarIA() {
+    setZonaManual(null)
+    setFaseManual(null)
+    setNota('')
+    onDescartarSugerenciaIA()
   }
 
   // Atajos de teclado globales de una sola tecla (Fase 34.2, Paso 1) — se
@@ -91,7 +122,7 @@ export function LiveTaggingView({ match, playerRef, onVerEnPizarra }: LiveTaggin
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tags, athleteId, nota, zonaManual])
+  }, [tags, athleteId, nota, zonaManual, faseManual])
 
   // Sugerencia EN VIVO (antes de tocar ningún botón) — se recalcula sobre
   // un tipo "genérico" sólo para mostrar zona sugerida en la grilla; la
@@ -104,6 +135,40 @@ export function LiveTaggingView({ match, playerRef, onVerEnPizarra }: LiveTaggin
 
   return (
     <div className="flex flex-col gap-4">
+      {sugerenciaIA && (
+        <div className="flex flex-col gap-2 rounded-xl border border-union-red-200 bg-union-red-50 p-3 dark:border-union-red-500/30 dark:bg-union-red-500/10">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-union-red-700 dark:text-union-red-400">
+              🧠 Lectura de IA en {formatTimestamp(sugerenciaIA.timestampSegundos)} — revisá y confirmá
+            </p>
+            <button
+              type="button"
+              onClick={descartarIA}
+              className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold text-union-red-600 hover:bg-union-red-100 dark:text-union-red-400 dark:hover:bg-union-red-500/20"
+            >
+              ✕ Descartar
+            </button>
+          </div>
+          <p className="text-xs text-slate-700 dark:text-slate-300">{sugerenciaIA.resultado.descripcion}</p>
+          <p className="text-xs italic text-slate-600 dark:text-slate-400">⚠️ {sugerenciaIA.resultado.alertaTactica}</p>
+          <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+            <span className="rounded-full bg-white px-2 py-0.5 font-semibold dark:bg-slate-800">
+              Fase sugerida: {FASE_LABEL[sugerenciaIA.resultado.fase]}
+            </span>
+            <span className="rounded-full bg-white px-2 py-0.5 font-semibold dark:bg-slate-800">
+              Zona sugerida: {zonaLabel(sugerenciaIA.resultado.zona)}
+            </span>
+            <span className="rounded-full bg-white px-2 py-0.5 font-semibold dark:bg-slate-800">
+              Confianza: {Math.round(sugerenciaIA.resultado.confianza * 100)}%
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400">
+            Ya prellenamos zona, fase y nota abajo. Elegí vos el tipo de evento (Claude lee un fotograma fijo, no
+            puede distinguir con certeza un gol de una jugada cortada) y confirmá, o corregí lo que haga falta antes.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {EVENTOS_TAG.map((evento) => (
           <button

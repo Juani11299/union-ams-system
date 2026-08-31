@@ -1,5 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { esUrlVeo, formatTimestamp } from './videoAnalysisConstants'
+import { analizarFrameConIA } from './aiVisionService'
+import { useToastStore } from '@/store/useToastStore'
+import { getErrorMessage } from '@/utils/errors'
+import type { AnalisisIA } from '@/types'
 
 export interface VideoPlayerHandle {
   seekTo: (segundos: number) => void
@@ -9,6 +13,8 @@ export interface VideoPlayerHandle {
 interface VideoPlayerModuleProps {
   videoUrl: string
   onTimeUpdate?: (segundos: number) => void
+  /** Fase 34.3 — se dispara cuando el Análisis Táctico por Visión (Claude) termina de leer el fotograma actual. `VideoAnalysisView` lo usa para prellenar el formulario de tagging con la sugerencia. */
+  onAnalisisIA?: (resultado: AnalisisIA, timestampSegundos: number) => void
   className?: string
 }
 
@@ -36,11 +42,13 @@ const VELOCIDADES = [0.5, 1, 2] as const
  *   aproximación posible sin credenciales de socio.
  */
 export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModuleProps>(
-  function VideoPlayerModule({ videoUrl, onTimeUpdate, className = '' }, ref) {
+  function VideoPlayerModule({ videoUrl, onTimeUpdate, onAnalisisIA, className = '' }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [velocidad, setVelocidad] = useState<number>(1)
     const [tiempoActual, setTiempoActual] = useState(0)
     const [duracion, setDuracion] = useState(0)
+    const [analizandoIA, setAnalizandoIA] = useState(false)
+    const showToast = useToastStore((s) => s.showToast)
     const esVeo = esUrlVeo(videoUrl)
 
     // --- Cronómetro Manual (sólo modo VEO) ---
@@ -91,6 +99,60 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
     function saltar(segundos: number) {
       if (!videoRef.current) return
       videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime + segundos)
+    }
+
+    /**
+     * Captura el fotograma ACTUAL del `<video>` como JPEG base64 (mismo
+     * truco `<canvas>` + `toDataURL` que ya usa `TacticalCanvas2D.exportarPng`).
+     * Devuelve `null` si el video todavía no cargó metadata, o si el canvas
+     * queda "tainted" por CORS (el host del video no manda los headers que
+     * permiten leer sus píxeles) — en ese caso no hay forma de capturar el
+     * frame desde el browser, punto.
+     */
+    function capturarFrame(): string | null {
+      const video = videoRef.current
+      if (!video || video.readyState < 2 || video.videoWidth === 0) return null
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return null
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      try {
+        return canvas.toDataURL('image/jpeg', 0.85)
+      } catch {
+        return null
+      }
+    }
+
+    /**
+     * Análisis Táctico por Visión (Fase 34.3) — captura el fotograma actual
+     * y se lo manda a Claude vía `aiVisionService`/Edge Function
+     * `analizar-frame-ia`. El resultado sube por `onAnalisisIA` para que
+     * `VideoAnalysisView` lo lleve a `LiveTaggingView` como SUGERENCIA a
+     * revisar — este componente no decide ni crea ningún tag, sólo dispara
+     * el análisis y muestra el estado de carga/error.
+     */
+    async function analizarConIA() {
+      const frame = capturarFrame()
+      if (!frame) {
+        showToast(
+          'error',
+          'No se pudo capturar el fotograma — esperá a que cargue el video, o el servidor donde está alojado no permite esta operación (CORS).',
+        )
+        return
+      }
+      setAnalizandoIA(true)
+      try {
+        const segundo = videoRef.current?.currentTime ?? 0
+        const resultado = await analizarFrameConIA(frame, segundo)
+        onAnalisisIA?.(resultado, segundo)
+        showToast('success', '🧠 Lectura táctica lista — revisala en "Tagging en Vivo" antes de confirmar el tag.')
+      } catch (err) {
+        showToast('error', getErrorMessage(err, 'No se pudo analizar el fotograma con IA.'))
+      } finally {
+        setAnalizandoIA(false)
+      }
     }
 
     if (esVeo) {
@@ -213,6 +275,26 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
             ))}
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={analizarConIA}
+          disabled={analizandoIA}
+          className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-union-red-600 to-union-red-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {analizandoIA ? (
+            <>
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              Analizando jugada con IA…
+            </>
+          ) : (
+            <>🧠 Analizar con IA (fotograma actual)</>
+          )}
+        </button>
+        <p className="-mt-1 text-center text-[10px] text-slate-400">
+          Claude lee UN fotograma fijo (no todo el video en movimiento) y sugiere fase, zona y una lectura táctica —
+          la revisás y confirmás vos en "Tagging en Vivo", nunca se guarda un tag solo.
+        </p>
       </div>
     )
   },

@@ -78,3 +78,28 @@ export interface VideoTag {
   nota: string | null
   createdAt: string
 }
+
+/**
+ * Análisis Táctico por Visión (Fase 34.3) — resultado de mandarle UN
+ * fotograma del video a Claude (Anthropic Messages API con imágenes, vía la
+ * Edge Function `analizar-frame-ia`) para que dé una lectura táctica de esa
+ * escena puntual. A diferencia de `sugerirContexto` (heurística sobre tags
+ * ya cargados), esto SÍ es un modelo de IA mirando la imagen real — pero
+ * sigue siendo una LECTURA DE UN SOLO FOTOGRAMA ESTÁTICO (sin movimiento,
+ * sin tracking de jugadores/pelota entre frames), no un detector de eventos
+ * entrenado para fútbol. Por eso nunca crea un tag solo: siempre se muestra
+ * como sugerencia para que el profe la revise, corrija si hace falta, y
+ * recién ahí confirme el tag (eligiendo él el tipo de evento — algo que un
+ * fotograma fijo no puede determinar con certeza, ej. gol vs. jugada
+ * cortada). Ver `aiVisionService.ts`.
+ */
+export interface AnalisisIA {
+  fase: FaseJuego
+  zona: ZonaCancha
+  /** Lectura analítica breve de lo que se ve en el fotograma (1-2 frases). */
+  descripcion: string
+  /** Virtud o error táctico puntual detectado — "Sin alertas destacables" si no hay nada relevante. */
+  alertaTactica: string
+  /** 0 a 1 — qué tan confiable es la lectura viniendo de un solo fotograma sin contexto de movimiento. */
+  confianza: number
+}

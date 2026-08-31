@@ -427,6 +427,16 @@ entrypoint = "./functions/generate-workout/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/generate-workout/*.html" ]
 
+[functions.analizar-frame-ia]
+enabled = true
+# true: exige el JWT del cliente Supabase (el anon key alcanza — la app no
+# tiene login propio) para que la función no quede abierta a cualquiera en
+# internet quemando cuota de la API de Anthropic. Mismo criterio que
+# `generate-workout`.
+verify_jwt = true
+import_map = "./functions/analizar-frame-ia/deno.json"
+entrypoint = "./functions/analizar-frame-ia/index.ts"
+
 [functions.send-reminders]
 enabled = true
 # true: nadie la llama desde el browser — sólo `pg_cron`/`pg_net`, que manda
