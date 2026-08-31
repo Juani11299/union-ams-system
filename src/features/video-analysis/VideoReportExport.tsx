@@ -1,30 +1,32 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAthletesActivos, useAppStore } from '@/store/useAppStore'
-import { EVENTO_ICONO, EVENTO_LABEL, FASE_LABEL, formatTimestamp } from './videoAnalysisConstants'
+import { EVENTO_ICONO, EVENTO_LABEL, FASE_LABEL, formatTimestamp, coordenadasDeZona, zonaLabel } from './videoAnalysisConstants'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
 import type { VideoMatch, VideoTag } from '@/types'
 
 interface VideoReportExportProps {
-  match: VideoMatch
+  /** Título del informe — el nombre del partido (uso normal) o el concepto de una Smart Playlist ("Todas las Recuperaciones en Campo Rival"). */
+  titulo: string
+  subtitulo: string
   tags: VideoTag[]
+  matches: VideoMatch[]
   onClose: () => void
 }
 
 /**
- * Exportación de Informe de Video (Fase 34, Paso 5) — dos pasos: elegir qué
- * clips entran en el informe (checkboxes, todos tildados por defecto) y
- * generar el PDF con `window.print()`. Reusa exactamente la arquitectura de
- * impresión ya establecida en la plataforma (`.print-area` de
- * `src/index.css`, `createPortal(..., document.body)` para escapar de
- * cualquier ancestro `position:fixed`/`overflow` del modal — mismo fix que
+ * Exportación de Informe de Video (Fase 34, Paso 5; generalizado en Fase
+ * 34.2 para servir tanto al informe de UN partido como a una Smart
+ * Playlist que cruza varios). Dos pasos: elegir qué clips entran
+ * (checkboxes, todos tildados por defecto) y generar el PDF. Reusa
+ * exactamente la arquitectura de impresión ya establecida en la plataforma
+ * (`.print-area`, `createPortal(..., document.body)` para escapar de
+ * cualquier ancestro `position:fixed`/`overflow` — mismo fix que
  * `BulkComplementaryPdfExport.tsx`).
  */
-export function VideoReportExport({ match, tags, onClose }: VideoReportExportProps) {
+export function VideoReportExport({ titulo, subtitulo, tags, matches, onClose }: VideoReportExportProps) {
   const athletes = useAthletesActivos()
   const club = useAppStore((s) => s.club)
-  const categories = useAppStore((s) => s.categories)
-  const categoriaNombre = categories.find((c) => c.id === match.categoryId)?.nombre ?? 'Categoría'
 
   const [seleccionados, setSeleccionados] = useState<Set<string>>(() => new Set(tags.map((t) => t.id)))
   const [imprimiendo, setImprimiendo] = useState(false)
@@ -38,16 +40,21 @@ export function VideoReportExport({ match, tags, onClose }: VideoReportExportPro
     })
   }
 
-  const clipsElegidos = tags.filter((t) => seleccionados.has(t.id))
+  const clipsElegidos = tags
+    .filter((t) => seleccionados.has(t.id))
+    .sort((a, b) => a.timestampSegundos - b.timestampSegundos)
+  const esMultiPartido = new Set(tags.map((t) => t.matchId)).size > 1
 
   if (imprimiendo) {
     return (
       <ReporteImprimible
-        match={match}
+        titulo={titulo}
+        subtitulo={subtitulo}
         tags={clipsElegidos}
+        matches={matches}
         athletes={athletes}
         clubNombre={club?.nombre ?? 'C.A. Unión'}
-        categoriaNombre={categoriaNombre}
+        mostrarColumnaPartido={esMultiPartido}
         onClose={() => {
           setImprimiendo(false)
           onClose()
@@ -61,8 +68,8 @@ export function VideoReportExport({ match, tags, onClose }: VideoReportExportPro
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">📄 Informe de Video</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">{match.title} — elegí qué clips incluir.</p>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">📄 {titulo}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{subtitulo} — elegí qué clips incluir.</p>
           </div>
           <button
             type="button"
@@ -76,11 +83,12 @@ export function VideoReportExport({ match, tags, onClose }: VideoReportExportPro
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {tags.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-400">Este partido todavía no tiene eventos taggeados.</p>
+            <p className="py-8 text-center text-sm text-slate-400">No hay clips que coincidan con este concepto.</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
               {tags.map((tag) => {
                 const jugador = athletes.find((a) => a.id === tag.athleteId)
+                const match = matches.find((m) => m.id === tag.matchId)
                 return (
                   <li key={tag.id}>
                     <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
@@ -94,10 +102,13 @@ export function VideoReportExport({ match, tags, onClose }: VideoReportExportPro
                         {formatTimestamp(tag.timestampSegundos)}
                       </span>
                       <span>{EVENTO_ICONO[tag.tipo]}</span>
-                      <span className="text-slate-700 dark:text-slate-300">
+                      <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
                         {EVENTO_LABEL[tag.tipo]}
                         {jugador ? ` — ${jugador.nombre}` : ''}
                       </span>
+                      {esMultiPartido && match && (
+                        <span className="shrink-0 truncate text-[10px] text-slate-400">{match.title}</span>
+                      )}
                     </label>
                   </li>
                 )
@@ -123,15 +134,48 @@ export function VideoReportExport({ match, tags, onClose }: VideoReportExportPro
 }
 
 interface ReporteImprimibleProps {
-  match: VideoMatch
+  titulo: string
+  subtitulo: string
   tags: VideoTag[]
+  matches: VideoMatch[]
   athletes: ReturnType<typeof useAthletesActivos>
   clubNombre: string
-  categoriaNombre: string
+  mostrarColumnaPartido: boolean
   onClose: () => void
 }
 
-function ReporteImprimible({ match, tags, athletes, clubNombre, categoriaNombre, onClose }: ReporteImprimibleProps) {
+/** Mini-gráfico táctico (Fase 34.2, Paso 3) — silueta de cancha de ~60x38px con un punto en la zona del evento, para que el informe impreso muestre de un vistazo DÓNDE pasó cada jugada, no sólo cuándo. */
+function MiniCanchaZona({ zona }: { zona: VideoTag['zona'] }) {
+  const ANCHO = 60
+  const ALTO = 38
+  if (!zona) {
+    return (
+      <svg width={ANCHO} height={ALTO} viewBox={`0 0 ${ANCHO} ${ALTO}`} className="shrink-0">
+        <rect x={1} y={1} width={ANCHO - 2} height={ALTO - 2} fill="#1e7a3d" stroke="#94a3b8" strokeWidth={1} />
+      </svg>
+    )
+  }
+  const { x, y } = coordenadasDeZona(zona)
+  return (
+    <svg width={ANCHO} height={ALTO} viewBox={`0 0 ${ANCHO} ${ALTO}`} className="shrink-0">
+      <title>{zonaLabel(zona)}</title>
+      <rect x={1} y={1} width={ANCHO - 2} height={ALTO - 2} fill="#1e7a3d" stroke="#94a3b8" strokeWidth={1} />
+      <line x1={ANCHO / 2} y1={1} x2={ANCHO / 2} y2={ALTO - 1} stroke="#f8fafc" strokeWidth={0.75} opacity={0.6} />
+      <circle cx={x * ANCHO} cy={y * ALTO} r={3.5} fill="#ed1c24" stroke="#ffffff" strokeWidth={1} />
+    </svg>
+  )
+}
+
+function ReporteImprimible({
+  titulo,
+  subtitulo,
+  tags,
+  matches,
+  athletes,
+  clubNombre,
+  mostrarColumnaPartido,
+  onClose,
+}: ReporteImprimibleProps) {
   useEffect(() => {
     const styleEl = document.createElement('style')
     styleEl.textContent = `
@@ -160,9 +204,9 @@ function ReporteImprimible({ match, tags, athletes, clubNombre, categoriaNombre,
         <div className="flex items-center gap-3">
           <img src="/logo-union.png" alt="" className="h-14 w-14 shrink-0 object-contain" />
           <div>
-            <p className="text-xl font-bold text-union-charcoal">{match.title}</p>
+            <p className="text-xl font-bold text-union-charcoal">{titulo}</p>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              {clubNombre} — {categoriaNombre} · Informe de Video ({match.fecha})
+              {clubNombre} — {subtitulo}
             </p>
           </div>
         </div>
@@ -172,18 +216,24 @@ function ReporteImprimible({ match, tags, athletes, clubNombre, categoriaNombre,
       <table className="mt-4 w-full border-collapse text-xs">
         <thead>
           <tr className="bg-union-charcoal text-left text-[10px] uppercase tracking-wide text-white">
+            <th className="border border-slate-300 px-2 py-1.5">Zona</th>
             <th className="border border-slate-300 px-2 py-1.5">Minuto</th>
             <th className="border border-slate-300 px-2 py-1.5">Evento</th>
             <th className="border border-slate-300 px-2 py-1.5">Jugador</th>
             <th className="border border-slate-300 px-2 py-1.5">Fase</th>
+            {mostrarColumnaPartido && <th className="border border-slate-300 px-2 py-1.5">Partido</th>}
             <th className="border border-slate-300 px-2 py-1.5">Nota</th>
           </tr>
         </thead>
         <tbody>
           {tags.map((tag) => {
             const jugador = athletes.find((a) => a.id === tag.athleteId)
+            const match = matches.find((m) => m.id === tag.matchId)
             return (
               <tr key={tag.id} className="break-inside-avoid">
+                <td className="border border-slate-300 p-1 align-top">
+                  <MiniCanchaZona zona={tag.zona} />
+                </td>
                 <td className="border border-slate-300 px-2 py-2 align-top font-mono font-semibold text-slate-700">
                   {formatTimestamp(tag.timestampSegundos)}
                 </td>
@@ -192,6 +242,9 @@ function ReporteImprimible({ match, tags, athletes, clubNombre, categoriaNombre,
                 </td>
                 <td className="border border-slate-300 px-2 py-2 align-top text-slate-700">{jugador?.nombre ?? '—'}</td>
                 <td className="border border-slate-300 px-2 py-2 align-top text-slate-500">{FASE_LABEL[tag.fase]}</td>
+                {mostrarColumnaPartido && (
+                  <td className="border border-slate-300 px-2 py-2 align-top text-slate-500">{match?.title ?? '—'}</td>
+                )}
                 <td className="border border-slate-300 px-2 py-2 align-top text-slate-500">{tag.nota ?? '—'}</td>
               </tr>
             )

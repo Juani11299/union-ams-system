@@ -15,12 +15,14 @@ import { LiveTaggingView } from './LiveTaggingView'
 import { TagFilterPanel } from './TagFilterPanel'
 import { TacticalCanvas2D } from './TacticalCanvas2D'
 import { VideoReportExport } from './VideoReportExport'
-import type { VideoMatch, VideoTag } from '@/types'
+import { SmartPlaylistPanel } from './SmartPlaylistPanel'
+import type { VideoMatch, VideoTag, ZonaCancha } from '@/types'
 
 const TABS: TabItem[] = [
   { id: 'tagging', label: 'Tagging en Vivo', icon: '🏷️' },
   { id: 'filtros', label: 'Filtros y Clips', icon: '🔍' },
   { id: 'pizarra', label: 'Pizarra 2D', icon: '🎨' },
+  { id: 'playlists', label: 'Smart Playlists', icon: '🧠' },
 ]
 
 function NuevoPartidoForm({ onClose }: { onClose: () => void }) {
@@ -132,6 +134,11 @@ export function VideoAnalysisView() {
   const match = matches.find((m) => m.id === matchId) ?? null
   const tagsDelMatch = useVideoTagsDeMatch(match?.id ?? null)
 
+  // Fase 34.2, Paso 2 — la zona del último tag clickeado (desde Filtros y
+  // Clips o desde "📍 Ver en pizarra" en Tagging en Vivo). `TacticalCanvas2D`
+  // la consume una sola vez (via `onZonaConsumida`) y agrega la ficha.
+  const [zonaDestacada, setZonaDestacada] = useState<ZonaCancha | null>(null)
+
   function seleccionarClip(matchDelClip: VideoMatch, tag: VideoTag) {
     if (matchDelClip.id !== matchId) {
       setMatchId(matchDelClip.id)
@@ -141,6 +148,13 @@ export function VideoAnalysisView() {
     } else {
       playerRef.current?.seekTo(tag.timestampSegundos)
     }
+    if (tag.zona) setZonaDestacada(tag.zona)
+  }
+
+  function verEnPizarra(tag: VideoTag) {
+    playerRef.current?.seekTo(tag.timestampSegundos)
+    if (tag.zona) setZonaDestacada(tag.zona)
+    setTabActiva('pizarra')
   }
 
   async function handleEliminarPartido() {
@@ -223,16 +237,27 @@ export function VideoAnalysisView() {
             </button>
           </div>
 
-          {tabActiva === 'tagging' && <LiveTaggingView match={match} playerRef={playerRef} />}
+          {tabActiva === 'tagging' && (
+            <LiveTaggingView match={match} playerRef={playerRef} onVerEnPizarra={verEnPizarra} />
+          )}
           {tabActiva === 'filtros' && <TagFilterPanel onSeleccionarClip={seleccionarClip} />}
-          {tabActiva === 'pizarra' && <TacticalCanvas2D />}
+          {tabActiva === 'pizarra' && (
+            <TacticalCanvas2D zonaDestacada={zonaDestacada} onZonaConsumida={() => setZonaDestacada(null)} />
+          )}
+          {tabActiva === 'playlists' && <SmartPlaylistPanel />}
         </>
       )}
 
       {creandoPartido && <NuevoPartidoForm onClose={() => setCreandoPartido(false)} />}
 
       {exportandoInforme && match && (
-        <VideoReportExport match={match} tags={tagsDelMatch} onClose={() => setExportandoInforme(false)} />
+        <VideoReportExport
+          titulo={match.title}
+          subtitulo={`${match.fecha} · Informe de Video`}
+          tags={tagsDelMatch}
+          matches={matches}
+          onClose={() => setExportandoInforme(false)}
+        />
       )}
 
       {confirmandoEliminar && (

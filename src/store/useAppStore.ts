@@ -1425,6 +1425,10 @@ export const useAppStore = create<AppState>()(
     if (input.tipo !== undefined) payload.tipo = input.tipo
     if (input.fase !== undefined) payload.fase = input.fase
     if (input.timestampSegundos !== undefined) payload.timestamp_segundos = input.timestampSegundos
+    if (input.zona !== undefined) {
+      payload.zona_banda = input.zona?.banda ?? null
+      payload.zona_carril = input.zona?.carril ?? null
+    }
     if (input.nota !== undefined) payload.nota = input.nota
 
     const { data, error } = await supabase

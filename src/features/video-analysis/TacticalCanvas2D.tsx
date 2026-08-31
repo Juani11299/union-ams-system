@@ -1,4 +1,6 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { ORDEN_BANDAS, ORDEN_CARRILES, coordenadasDeZona, zonaLabel } from './videoAnalysisConstants'
+import type { ZonaCancha } from '@/types'
 
 type Herramienta = 'mover' | 'flecha' | 'zona' | 'cono'
 type Equipo = 'propio' | 'rival' | 'balon'
@@ -43,16 +45,25 @@ function nuevoId(): string {
   return Math.random().toString(36).slice(2, 10)
 }
 
+interface TacticalCanvas2DProps {
+  /** Fase 34.2, Paso 2 — cuando cambia (y no es null), coloca una ficha en esa zona automáticamente y prende la grilla. Viene de un click en "📍 Ver en pizarra" (Tagging en Vivo o Filtros y Clips). */
+  zonaDestacada?: ZonaCancha | null
+  /** Se llama después de consumir `zonaDestacada`, para que el padre pueda volver a disparar la misma zona en un click futuro (si no se resetea, cambiar a la MISMA zona dos veces seguidas no dispara el efecto de nuevo). */
+  onZonaConsumida?: () => void
+}
+
 /**
- * Pizarra 2D y Conversión Táctica (Fase 34, Paso 4 — inspirado en "Video to
- * 2D IA" de AURE, pero sin IA: acá el profe recrea la jugada a mano viendo
- * el video al lado). SVG puro (sin librería de canvas nueva, mismo criterio
- * de "cero dependencias extra" del resto de la plataforma) — cancha,
- * jugadores propio/rival arrastrables, flechas de trayectoria, zonas
- * sombreadas y conos. Exporta a PNG serializando el SVG a través de un
- * `<canvas>` intermedio.
+ * Pizarra 2D y Conversión Táctica (Fase 34, Paso 4; ampliada en Fase 34.2
+ * con la Matriz de Zonas 6x3 — inspirado en "Video to 2D IA" de AURE, pero
+ * sin IA real: acá el profe recrea la jugada a mano viendo el video al
+ * lado, y el único "automatismo" es posicionar una ficha en la zona que YA
+ * cargó al taggear, no detección por imagen). SVG puro (sin librería de
+ * canvas nueva) — cancha, jugadores propio/rival arrastrables, flechas de
+ * trayectoria, zonas sombreadas libres, conos, y ahora la grilla de 18
+ * zonas fijas. Exporta a PNG serializando el SVG a través de un `<canvas>`
+ * intermedio.
  */
-export function TacticalCanvas2D() {
+export function TacticalCanvas2D({ zonaDestacada = null, onZonaConsumida }: TacticalCanvas2DProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tokens, setTokens] = useState<Token[]>([])
   const [flechas, setFlechas] = useState<Flecha[]>([])
@@ -61,6 +72,8 @@ export function TacticalCanvas2D() {
   const [herramienta, setHerramienta] = useState<Herramienta>('mover')
   const [arrastrando, setArrastrando] = useState<string | null>(null)
   const [trazoActual, setTrazoActual] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
+  const [mostrarGrilla, setMostrarGrilla] = useState(false)
+  const [zonaResaltada, setZonaResaltada] = useState<ZonaCancha | null>(null)
 
   function coordenadasSvg(e: ReactPointerEvent): { x: number; y: number } {
     const svg = svgRef.current
@@ -71,19 +84,40 @@ export function TacticalCanvas2D() {
     return { x, y }
   }
 
-  function agregarToken(equipo: Equipo) {
-    const numerosUsados = tokens.filter((t) => t.equipo === equipo).length
-    setTokens((prev) => [
-      ...prev,
-      {
-        id: nuevoId(),
-        equipo,
-        x: equipo === 'balon' ? ANCHO / 2 : 80 + numerosUsados * 40,
-        y: equipo === 'rival' ? 80 : ALTO / 2,
-        numero: equipo === 'balon' ? undefined : numerosUsados + 1,
-      },
-    ])
+  function agregarToken(equipo: Equipo, posicion?: { x: number; y: number }) {
+    setTokens((prev) => {
+      const numerosUsados = prev.filter((t) => t.equipo === equipo).length
+      return [
+        ...prev,
+        {
+          id: nuevoId(),
+          equipo,
+          x: posicion?.x ?? (equipo === 'balon' ? ANCHO / 2 : 80 + numerosUsados * 40),
+          y: posicion?.y ?? (equipo === 'rival' ? 80 : ALTO / 2),
+          numero: equipo === 'balon' ? undefined : numerosUsados + 1,
+        },
+      ]
+    })
   }
+
+  // Fase 34.2, Paso 2 — "Al hacer clic en un tag de video guardado, la
+  // pizarra debe posicionar automáticamente las fichas de los jugadores en
+  // la zona exacta". `banda` termina en "_propia"/"_rival" — eso decide de
+  // qué color es la ficha que se agrega.
+  useEffect(() => {
+    if (!zonaDestacada) return
+    const { x, y } = coordenadasDeZona(zonaDestacada)
+    const equipo: Equipo = zonaDestacada.banda.endsWith('_rival') ? 'rival' : 'propio'
+    // La cancha visible está inseteada 20px del borde del viewBox (mismo
+    // margen que usa la grilla 6x3 más abajo) — hay que aplicar el mismo
+    // offset acá para que la ficha caiga en el CENTRO real de la celda, no
+    // desplazada hacia el borde del canvas.
+    agregarToken(equipo, { x: 20 + x * (ANCHO - 40), y: 20 + y * (ALTO - 40) })
+    setMostrarGrilla(true)
+    setZonaResaltada(zonaDestacada)
+    onZonaConsumida?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonaDestacada])
 
   function handlePointerDownToken(id: string) {
     if (herramienta === 'mover') setArrastrando(id)
@@ -135,6 +169,7 @@ export function TacticalCanvas2D() {
     setFlechas([])
     setZonas([])
     setConos([])
+    setZonaResaltada(null)
   }
 
   function exportarPng() {
@@ -166,6 +201,9 @@ export function TacticalCanvas2D() {
     { id: 'zona', icono: '🟥', label: 'Zona' },
     { id: 'cono', icono: '🔶', label: 'Cono' },
   ]
+
+  const anchoBanda = (ANCHO - 40) / ORDEN_BANDAS.length
+  const altoCarril = (ALTO - 40) / ORDEN_CARRILES.length
 
   return (
     <div className="flex flex-col gap-3">
@@ -210,6 +248,17 @@ export function TacticalCanvas2D() {
             + Balón
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => setMostrarGrilla((v) => !v)}
+          className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+            mostrarGrilla
+              ? 'bg-union-red-600 text-white'
+              : 'border border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800'
+          }`}
+        >
+          # Grilla 6x3
+        </button>
         <div className="ml-auto flex items-center gap-1.5">
           <button
             type="button"
@@ -245,7 +294,33 @@ export function TacticalCanvas2D() {
         <rect x={20} y={ALTO / 2 - 80} width={90} height={160} fill="none" stroke="#f8fafc" strokeWidth={2} opacity={0.85} />
         <rect x={ANCHO - 110} y={ALTO / 2 - 80} width={90} height={160} fill="none" stroke="#f8fafc" strokeWidth={2} opacity={0.85} />
 
-        {/* Zonas sombreadas */}
+        {/* Grilla de Zonas 6x3 (Fase 34.2, Paso 2) */}
+        {mostrarGrilla &&
+          ORDEN_CARRILES.map((carril, fila) =>
+            ORDEN_BANDAS.map((banda, col) => {
+              const x = 20 + col * anchoBanda
+              const y = 20 + fila * altoCarril
+              const esResaltada = zonaResaltada?.banda === banda && zonaResaltada?.carril === carril
+              return (
+                <rect
+                  key={`${banda}-${carril}`}
+                  x={x}
+                  y={y}
+                  width={anchoBanda}
+                  height={altoCarril}
+                  fill={esResaltada ? '#facc15' : 'transparent'}
+                  fillOpacity={esResaltada ? 0.35 : 0}
+                  stroke="#f8fafc"
+                  strokeOpacity={0.35}
+                  strokeWidth={1}
+                >
+                  <title>{zonaLabel({ banda, carril })}</title>
+                </rect>
+              )
+            }),
+          )}
+
+        {/* Zonas sombreadas (dibujo libre) */}
         {zonas.map((z) => (
           <rect key={z.id} x={z.x} y={z.y} width={z.w} height={z.h} fill="#facc15" opacity={0.28} stroke="#facc15" strokeWidth={1.5} />
         ))}
@@ -307,7 +382,8 @@ export function TacticalCanvas2D() {
 
       <p className="text-[11px] text-slate-400">
         "Mover" arrastra jugadores y balón. "Flecha"/"Zona" se dibujan haciendo click y arrastrando sobre la cancha.
-        "Cono" se coloca con un click.
+        "Cono" se coloca con un click. "Grilla 6x3" muestra la Matriz de Zonas — se prende sola cuando venís de
+        "📍 Ver en pizarra" desde un tag.
       </p>
     </div>
   )

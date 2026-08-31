@@ -32,6 +32,8 @@ import type {
   VideoTag,
   EventoTipoTag,
   FaseJuego,
+  BandaCancha,
+  CarrilCancha,
 } from '@/types'
 
 // Las tablas `clubs`, `seasons`, `team_categories` y `rosters` ya usan snake_case
@@ -870,6 +872,9 @@ export interface VideoTagRow {
   tipo: EventoTipoTag
   fase: FaseJuego
   timestamp_segundos: number
+  /** Fase 34.2 — nullable: tags de antes de esa fase, o sin zona cargada. Ver migration_fase34b_zonas_cancha.sql. */
+  zona_banda: BandaCancha | null
+  zona_carril: CarrilCancha | null
   nota: string | null
   created_at: string
 }
@@ -882,6 +887,7 @@ export function videoTagFromRow(row: VideoTagRow): VideoTag {
     tipo: row.tipo,
     fase: row.fase,
     timestampSegundos: row.timestamp_segundos,
+    zona: row.zona_banda && row.zona_carril ? { banda: row.zona_banda, carril: row.zona_carril } : null,
     nota: row.nota,
     createdAt: row.created_at,
   }
@@ -893,6 +899,7 @@ export interface NuevoVideoTagInput {
   tipo: EventoTipoTag
   fase: FaseJuego
   timestampSegundos: number
+  zona?: { banda: BandaCancha; carril: CarrilCancha } | null
   nota?: string | null
 }
 
@@ -903,6 +910,8 @@ export function videoTagToInsertRow(input: NuevoVideoTagInput) {
     tipo: input.tipo,
     fase: input.fase,
     timestamp_segundos: input.timestampSegundos,
+    zona_banda: input.zona?.banda ?? null,
+    zona_carril: input.zona?.carril ?? null,
     nota: input.nota ?? null,
   }
 }
