@@ -20,6 +20,7 @@ import { Manual9na8vaView } from '@/features/metodologia/ltad/Manual9na8vaView'
 import { Manual7ma6taView } from '@/features/metodologia/ltad/Manual7ma6taView'
 import { Manual5ta4taView } from '@/features/metodologia/ltad/Manual5ta4taView'
 import { MacrocycleView } from '@/features/periodization/MacrocycleView'
+import { VideoAnalysisView } from '@/features/video-analysis/VideoAnalysisView'
 
 function App() {
   useEffect(() => {
@@ -39,6 +40,7 @@ function App() {
           <Route path="/match-day" element={<MatchDayView />} />
           <Route path="/carga-externa" element={<ExternalLoadView />} />
           <Route path="/medical" element={<MedicalView />} />
+          <Route path="/analisis-video" element={<VideoAnalysisView />} />
           <Route path="/metodologia" element={<MetodologiaIndexView />} />
           <Route path="/metodologia/isometria" element={<MetodologiaIsometriaView />} />
           <Route path="/metodologia/manual-fuerza" element={<ManualFuerzaView />} />

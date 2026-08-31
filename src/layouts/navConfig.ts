@@ -19,6 +19,7 @@ export const navItems: NavItem[] = [
   { to: '/match-day', label: 'Día de Partido', shortLabel: 'Partido', icon: '🏆' },
   { to: '/carga-externa', label: 'Control de Carga Externa', shortLabel: 'Carga Externa', icon: '📡' },
   { to: '/medical', label: 'Área Médica', shortLabel: 'Médica', icon: '🩺' },
+  { to: '/analisis-video', label: 'Análisis de Video', shortLabel: 'Video', icon: '🎥' },
   {
     to: '/metodologia',
     label: 'Biblioteca de Manuales',

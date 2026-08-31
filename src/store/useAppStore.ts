@@ -26,6 +26,8 @@ import type {
   GymExternalLoad,
   Posicion,
   ComplementaryPlan,
+  VideoMatch,
+  VideoTag,
 } from '@/types'
 import type { GrupoPosicion } from '@/utils/posicion'
 import { supabase, isSupabaseConfigured } from '@/utils/supabase'
@@ -65,6 +67,10 @@ import {
   complementaryPlanFromRow,
   complementaryPlanToInsertRow,
   complementaryPlanToUpdateRow,
+  videoMatchFromRow,
+  videoMatchToInsertRow,
+  videoTagFromRow,
+  videoTagToInsertRow,
   type AthleteRow,
   type AthleteInput,
   type SessionPlanRow,
@@ -95,6 +101,10 @@ import {
   type ComplementaryPlanRow,
   type NuevoComplementaryPlanInput,
   type ComplementaryPlanUpdateInput,
+  type VideoMatchRow,
+  type NuevoVideoMatchInput,
+  type VideoTagRow,
+  type NuevoVideoTagInput,
 } from '@/utils/supabaseMappers'
 
 const SUPABASE_NO_CONFIGURADO =
@@ -156,6 +166,8 @@ interface AppState {
   strengthAssignmentAthletes: StrengthAssignmentAthlete[]
   gymExternalLoads: GymExternalLoad[]
   complementaryPlans: ComplementaryPlan[]
+  videoMatches: VideoMatch[]
+  videoTags: VideoTag[]
   activeSeasonId: string | null
   activeCategoryId: string | null
   /** Link mágico con `?locked=true` (Fase 19) — mientras esté en `true`, el
@@ -233,6 +245,15 @@ interface AppState {
     categoryIdDestino: string,
     tituloNuevo: string,
   ) => Promise<ComplementaryPlan>
+
+  // ---------------------------------------------------------------------------
+  // Video Analysis (Fase 34) — ver migration_fase34_video_analysis.sql
+  // ---------------------------------------------------------------------------
+  createVideoMatch: (input: NuevoVideoMatchInput) => Promise<VideoMatch>
+  deleteVideoMatch: (id: string) => Promise<void>
+  createVideoTag: (input: NuevoVideoTagInput) => Promise<VideoTag>
+  updateVideoTag: (id: string, input: Partial<NuevoVideoTagInput>) => Promise<void>
+  deleteVideoTag: (id: string) => Promise<void>
 }
 
 /** Lanza y deja el mensaje en `error` del store si Supabase no está configurado. */
@@ -303,6 +324,8 @@ export const useAppStore = create<AppState>()(
   strengthAssignmentAthletes: [],
   gymExternalLoads: [],
   complementaryPlans: [],
+  videoMatches: [],
+  videoTags: [],
   activeSeasonId: null,
   activeCategoryId: null,
   categoryLocked: false,
@@ -357,6 +380,8 @@ export const useAppStore = create<AppState>()(
           supabase.from('strength_assignment_athletes').select('*'),
           supabase.from('gym_external_loads').select('*'),
           supabase.from('complementary_plans').select('*'),
+          supabase.from('video_matches').select('*').order('fecha', { ascending: false }),
+          supabase.from('video_tags').select('*'),
         ]),
         timeout,
       ])
@@ -380,6 +405,8 @@ export const useAppStore = create<AppState>()(
         strengthAssignmentAthletesRes,
         gymExternalLoadsRes,
         complementaryPlansRes,
+        videoMatchesRes,
+        videoTagsRes,
       ] = resultados
 
       // Resiliente a fallas parciales: una tabla que falle (RLS mal configurada, tabla
@@ -404,6 +431,8 @@ export const useAppStore = create<AppState>()(
         strengthAssignmentAthletesRes,
         gymExternalLoadsRes,
         complementaryPlansRes,
+        videoMatchesRes,
+        videoTagsRes,
       ].find((r) => r.error)?.error
 
       const seasons = (seasonsRes.data ?? []) as Season[]
@@ -459,6 +488,8 @@ export const useAppStore = create<AppState>()(
         complementaryPlans: ((complementaryPlansRes.data ?? []) as ComplementaryPlanRow[]).map(
           complementaryPlanFromRow,
         ),
+        videoMatches: ((videoMatchesRes.data ?? []) as VideoMatchRow[]).map(videoMatchFromRow),
+        videoTags: ((videoTagsRes.data ?? []) as VideoTagRow[]).map(videoTagFromRow),
         activeSeasonId,
         activeCategoryId,
         isLoading: false,
@@ -1327,6 +1358,107 @@ export const useAppStore = create<AppState>()(
       planData: planOrigen.planData,
     })
   },
+
+  createVideoMatch: async (input) => {
+    exigirSupabase(set)
+
+    const { data, error } = await supabase
+      .from('video_matches')
+      .insert(videoMatchToInsertRow(input))
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const creado = videoMatchFromRow(data as VideoMatchRow)
+    set((state) => ({ videoMatches: [creado, ...state.videoMatches] }))
+    return creado
+  },
+
+  deleteVideoMatch: async (id) => {
+    exigirSupabase(set)
+
+    // `on delete cascade` en `video_tags.match_id` (migration_fase34) se
+    // encarga de borrar los tags del partido del lado de la base — acá sólo
+    // hace falta limpiar los dos arrays en memoria para que la UI no se
+    // quede mostrando tags huérfanos hasta el próximo `fetchInitialData`.
+    const { error } = await supabase.from('video_matches').delete().eq('id', id)
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    set((state) => ({
+      videoMatches: state.videoMatches.filter((m) => m.id !== id),
+      videoTags: state.videoTags.filter((t) => t.matchId !== id),
+    }))
+  },
+
+  createVideoTag: async (input) => {
+    exigirSupabase(set)
+
+    const { data, error } = await supabase
+      .from('video_tags')
+      .insert(videoTagToInsertRow(input))
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const creado = videoTagFromRow(data as VideoTagRow)
+    set((state) => ({ videoTags: [...state.videoTags, creado] }))
+    return creado
+  },
+
+  updateVideoTag: async (id, input) => {
+    exigirSupabase(set)
+
+    const payload: Record<string, unknown> = {}
+    if (input.athleteId !== undefined) payload.athlete_id = input.athleteId
+    if (input.tipo !== undefined) payload.tipo = input.tipo
+    if (input.fase !== undefined) payload.fase = input.fase
+    if (input.timestampSegundos !== undefined) payload.timestamp_segundos = input.timestampSegundos
+    if (input.nota !== undefined) payload.nota = input.nota
+
+    const { data, error } = await supabase
+      .from('video_tags')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const actualizado = videoTagFromRow(data as VideoTagRow)
+    set((state) => ({
+      videoTags: state.videoTags.map((t) => (t.id === id ? actualizado : t)),
+    }))
+  },
+
+  deleteVideoTag: async (id) => {
+    exigirSupabase(set)
+
+    const { error } = await supabase.from('video_tags').delete().eq('id', id)
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    set((state) => ({
+      videoTags: state.videoTags.filter((t) => t.id !== id),
+    }))
+  },
     }),
     {
       name: 'soma-app-store',
@@ -1389,6 +1521,30 @@ export function useComplementaryPlansActivos(): ComplementaryPlan[] {
     () => complementaryPlans.filter((p) => p.categoryId === activeCategoryId),
     [complementaryPlans, activeCategoryId],
   )
+}
+
+/** Partidos/entrenamientos filmados (Fase 34) de la categoría/temporada activa — a diferencia de los Planes Complementarios, sí scopea por temporada porque un video es de UN partido puntual, no una biblioteca reutilizable entre años. */
+export function useVideoMatchesActivos(): VideoMatch[] {
+  const videoMatches = useAppStore((s) => s.videoMatches)
+  const activeSeasonId = useAppStore((s) => s.activeSeasonId)
+  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+
+  return useMemo(
+    () => videoMatches.filter((m) => m.seasonId === activeSeasonId && m.categoryId === activeCategoryId),
+    [videoMatches, activeSeasonId, activeCategoryId],
+  )
+}
+
+/** Tags de UN partido puntual — ordenados por segundo de aparición, así la Lista de Clips ya sale en orden cronológico. */
+export function useVideoTagsDeMatch(matchId: string | null): VideoTag[] {
+  const videoTags = useAppStore((s) => s.videoTags)
+
+  return useMemo(() => {
+    if (!matchId) return []
+    return videoTags
+      .filter((t) => t.matchId === matchId)
+      .sort((a, b) => a.timestampSegundos - b.timestampSegundos)
+  }, [videoTags, matchId])
 }
 
 /** Sesiones planificadas de la categoría/temporada activa. */

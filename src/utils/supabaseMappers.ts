@@ -28,6 +28,10 @@ import type {
   WellnessRating,
   ComplementaryPlan,
   ComplementaryPlanData,
+  VideoMatch,
+  VideoTag,
+  EventoTipoTag,
+  FaseJuego,
 } from '@/types'
 
 // Las tablas `clubs`, `seasons`, `team_categories` y `rosters` ya usan snake_case
@@ -812,5 +816,93 @@ export function complementaryPlanToUpdateRow(input: ComplementaryPlanUpdateInput
     title: input.title,
     duration_weeks: input.durationWeeks,
     plan_data: input.planData,
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Video Analysis (Fase 34) — ver migration_fase34_video_analysis.sql
+// -----------------------------------------------------------------------------
+
+export interface VideoMatchRow {
+  id: string
+  category_id: string
+  season_id: string
+  title: string
+  video_url: string
+  fecha: string
+  created_at: string
+}
+
+export function videoMatchFromRow(row: VideoMatchRow): VideoMatch {
+  return {
+    id: row.id,
+    categoryId: row.category_id,
+    seasonId: row.season_id,
+    title: row.title,
+    videoUrl: row.video_url,
+    fecha: row.fecha,
+    createdAt: row.created_at,
+  }
+}
+
+export interface NuevoVideoMatchInput {
+  categoryId: string
+  seasonId: string
+  title: string
+  videoUrl: string
+  fecha: string
+}
+
+export function videoMatchToInsertRow(input: NuevoVideoMatchInput) {
+  return {
+    category_id: input.categoryId,
+    season_id: input.seasonId,
+    title: input.title,
+    video_url: input.videoUrl,
+    fecha: input.fecha,
+  }
+}
+
+export interface VideoTagRow {
+  id: string
+  match_id: string
+  athlete_id: string | null
+  tipo: EventoTipoTag
+  fase: FaseJuego
+  timestamp_segundos: number
+  nota: string | null
+  created_at: string
+}
+
+export function videoTagFromRow(row: VideoTagRow): VideoTag {
+  return {
+    id: row.id,
+    matchId: row.match_id,
+    athleteId: row.athlete_id,
+    tipo: row.tipo,
+    fase: row.fase,
+    timestampSegundos: row.timestamp_segundos,
+    nota: row.nota,
+    createdAt: row.created_at,
+  }
+}
+
+export interface NuevoVideoTagInput {
+  matchId: string
+  athleteId: string | null
+  tipo: EventoTipoTag
+  fase: FaseJuego
+  timestampSegundos: number
+  nota?: string | null
+}
+
+export function videoTagToInsertRow(input: NuevoVideoTagInput) {
+  return {
+    match_id: input.matchId,
+    athlete_id: input.athleteId,
+    tipo: input.tipo,
+    fase: input.fase,
+    timestamp_segundos: input.timestampSegundos,
+    nota: input.nota ?? null,
   }
 }
