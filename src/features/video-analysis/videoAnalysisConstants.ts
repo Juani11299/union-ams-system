@@ -1,4 +1,4 @@
-import type { EventoTipoTag, FaseJuego, BandaCancha, CarrilCancha, ZonaCancha, VideoTag } from '@/types'
+import type { EventoTipoTag, FaseJuego, BandaCancha, CarrilCancha, ZonaCancha, VideoTag, DeteccionObjeto } from '@/types'
 
 /** Botones de tagging rápido (Paso 2) — orden = orden de aparición en el panel. `tecla` = atajo de teclado (Fase 34.2, Paso 1). */
 export const EVENTOS_TAG: { tipo: EventoTipoTag; icono: string; label: string; tecla: string }[] = [
@@ -102,6 +102,49 @@ export function coordenadasDeZona(zona: ZonaCancha): { x: number; y: number } {
   const x = (col + 0.5) / ORDEN_BANDAS.length
   const y = (fila + 0.5) / ORDEN_CARRILES.length
   return { x, y }
+}
+
+/**
+ * Inversa de `coordenadasDeZona` (Fase 34.3) — dado un punto normalizado
+ * (0-1) del fotograma, devuelve a qué celda de la matriz 6x3 cae. Usado por
+ * `aiVisionService.ts` para convertir el centroide de los jugadores
+ * detectados en una zona sugerida.
+ */
+export function zonaDesdeCoordenadas(xNormalizada: number, yNormalizada: number): ZonaCancha {
+  const col = Math.min(ORDEN_BANDAS.length - 1, Math.max(0, Math.floor(xNormalizada * ORDEN_BANDAS.length)))
+  const fila = Math.min(ORDEN_CARRILES.length - 1, Math.max(0, Math.floor(yNormalizada * ORDEN_CARRILES.length)))
+  return { banda: ORDEN_BANDAS[col], carril: ORDEN_CARRILES[fila] }
+}
+
+/**
+ * Zona sugerida por Visión por Computadora (Fase 34.3) — NO es una lectura
+ * táctica, es geometría honesta: el centroide de las cajas de todas las
+ * personas detectadas (ponderado por confianza), mapeado a la matriz 6x3
+ * vía `zonaDesdeCoordenadas`. Devuelve `null` si no se detectó ninguna
+ * persona (no hay de dónde sacar un centroide).
+ */
+export function zonaDesdeDetecciones(
+  detecciones: DeteccionObjeto[],
+  anchoFrame: number,
+  altoFrame: number,
+): ZonaCancha | null {
+  const personas = detecciones.filter((d) => d.clase === 'person')
+  if (personas.length === 0 || anchoFrame <= 0 || altoFrame <= 0) return null
+
+  let sumaPesoX = 0
+  let sumaPesoY = 0
+  let sumaPesos = 0
+  for (const p of personas) {
+    const [x, y, ancho, alto] = p.bbox
+    const centroX = x + ancho / 2
+    const centroY = y + alto / 2
+    sumaPesoX += centroX * p.score
+    sumaPesoY += centroY * p.score
+    sumaPesos += p.score
+  }
+  if (sumaPesos === 0) return null
+
+  return zonaDesdeCoordenadas(sumaPesoX / sumaPesos / anchoFrame, sumaPesoY / sumaPesos / altoFrame)
 }
 
 // ---------------------------------------------------------------------------

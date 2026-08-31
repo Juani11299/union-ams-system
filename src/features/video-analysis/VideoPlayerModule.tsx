@@ -1,9 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { esUrlVeo, formatTimestamp } from './videoAnalysisConstants'
-import { analizarFrameConIA } from './aiVisionService'
+import { detectarObjetosEnVideo } from './aiVisionService'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
-import type { AnalisisIA } from '@/types'
+import type { AnalisisVisionLocal } from '@/types'
 
 export interface VideoPlayerHandle {
   seekTo: (segundos: number) => void
@@ -13,8 +13,8 @@ export interface VideoPlayerHandle {
 interface VideoPlayerModuleProps {
   videoUrl: string
   onTimeUpdate?: (segundos: number) => void
-  /** Fase 34.3 — se dispara cuando el Análisis Táctico por Visión (Claude) termina de leer el fotograma actual. `VideoAnalysisView` lo usa para prellenar el formulario de tagging con la sugerencia. */
-  onAnalisisIA?: (resultado: AnalisisIA, timestampSegundos: number) => void
+  /** Fase 34.3 — se dispara cuando la Detección de Visión (local, TensorFlow.js) termina de leer el fotograma actual. `VideoAnalysisView` lo usa para prellenar la zona sugerida en el formulario de tagging. */
+  onAnalisisVision?: (resultado: AnalisisVisionLocal, timestampSegundos: number) => void
   className?: string
 }
 
@@ -42,12 +42,13 @@ const VELOCIDADES = [0.5, 1, 2] as const
  *   aproximación posible sin credenciales de socio.
  */
 export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModuleProps>(
-  function VideoPlayerModule({ videoUrl, onTimeUpdate, onAnalisisIA, className = '' }, ref) {
+  function VideoPlayerModule({ videoUrl, onTimeUpdate, onAnalisisVision, className = '' }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [velocidad, setVelocidad] = useState<number>(1)
     const [tiempoActual, setTiempoActual] = useState(0)
     const [duracion, setDuracion] = useState(0)
-    const [analizandoIA, setAnalizandoIA] = useState(false)
+    const [analizando, setAnalizando] = useState(false)
+    const [ultimaDeteccion, setUltimaDeteccion] = useState<AnalisisVisionLocal | null>(null)
     const showToast = useToastStore((s) => s.showToast)
     const esVeo = esUrlVeo(videoUrl)
 
@@ -102,56 +103,28 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
     }
 
     /**
-     * Captura el fotograma ACTUAL del `<video>` como JPEG base64 (mismo
-     * truco `<canvas>` + `toDataURL` que ya usa `TacticalCanvas2D.exportarPng`).
-     * Devuelve `null` si el video todavía no cargó metadata, o si el canvas
-     * queda "tainted" por CORS (el host del video no manda los headers que
-     * permiten leer sus píxeles) — en ese caso no hay forma de capturar el
-     * frame desde el browser, punto.
+     * Detección de Visión por Computadora (Fase 34.3) — corre COCO-SSD
+     * (TensorFlow.js) sobre el fotograma actual, ENTERAMENTE en el
+     * navegador: sin servidor, sin API key, sin costo. El resultado
+     * (cajas + zona sugerida) sube por `onAnalisisVision` para que
+     * `VideoAnalysisView` lo lleve a `LiveTaggingView` como sugerencia a
+     * revisar, y acá mismo se dibujan las cajas sobre el video un rato.
      */
-    function capturarFrame(): string | null {
+    async function analizarConVision() {
       const video = videoRef.current
-      if (!video || video.readyState < 2 || video.videoWidth === 0) return null
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return null
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      if (!video) return
+      setAnalizando(true)
+      setUltimaDeteccion(null)
       try {
-        return canvas.toDataURL('image/jpeg', 0.85)
-      } catch {
-        return null
-      }
-    }
-
-    /**
-     * Análisis Táctico por Visión (Fase 34.3) — captura el fotograma actual
-     * y se lo manda a Claude vía `aiVisionService`/Edge Function
-     * `analizar-frame-ia`. El resultado sube por `onAnalisisIA` para que
-     * `VideoAnalysisView` lo lleve a `LiveTaggingView` como SUGERENCIA a
-     * revisar — este componente no decide ni crea ningún tag, sólo dispara
-     * el análisis y muestra el estado de carga/error.
-     */
-    async function analizarConIA() {
-      const frame = capturarFrame()
-      if (!frame) {
-        showToast(
-          'error',
-          'No se pudo capturar el fotograma — esperá a que cargue el video, o el servidor donde está alojado no permite esta operación (CORS).',
-        )
-        return
-      }
-      setAnalizandoIA(true)
-      try {
-        const segundo = videoRef.current?.currentTime ?? 0
-        const resultado = await analizarFrameConIA(frame, segundo)
-        onAnalisisIA?.(resultado, segundo)
-        showToast('success', '🧠 Lectura táctica lista — revisala en "Tagging en Vivo" antes de confirmar el tag.')
+        const segundo = video.currentTime
+        const resultado = await detectarObjetosEnVideo(video)
+        setUltimaDeteccion(resultado)
+        onAnalisisVision?.(resultado, segundo)
+        showToast(resultado.detecciones.length > 0 ? 'success' : 'info', `🔎 ${resultado.resumen}`)
       } catch (err) {
-        showToast('error', getErrorMessage(err, 'No se pudo analizar el fotograma con IA.'))
+        showToast('error', getErrorMessage(err, 'No se pudo analizar el fotograma.'))
       } finally {
-        setAnalizandoIA(false)
+        setAnalizando(false)
       }
     }
 
@@ -228,7 +201,7 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
 
     return (
       <div className={`flex flex-col gap-2 ${className}`}>
-        <div className="overflow-hidden rounded-xl bg-union-charcoal">
+        <div className="relative overflow-hidden rounded-xl bg-union-charcoal">
           <video
             ref={videoRef}
             src={videoUrl}
@@ -237,6 +210,26 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={() => setDuracion(videoRef.current?.duration ?? 0)}
           />
+          {ultimaDeteccion && ultimaDeteccion.detecciones.length > 0 && videoRef.current && (
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox={`0 0 ${videoRef.current.videoWidth} ${videoRef.current.videoHeight}`}
+              preserveAspectRatio="xMidYMid slice"
+            >
+              {ultimaDeteccion.detecciones.map((d, i) => {
+                const [x, y, ancho, alto] = d.bbox
+                const color = d.clase === 'sports ball' ? '#facc15' : '#22c55e'
+                return (
+                  <g key={i}>
+                    <rect x={x} y={y} width={ancho} height={alto} fill="none" stroke={color} strokeWidth={3} rx={4} />
+                    <text x={x + 3} y={y > 16 ? y - 5 : y + 14} fill={color} fontSize={13} fontWeight="bold">
+                      {d.clase === 'sports ball' ? '⚽' : '🧍'} {Math.round(d.score * 100)}%
+                    </text>
+                  </g>
+                )
+              })}
+            </svg>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-800">
           <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
@@ -278,22 +271,23 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
 
         <button
           type="button"
-          onClick={analizarConIA}
-          disabled={analizandoIA}
+          onClick={analizarConVision}
+          disabled={analizando}
           className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-union-red-600 to-union-red-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {analizandoIA ? (
+          {analizando ? (
             <>
               <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              Analizando jugada con IA…
+              Detectando jugadores…
             </>
           ) : (
-            <>🧠 Analizar con IA (fotograma actual)</>
+            <>🔎 Detectar jugadores (fotograma actual, gratis)</>
           )}
         </button>
         <p className="-mt-1 text-center text-[10px] text-slate-400">
-          Claude lee UN fotograma fijo (no todo el video en movimiento) y sugiere fase, zona y una lectura táctica —
-          la revisás y confirmás vos en "Tagging en Vivo", nunca se guarda un tag solo.
+          Detección de objetos gratuita, corre en tu navegador (TensorFlow.js) — encuentra jugadores/pelota en el
+          fotograma y sugiere una zona según dónde se agrupan. La primera vez tarda un poco más (descarga el
+          modelo). No lee fases tácticas — eso lo sigue sugiriendo el historial de tags en "Tagging en Vivo".
         </p>
       </div>
     )

@@ -80,26 +80,35 @@ export interface VideoTag {
 }
 
 /**
- * Análisis Táctico por Visión (Fase 34.3) — resultado de mandarle UN
- * fotograma del video a Claude (Anthropic Messages API con imágenes, vía la
- * Edge Function `analizar-frame-ia`) para que dé una lectura táctica de esa
- * escena puntual. A diferencia de `sugerirContexto` (heurística sobre tags
- * ya cargados), esto SÍ es un modelo de IA mirando la imagen real — pero
- * sigue siendo una LECTURA DE UN SOLO FOTOGRAMA ESTÁTICO (sin movimiento,
- * sin tracking de jugadores/pelota entre frames), no un detector de eventos
- * entrenado para fútbol. Por eso nunca crea un tag solo: siempre se muestra
- * como sugerencia para que el profe la revise, corrija si hace falta, y
- * recién ahí confirme el tag (eligiendo él el tipo de evento — algo que un
- * fotograma fijo no puede determinar con certeza, ej. gol vs. jugada
- * cortada). Ver `aiVisionService.ts`.
+ * Detección de Visión por Computadora (Fase 34.3) — UN objeto detectado por
+ * un modelo de object detection (COCO-SSD vía TensorFlow.js) corriendo
+ * ENTERAMENTE en el navegador de quien usa la app: no hay servidor, no hay
+ * API key, no hay costo por uso. Es visión real (caja delimitadora +
+ * confianza genuinas de una red neuronal, no inventadas), pero acotada a lo
+ * que COCO-SSD sabe reconocer — personas y la pelota — no a conceptos
+ * tácticos de fútbol. Ver `aiVisionService.ts`.
  */
-export interface AnalisisIA {
-  fase: FaseJuego
-  zona: ZonaCancha
-  /** Lectura analítica breve de lo que se ve en el fotograma (1-2 frases). */
-  descripcion: string
-  /** Virtud o error táctico puntual detectado — "Sin alertas destacables" si no hay nada relevante. */
-  alertaTactica: string
-  /** 0 a 1 — qué tan confiable es la lectura viniendo de un solo fotograma sin contexto de movimiento. */
-  confianza: number
+export interface DeteccionObjeto {
+  /** Clase de COCO-SSD relevante para el módulo — filtra el resto de las ~80 clases del dataset. */
+  clase: 'person' | 'sports ball'
+  /** 0 a 1 — confianza real que devuelve el modelo para esta detección puntual. */
+  score: number
+  /** Caja delimitadora en píxeles DEL FOTOGRAMA CAPTURADO (no del elemento `<video>` en pantalla) — [x, y, ancho, alto] desde la esquina superior izquierda. */
+  bbox: [number, number, number, number]
+}
+
+/**
+ * Resultado completo de analizar el fotograma actual (Fase 34.3). La
+ * `zonaSugerida` es un cálculo geométrico honesto — el centroide de los
+ * jugadores detectados, mapeado a la matriz 6x3 — NO una lectura táctica:
+ * asume que el fotograma muestra una porción representativa de la cancha
+ * (no sirve, por ejemplo, sobre un primer plano de un jugador). La fase de
+ * juego la sigue sugiriendo `sugerirContexto` (heurística sobre el
+ * historial de tags), que no cambia con esto.
+ */
+export interface AnalisisVisionLocal {
+  detecciones: DeteccionObjeto[]
+  zonaSugerida: ZonaCancha | null
+  /** Resumen en una frase para mostrarle al profe, ej. "8 jugadores y 1 pelota detectados — concentrados en Creación propia · Carril central". */
+  resumen: string
 }
