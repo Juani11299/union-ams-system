@@ -242,6 +242,46 @@ function exigirSupabase(set: (partial: Partial<AppState>) => void): void {
   throw new Error(SUPABASE_NO_CONFIGURADO)
 }
 
+/** Tamaño de página de PostgREST — Supabase corta cualquier `.select()` sin `.range()` acá por defecto. */
+const TAMANO_PAGINA_SUPABASE = 1000
+
+/**
+ * Trae TODAS las filas de una tabla, sin el límite silencioso de 1000 filas
+ * que aplica PostgREST por defecto a cualquier `.select('*')` sin `.range()`
+ * (Fase 34 — bug real detectado: `wellness_entries` ya superó las 1000 filas
+ * y un `.select('*')` plano dejaba afuera los ~74 registros más nuevos, sin
+ * ningún error visible; `session_executions` iba exactamente al mismo
+ * destino apenas cruzara las 1000). Pagina con `.range()` en bloques de
+ * `TAMANO_PAGINA_SUPABASE`, ordenando siempre por `fecha` descendente —así,
+ * si algún día hace falta capear el total en vez de traer todo, los
+ * registros más recientes son los primeros en llegar, nunca los más viejos.
+ * Se corta quieto (page vacía o más corta que el tamaño pedido) en vez de
+ * loopear un `count` aparte, para no sumar un round-trip extra.
+ */
+async function fetchTodasLasFilasPaginado(
+  tabla: string,
+): Promise<{ data: Record<string, unknown>[]; error: { message: string } | null }> {
+  const filas: Record<string, unknown>[] = []
+  let desde = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(tabla)
+      .select('*')
+      .order('fecha', { ascending: false })
+      .range(desde, desde + TAMANO_PAGINA_SUPABASE - 1)
+
+    if (error) return { data: filas, error }
+    if (!data || data.length === 0) break
+
+    filas.push(...data)
+    if (data.length < TAMANO_PAGINA_SUPABASE) break
+    desde += TAMANO_PAGINA_SUPABASE
+  }
+
+  return { data: filas, error: null }
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -305,8 +345,8 @@ export const useAppStore = create<AppState>()(
           supabase.from('rosters').select('*'),
           supabase.from('athletes').select('*'),
           supabase.from('session_plans').select('*'),
-          supabase.from('session_executions').select('*'),
-          supabase.from('wellness_entries').select('*'),
+          fetchTodasLasFilasPaginado('session_executions'),
+          fetchTodasLasFilasPaginado('wellness_entries'),
           supabase.from('external_loads').select('*'),
           supabase.from('physical_tests').select('*'),
           supabase.from('strength_blocks').select('*').order('orden'),
@@ -391,10 +431,12 @@ export const useAppStore = create<AppState>()(
         rosters: (rostersRes.data ?? []) as Roster[],
         athletes: ((athletesRes.data ?? []) as AthleteRow[]).map(athleteFromRow),
         sessionPlans: ((plansRes.data ?? []) as SessionPlanRow[]).map(sessionPlanFromRow),
-        sessionExecutions: ((executionsRes.data ?? []) as SessionExecutionRow[]).map(
+        sessionExecutions: ((executionsRes.data ?? []) as unknown as SessionExecutionRow[]).map(
           sessionExecutionFromRow,
         ),
-        wellnessEntries: ((wellnessRes.data ?? []) as WellnessEntryRow[]).map(wellnessEntryFromRow),
+        wellnessEntries: ((wellnessRes.data ?? []) as unknown as WellnessEntryRow[]).map(
+          wellnessEntryFromRow,
+        ),
         externalLoads: ((externalLoadsRes.data ?? []) as ExternalLoadRow[]).map(externalLoadFromRow),
         physicalTests: ((physicalTestsRes.data ?? []) as PhysicalTestRow[]).map(physicalTestFromRow),
         strengthBlocks: ((strengthBlocksRes.data ?? []) as StrengthBlockRow[]).map(strengthBlockFromRow),
