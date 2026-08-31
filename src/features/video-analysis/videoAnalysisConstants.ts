@@ -40,7 +40,7 @@ export const FASE_LABEL: Record<FaseJuego, string> = {
   transicion: 'Transición',
 }
 
-/** `true` si el link es de VEO (`app.veo.co/...` o `veo.co/...`) — determina si el reproductor usa iframe (sólo visualización) o `<video>` nativo (control total). Ver nota de capacidad en `VideoPlayerModule.tsx`. */
+/** `true` si el link es de VEO (`app.veo.co/...` o `veo.co/...`) — determina si el reproductor usa el Cronómetro Manual (VEO rechaza ser embebido, confirmado en producción) o `<video>` nativo (control total). Ver nota de capacidad en `VideoPlayerModule.tsx`. */
 export function esUrlVeo(url: string): boolean {
   try {
     const host = new URL(url).hostname

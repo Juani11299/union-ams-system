@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { esUrlVeo, formatTimestamp } from './videoAnalysisConstants'
 
 export interface VideoPlayerHandle {
@@ -15,22 +15,25 @@ interface VideoPlayerModuleProps {
 const VELOCIDADES = [0.5, 1, 2] as const
 
 /**
- * Reproductor del Módulo de Análisis de Video (Fase 34, Paso 1). Dos modos
- * según el link pegado — determinados por `esUrlVeo`:
+ * Reproductor del Módulo de Análisis de Video (Fase 34, Paso 1; corregido en
+ * Fase 34.1 tras confirmarlo en producción). Dos modos según el link
+ * pegado — determinados por `esUrlVeo`:
  *
  * - Video directo (mp4/HLS propio): `<video>` HTML5 nativo — control TOTAL
  *   y real: velocidad (0.5x/1x/2x), salto de segundos, línea de tiempo,
  *   `seekTo(segundos)` expuesto por ref para que un click en un tag salte
  *   directo a ese instante.
- * - Link de VEO (`app.veo.co/...`): VEO no ofrece un embed público con API
- *   de control programático (seek/velocidad) sin credenciales de socio de
- *   la VEO API (OAuth — ver developer.veo.co.uk, verificado antes de
- *   construir esto, no es una suposición). Se embebe como `<iframe>` de
- *   sólo visualización — el reproductor de VEO trae SUS PROPIOS controles
- *   nativos, pero `seekTo` acá es un no-op documentado: no hay forma de
- *   saltar a un timestamp por click en un tag sin esa integración oficial.
- *   Los tags igual se guardan con el segundo exacto — sirven como índice de
- *   la Lista de Clips aunque el salto automático no aplique en este modo.
+ * - Link de VEO (`app.veo.co/...`): la Fase 34 original embebía esto en un
+ *   `<iframe>`, asumiendo (por la documentación pública de la VEO API, sin
+ *   API key de socio propia) que al menos la VISUALIZACIÓN funcionaría
+ *   aunque el control programático no. Confirmado en producción que NO —
+ *   VEO responde `X-Frame-Options`/CSP que rechaza el framing por completo
+ *   ("app.veo.co rechazó la conexión"), así que ni siquiera embeber para
+ *   mirar es viable sin la integración OAuth de socio (developer.veo.co.uk).
+ *   Reemplazado por un "Cronómetro Manual": el profe abre VEO en una
+ *   pestaña aparte y usa este cronómetro sincronizado a mano para taggear
+ *   con un segundo aproximado — no es el video real, es la mejor
+ *   aproximación posible sin credenciales de socio.
  */
 export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModuleProps>(
   function VideoPlayerModule({ videoUrl, onTimeUpdate, className = '' }, ref) {
@@ -40,11 +43,38 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
     const [duracion, setDuracion] = useState(0)
     const esVeo = esUrlVeo(videoUrl)
 
+    // --- Cronómetro Manual (sólo modo VEO) ---
+    const [segundosManual, setSegundosManual] = useState(0)
+    const [corriendo, setCorriendo] = useState(false)
+    const inicioRef = useRef<number>(0)
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+    useEffect(() => {
+      if (!corriendo) return
+      inicioRef.current = Date.now() - segundosManual * 1000
+      intervalRef.current = setInterval(() => {
+        const t = (Date.now() - inicioRef.current) / 1000
+        setSegundosManual(t)
+        onTimeUpdate?.(t)
+      }, 200)
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [corriendo])
+
     useImperativeHandle(ref, () => ({
       seekTo: (segundos) => {
+        if (esVeo) {
+          // No hay video real que mover — dejamos el cronómetro marcando el
+          // objetivo para que el profe sepa a qué minuto llevar VEO a mano.
+          setCorriendo(false)
+          setSegundosManual(segundos)
+          return
+        }
         if (videoRef.current) videoRef.current.currentTime = segundos
       },
-      getCurrentTime: () => videoRef.current?.currentTime ?? 0,
+      getCurrentTime: () => (esVeo ? segundosManual : (videoRef.current?.currentTime ?? 0)),
     }))
 
     function handleTimeUpdate() {
@@ -65,15 +95,70 @@ export const VideoPlayerModule = forwardRef<VideoPlayerHandle, VideoPlayerModule
 
     if (esVeo) {
       return (
-        <div className={`flex flex-col gap-2 ${className}`}>
-          <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
-            <iframe src={videoUrl} className="h-full w-full" allow="autoplay; fullscreen" allowFullScreen title="Video VEO" />
+        <div className={`flex flex-col gap-3 rounded-xl bg-union-charcoal p-5 ${className}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-white/50">Cronómetro Manual</p>
+              <p className="mt-1 font-mono text-4xl font-bold text-white">{formatTimestamp(segundosManual)}</p>
+            </div>
+            <a
+              href={videoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-lg bg-union-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-union-red-700"
+            >
+              ↗ Abrir en VEO
+            </a>
           </div>
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
-            ⚠️ Link de VEO: usá los controles propios del reproductor (adentro del video) para velocidad y avance —
-            VEO no permite saltar a un timestamp por click desde acá sin una integración con su API oficial de
-            socio. Los tags que cargues abajo igual quedan guardados con el minuto exacto, como índice de la Lista
-            de Clips.
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCorriendo((v) => !v)}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                corriendo ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-500 text-white hover:bg-emerald-600'
+              }`}
+            >
+              {corriendo ? '⏸ Pausar' : '▶ Iniciar'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCorriendo(false)
+                setSegundosManual(0)
+              }}
+              className="rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
+            >
+              ↺ Reiniciar
+            </button>
+            <label className="ml-auto flex items-center gap-1.5 text-xs text-white/60">
+              Corregir a
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={Math.round(segundosManual)}
+                onChange={(e) => {
+                  const nuevoValor = Math.max(0, Number(e.target.value) || 0)
+                  // Si el cronómetro sigue corriendo, hay que correr también el
+                  // "inicio" de referencia — si no, el próximo tick del interval
+                  // (cada 200ms) pisa esta corrección con el cálculo viejo
+                  // (Date.now() - inicioRef), como si nunca la hubiéramos tocado.
+                  if (corriendo) inicioRef.current = Date.now() - nuevoValor * 1000
+                  setSegundosManual(nuevoValor)
+                }}
+                className="w-16 rounded border-none bg-white/10 px-2 py-1 text-white outline-none focus:bg-white/20"
+              />
+              s
+            </label>
+          </div>
+
+          <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-300">
+            ⚠️ VEO no permite embeberse dentro de otras páginas (rechaza el framing) — no es un límite de esta
+            plataforma, es una restricción del lado de VEO. Abrí el video en la pestaña nueva, dale play ahí, y
+            usá "▶ Iniciar" acá al mismo tiempo para mantener el cronómetro sincronizado. Si se desincroniza,
+            corregilo con el campo de arriba. Los tags se guardan con este segundo — es una aproximación, no el
+            timestamp exacto del archivo de VEO.
           </p>
         </div>
       )

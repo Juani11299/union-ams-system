@@ -4,13 +4,15 @@
 -- filmado, con su link de video — VEO u otro) y `video_tags` (los eventos
 -- marcados dentro de ese video, con el segundo exacto).
 --
--- Nota de integración VEO: no existe un embed público de VEO con control
--- programático de reproducción (seek/velocidad) sin credenciales de socio
--- de la VEO API (OAuth, ver developer.veo.co.uk) — `video_url` guarda el
--- link tal cual lo pega el profe (VEO u otro) y el reproductor lo trata
--- como iframe de sólo visualización en ese caso; el control total
--- (velocidad, salto exacto) sólo aplica a video servido directo (mp4/HLS
--- propio). Ver comentario en `VideoPlayerModule.tsx`.
+-- Nota de integración VEO (confirmado en producción, Fase 34.1): VEO
+-- rechaza ser embebido en un iframe (X-Frame-Options/CSP) y no ofrece un
+-- embed público con control programático de reproducción sin credenciales
+-- de socio de la VEO API (OAuth, ver developer.veo.co.uk) — `video_url`
+-- guarda el link tal cual lo pega el profe (VEO u otro); para links de VEO,
+-- `VideoPlayerModule.tsx` no intenta un iframe (se probó y VEO lo bloquea),
+-- usa un "Cronómetro Manual" sincronizado a mano mientras VEO se mira en
+-- otra pestaña. El control total (velocidad, salto exacto) sólo aplica a
+-- video servido directo (mp4/HLS propio). Ver comentario en `VideoPlayerModule.tsx`.
 -- =============================================================================
 
 create table if not exists video_matches (
