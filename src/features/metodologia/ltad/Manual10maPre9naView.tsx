@@ -421,7 +421,7 @@ export function Manual10maPre9naView() {
           </blockquote>
         </Hoja>
 
-        <Hoja>
+        <Hoja ultima>
           <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
@@ -457,23 +457,6 @@ export function Manual10maPre9naView() {
               'Sadres, E., Eliakim, A., Constantini, N., Lidor, R., & Falk, B. (2001). The effect of long-term resistance training on anthropometric measures, muscle strength, and self concept in pre-pubertal boys. Pediatric Exercise Science, 13, 357–372.',
             ]}
           />
-        </Hoja>
-
-        <Hoja ultima>
-          <Encabezado eyebrow="Nota Final y Firma" />
-          <Titulo>Nota final sobre la carpeta "Máster en Alto Rendimiento — Real Madrid"</Titulo>
-          <P>
-            La búsqueda en Google Drive fue exhaustiva (4 subcarpetas, 13 archivos revisados en
-            su totalidad). Salvo la sesión de Eduardo López Martínez, el resto del material
-            corresponde a fisiología del esfuerzo adulta, tecnología de valoración de campo y el
-            propio Trabajo de Fin de Máster del autor sobre fatiga neuromuscular — contenido
-            valioso para otros tomos de este Manual Metodológico, pero no directamente aplicable
-            a la fuerza infanto-juvenil de 12-13 años. Se documenta esta distinción en lugar de
-            forzar citas donde no corresponden, en línea con el criterio de honestidad de fuentes
-            que rige todos los manuales de esta área.
-          </P>
-          <Cierre />
-          <Pie />
         </Hoja>
       </div>
     </div>
@@ -693,28 +676,3 @@ function NotaFuentes() {
   )
 }
 
-function Cierre() {
-  return (
-    <section className="mt-6">
-      <Titulo>Cierre</Titulo>
-      <P>
-        Este tomo es el marco de referencia obligatorio para todo entrenador, preparador físico
-        o colaborador que trabaje con 10ma y Pre 9na división. El objetivo de esta etapa no es
-        que el jugador de 12-13 años sea fuerte: es que llegue listo para volverse fuerte de
-        forma segura, cuando su propio cuerpo lo habilite.
-      </P>
-    </section>
-  )
-}
-
-function Pie() {
-  return (
-    <div className="mt-10 flex items-end justify-between border-t border-slate-200 pt-4">
-      <p className="text-[10px] text-slate-400">Club Atlético Unión de Santa Fe</p>
-      <div className="text-right">
-        <p className="text-xs font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
-        <p className="text-[10px] text-slate-400">{NOMBRE_AREA}</p>
-      </div>
-    </div>
-  )
-}

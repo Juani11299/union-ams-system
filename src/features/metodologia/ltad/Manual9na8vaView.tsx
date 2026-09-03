@@ -348,7 +348,7 @@ export function Manual9na8vaView() {
           </blockquote>
         </Hoja>
 
-        <Hoja>
+        <Hoja ultima>
           <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
@@ -367,21 +367,6 @@ export function Manual9na8vaView() {
               'Rador, J., Oliver, J., Waugh, C., Myer, G., Moore, I., & Lloyd, R. (2018). The influence of growth and maturation on stretch-shortening cycle function in youth. Sports Medicine, 48(1), 57–71.',
             ]}
           />
-        </Hoja>
-
-        <Hoja ultima>
-          <Encabezado eyebrow="Nota Final y Firma" />
-          <Titulo>Nota final sobre la carpeta "Máster en Alto Rendimiento — Real Madrid"</Titulo>
-          <P>
-            Se revisó nuevamente la carpeta completa (4 subcarpetas, 13 archivos) buscando
-            específicamente contenido sobre la ventana de 14-15 años y riesgo de lesión en el
-            pico de crecimiento. No se encontró material dedicado a esta franja etaria más allá
-            de lo ya citado en el primer tomo (sesión de Eduardo López Martínez sobre maduración
-            biológica). Se documenta esta búsqueda por transparencia, en línea con el criterio de
-            honestidad de fuentes que rige todos los manuales de esta área.
-          </P>
-          <Cierre />
-          <Pie />
         </Hoja>
       </div>
     </div>
@@ -563,28 +548,3 @@ function NotaFuentes() {
   )
 }
 
-function Cierre() {
-  return (
-    <section className="mt-6">
-      <Titulo>Cierre</Titulo>
-      <P>
-        Este tomo es el marco de referencia obligatorio para todo entrenador, preparador físico
-        o colaborador que trabaje con 9na y 8va división. Es la ventana de mayor riesgo
-        estructural de todo el proceso formativo — y por eso mismo, la etapa donde la
-        supervisión y la dosificación conservadora son innegociables.
-      </P>
-    </section>
-  )
-}
-
-function Pie() {
-  return (
-    <div className="mt-10 flex items-end justify-between border-t border-slate-200 pt-4">
-      <p className="text-[10px] text-slate-400">Club Atlético Unión de Santa Fe</p>
-      <div className="text-right">
-        <p className="text-xs font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
-        <p className="text-[10px] text-slate-400">{NOMBRE_AREA}</p>
-      </div>
-    </div>
-  )
-}

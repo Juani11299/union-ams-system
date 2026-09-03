@@ -321,7 +321,7 @@ export function Manual7ma6taView() {
           </blockquote>
         </Hoja>
 
-        <Hoja>
+        <Hoja ultima>
           <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
@@ -335,23 +335,6 @@ export function Manual7ma6taView() {
               'Rador, J., Oliver, J., Waugh, C., Myer, G., Moore, I., & Lloyd, R. (2018). The influence of growth and maturation on stretch-shortening cycle function in youth. Sports Medicine, 48(1), 57–71.',
             ]}
           />
-        </Hoja>
-
-        <Hoja ultima>
-          <Encabezado eyebrow="Nota Final y Firma" />
-          <Titulo>Nota final sobre la carpeta "Máster en Alto Rendimiento — Real Madrid"</Titulo>
-          <P>
-            Se revisó nuevamente la carpeta completa buscando específicamente contenido sobre
-            RFD, isometría avanzada o fuerza máxima en la franja de 16-17 años. Al igual que en
-            los dos tomos anteriores, no se encontró material dedicado a esta ventana etaria
-            específica más allá de lo ya citado (sesión de Eduardo López Martínez). El material de
-            fisiología del esfuerzo adulto y tecnología de valoración de campo presente en esa
-            carpeta se reserva para el próximo tomo (5ta y 4ta división), donde sí resulta
-            directamente aplicable dado que esa franja etaria ya corresponde a maduración
-            biológica completa.
-          </P>
-          <Cierre />
-          <Pie />
         </Hoja>
       </div>
     </div>
@@ -525,28 +508,3 @@ function NotaFuentes() {
   )
 }
 
-function Cierre() {
-  return (
-    <section className="mt-6">
-      <Titulo>Cierre</Titulo>
-      <P>
-        Este tomo es el marco de referencia obligatorio para todo entrenador, preparador físico
-        o colaborador que trabaje con 7ma y 6ta división. Es la etapa donde se construyen los
-        cimientos definitivos del jugador profesional, sobre una base técnica y estructural ya
-        preparada por las dos etapas anteriores.
-      </P>
-    </section>
-  )
-}
-
-function Pie() {
-  return (
-    <div className="mt-10 flex items-end justify-between border-t border-slate-200 pt-4">
-      <p className="text-[10px] text-slate-400">Club Atlético Unión de Santa Fe</p>
-      <div className="text-right">
-        <p className="text-xs font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
-        <p className="text-[10px] text-slate-400">{NOMBRE_AREA}</p>
-      </div>
-    </div>
-  )
-}

@@ -156,8 +156,6 @@ export function ManualFuerzaView() {
         <Hoja ultima>
           <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Cap7Referencias />
-          <Cierre />
-          <Pie />
         </Hoja>
       </div>
     </div>
@@ -1455,29 +1453,3 @@ function CategoriaLtad({ numero, titulo, edad, faseSensible, objetivo, vitamina 
   )
 }
 
-function Cierre() {
-  return (
-    <section className="mt-6 border-t border-slate-200 pt-4">
-      <Titulo>Cierre</Titulo>
-      <P>
-        Este manual establece la Metodología UNIÓN como el estándar metodológico único del
-        Área de Fuerza del club, aplicable de forma consistente desde la 10ma división hasta
-        el plantel de Reserva y Primera. No es un documento cerrado: se actualiza en la medida
-        en que la evidencia científica del campo avanza y en la medida en que la propia
-        experiencia del club — la mejor fuente de retroalimentación que existe sobre si una
-        metodología funciona — lo exige.
-      </P>
-    </section>
-  )
-}
-
-function Pie() {
-  return (
-    <div className="mt-8 flex items-end justify-between border-t border-slate-200 pt-3">
-      <p className="text-[10px] text-slate-400">
-        Club Atlético Unión de Santa Fe — {NOMBRE_AREA}. Documento metodológico interno.
-      </p>
-      <p className="text-[10px] font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
-    </div>
-  )
-}

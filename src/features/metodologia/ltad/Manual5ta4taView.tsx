@@ -333,7 +333,7 @@ export function Manual5ta4taView() {
           </blockquote>
         </Hoja>
 
-        <Hoja>
+        <Hoja ultima>
           <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
@@ -348,23 +348,6 @@ export function Manual5ta4taView() {
               'Yoshida, N., Hornsby, W. G., Sole, C. J., Sato, K., & Stone, M. H. (2024). Effect of neuromuscular fatigue on the countermovement jump characteristics: Basketball-related high-intensity exercises. Journal of Strength & Conditioning Research. https://pubmed.ncbi.nlm.nih.gov/37889855/',
             ]}
           />
-        </Hoja>
-
-        <Hoja ultima>
-          <Encabezado eyebrow="Nota Final y Firma" />
-          <Titulo>Nota final sobre la carpeta "Máster en Alto Rendimiento — Real Madrid"</Titulo>
-          <P>
-            A diferencia de los tres tomos anteriores, en este documento la carpeta completa (4
-            subcarpetas, 13 archivos) fue la fuente principal de apoyo junto con Añon (2026), dado
-            que su contenido de fisiología del esfuerzo adulto, tecnología de valoración de campo
-            y el propio TFM del autor corresponden exactamente a la franja etaria de 18-20 años.
-            Se deja constancia de que algunas referencias citadas dentro de esos materiales
-            (Gathercole et al., Selye, Skinner &amp; McLellan) se transcriben tal como aparecen en
-            la fuente secundaria revisada, sin haber sido releídas en su publicación original
-            durante esta sesión.
-          </P>
-          <Cierre />
-          <Pie />
         </Hoja>
       </div>
     </div>
@@ -552,28 +535,3 @@ function NotaFuentes() {
   )
 }
 
-function Cierre() {
-  return (
-    <section className="mt-6">
-      <Titulo>Cierre</Titulo>
-      <P>
-        Este tomo cierra la colección LTAD del Área de Fuerza. El jugador que egresa de 5ta y 4ta
-        división lo hace habiendo atravesado, de forma documentada y con base científica en cada
-        paso, el proceso íntegro de Desarrollo Atlético a Largo Plazo que sostiene la Metodología
-        UNIÓN.
-      </P>
-    </section>
-  )
-}
-
-function Pie() {
-  return (
-    <div className="mt-10 flex items-end justify-between border-t border-slate-200 pt-4">
-      <p className="text-[10px] text-slate-400">Club Atlético Unión de Santa Fe</p>
-      <div className="text-right">
-        <p className="text-xs font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
-        <p className="text-[10px] text-slate-400">{NOMBRE_AREA}</p>
-      </div>
-    </div>
-  )
-}

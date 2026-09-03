@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
-import { DiagramaBiomecanico, type TipoDiagramaBiomecanico } from '@/components/ui/DiagramaBiomecanico'
 
 /**
  * Manual de Isometría Avanzada — Escuela de Movimiento e Isometría. Libro de
  * texto interno maquetado 1-a-1 sobre `docs/Manual_Isometria_Avanzada.md`
  * (no es un resumen — es ese texto distribuido en hojas A4). Las figuras
- * biomecánicas del documento (marcadas `[IMAGEN: ...]` en el Markdown, por
- * no depender de imágenes externas ni de derechos de autor de terceros) se
- * renderizan acá como `<DiagramaBiomecanico>`, un SVG dibujado a mano.
+ * biomecánicas con angulaciones que este documento tenía (renderizadas con
+ * `<DiagramaBiomecanico>`, un SVG dibujado a mano) se sacaron por pedido
+ * explícito — el componente sigue existiendo en `components/ui/` por si se
+ * reusa en otra vista, pero ya no se importa acá.
  * Documento exportable a PDF vía `window.print()`, reutilizando la
  * arquitectura de impresión A4 del resto de los manuales del club.
  */
@@ -294,10 +294,6 @@ export function MetodologiaIsometriaView() {
             un tiempo de contacto brevísimo (80-100ms). Se prescriben angulaciones de rodilla más
             abiertas (~140°), emulando el touchdown del sprint a máxima velocidad.
           </P>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Figura tipo="aceleracion" caption="Vector horizontal — postura de aceleración, cadera y rodilla ~90°." />
-            <Figura tipo="top-speed" caption="Vector vertical — postura de top speed, rodilla de apoyo ~140° (touchdown)." />
-          </div>
           <Titulo>2.3 Consecuencias metodológicas</Titulo>
           <P>
             La combinación de ambos ejes —ángulo específico y dirección del vector— convierte a
@@ -340,7 +336,6 @@ export function MetodologiaIsometriaView() {
 
         <Hoja>
           <Encabezado eyebrow="03 — Overcoming Isometrics: Aceleración y Sprint" />
-          <Figura tipo="aceleracion" caption="Postura de Overcoming Isometric para aceleración — tronco inclinado ~45°, cadera y rodilla de la pierna motriz a ~90°, vector de fuerza horizontal hacia adelante y abajo." grande />
           <P>
             El objetivo neuromuscular de esta postura es la producción de fuerza horizontal
             máxima en el umbral de reclutamiento más alto posible (Sección 1.5), sin el
@@ -361,7 +356,6 @@ export function MetodologiaIsometriaView() {
             máxima el cuerpo ya no proyecta el centro de masa hacia adelante con la misma
             agresividad, sino que lo mantiene estable sobre un apoyo de apenas 80-100ms.
           </P>
-          <Figura tipo="top-speed" caption="Postura de Overcoming Isometric para velocidad máxima (Top Speed) — tronco casi vertical, rodilla de apoyo ~140° emulando el touchdown, vector de fuerza vertical hacia abajo." grande />
         </Hoja>
 
         <Hoja>
@@ -458,7 +452,6 @@ export function MetodologiaIsometriaView() {
             tronco con leve inclinación hacia adelante pero columna neutra, centro de masa
             deliberadamente hundido entre ambos apoyos.
           </P>
-          <Figura tipo="cod-yielding" caption="Postura de Yielding Isometric para absorción en cambio de dirección — estocada profunda (lunge), rodilla externa alineada sobre el pie, centro de masa hundido, vector de fuerza de frenado hacia el centro de masa." grande />
         </Hoja>
 
         <Hoja>
@@ -649,7 +642,7 @@ export function MetodologiaIsometriaView() {
 
         {/* ================= CAPÍTULO 7 — REFERENCIAS ================= */}
 
-        <Hoja>
+        <Hoja ultima>
           <Encabezado eyebrow="07 — Referencias Bibliográficas" />
           <Referencias
             items={[
@@ -665,24 +658,6 @@ export function MetodologiaIsometriaView() {
               'Oranchuk, D. J., Storey, A. G., Nelson, A. R., & Cronin, J. B. (2019). Isometric training and long-term adaptations: Effects of muscle length, intensity, and intent: A systematic review. Scandinavian Journal of Medicine & Science in Sports, 29(4), 484–503.',
             ]}
           />
-        </Hoja>
-
-        <Hoja ultima>
-          <Encabezado eyebrow="Nota Final y Firma" />
-          <Titulo>Nota metodológica de cierre</Titulo>
-          <P>
-            Este documento distingue explícitamente los niveles de cita, siguiendo el mismo
-            criterio de honestidad de fuentes que rige el resto de los manuales de esta área: el
-            marco de práctica profesional (Natera) se desarrolla y difunde principalmente en
-            contextos de formación práctica, no en journals de revisión por pares; la literatura
-            científica de consenso (Oranchuk et al., 2019) se presenta como atribución conceptual
-            estándar por autor y año; y la Teoría de Vectores de Fuerza se asienta como estándar
-            biomecánico propio de la Metodología UNIÓN. La referencia de Lum &amp; Zavorsky
-            (2017) fue provista como parte del encargo original y no pudo ser corroborada con
-            datos editoriales completos en esta sesión — se cita con esa salvedad explícita.
-          </P>
-          <Cierre />
-          <Pie />
         </Hoja>
       </div>
     </div>
@@ -820,31 +795,6 @@ function Tabla({ columnas, filas }: { columnas: string[]; filas: string[][] }) {
   )
 }
 
-/**
- * Contenedor "de libro de texto" para los diagramas biomecánicos: fondo
- * sutil, borde redondeado y pie de figura científico — envuelve al SVG de
- * `DiagramaBiomecanico`, que no sabe nada de layout ni de captions (queda
- * reutilizable para otras vistas del club el día de mañana).
- */
-function Figura({
-  tipo,
-  caption,
-  grande = false,
-}: {
-  tipo: TipoDiagramaBiomecanico
-  caption: string
-  grande?: boolean
-}) {
-  return (
-    <figure className="mt-4 break-inside-avoid rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <DiagramaBiomecanico tipo={tipo} className={grande ? 'mx-auto h-64 w-auto' : 'mx-auto h-40 w-auto'} />
-      <figcaption className="mt-2 text-center text-[10px] italic leading-snug text-slate-500">
-        {caption}
-      </figcaption>
-    </figure>
-  )
-}
-
 function Referencias({ items }: { items: string[] }) {
   return (
     <ol className="mt-2 flex flex-col gap-2.5">
@@ -928,39 +878,6 @@ function NotaFuentes() {
           Área de Fuerza del club — no como cita a un tercero externo.
         </li>
       </ol>
-      <Nota>
-        Las figuras de este documento son diagramas biomecánicos esquemáticos ("stick figure"),
-        dibujados internamente en SVG por el Área de Fuerza — no son fotografías ni material con
-        derechos de autor de terceros.
-      </Nota>
     </section>
-  )
-}
-
-function Cierre() {
-  return (
-    <section className="mt-6">
-      <Titulo>Cierre</Titulo>
-      <P>
-        Este manual es el marco de referencia obligatorio para la prescripción de isometría
-        avanzada en el club, y su hoja de ruta LTAD (Capítulo 5) es de aplicación obligatoria por
-        categoría. Ningún ejercicio se incorpora al programa sin responder primero a la pregunta
-        que organiza todo el documento: qué fase del gesto, en qué ángulo y en qué dirección de
-        fuerza, se está tratando de mejorar — y si el jugador, según su categoría y su momento
-        madurativo, está fisiológicamente preparado para recibir ese estímulo.
-      </P>
-    </section>
-  )
-}
-
-function Pie() {
-  return (
-    <div className="mt-10 flex items-end justify-between border-t border-slate-200 pt-4">
-      <p className="text-[10px] text-slate-400">Club Atlético Unión de Santa Fe</p>
-      <div className="text-right">
-        <p className="text-xs font-semibold tracking-wide text-union-charcoal">{FIRMA_AUTOR}</p>
-        <p className="text-[10px] text-slate-400">{NOMBRE_AREA}</p>
-      </div>
-    </div>
   )
 }
