@@ -3,9 +3,17 @@ import { useAuthStore } from '@/store/useAuthStore'
 
 /**
  * `true` si la vista actual debe comportarse como visor de sólo lectura
- * (Fase 32): sin sesión de Staff real, O con `?locked=true` en la URL —
- * cualquiera de las dos alcanza, da igual si el que abrió el link estaba
+ * (Fase 32, ampliado en Fase 35): sin sesión de Staff real, O con
+ * `?locked=true` en la URL — sea el link escopeado a una categoría
+ * (`categoryLocked`) o el link "todo el club" (`soloLecturaGlobal`).
+ * Cualquiera de las tres alcanza, da igual si el que abrió el link estaba
  * logueado o no.
+ *
+ * Nota: el bloqueo REAL de escritura ya no depende de que cada componente
+ * llame a este hook — vive centralizado envolviendo las acciones del store
+ * (ver el final de `useAppStore.ts`). Este hook sigue existiendo para las
+ * vistas que quieren dar mejor UX ocultando botones en vez de dejarlos
+ * fallar al tocarlos (`DashboardEquipo`, `PlanificadorView`).
  *
  * Reemplaza el propósito original del "Modo Staff" de Fase 19/23
  * (`categoryLocked`), que dejaba a un asistente LOGUEADO editar el
@@ -18,5 +26,6 @@ import { useAuthStore } from '@/store/useAuthStore'
 export function useSoloLectura(): boolean {
   const session = useAuthStore((s) => s.session)
   const categoryLocked = useAppStore((s) => s.categoryLocked)
-  return !session || categoryLocked
+  const soloLecturaGlobal = useAppStore((s) => s.soloLecturaGlobal)
+  return !session || categoryLocked || soloLecturaGlobal
 }

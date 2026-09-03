@@ -4,7 +4,7 @@ import { navItems, type NavItem } from './navConfig'
 import { useAppStore } from '@/store/useAppStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { ClubLogo } from '@/components/ClubLogo'
-import { rutaPermitidaParaStaff } from '@/utils/staffAccess'
+import { rutaBloqueadaParaVisitante } from '@/utils/staffAccess'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -25,6 +25,7 @@ function CandadoStaff() {
 export function Sidebar() {
   const club = useAppStore((s) => s.club)
   const categoryLocked = useAppStore((s) => s.categoryLocked)
+  const soloLecturaGlobal = useAppStore((s) => s.soloLecturaGlobal)
   const signOut = useAuthStore((s) => s.signOut)
   const gruposRenderizados = new Set<string>()
 
@@ -40,11 +41,17 @@ export function Sidebar() {
             gruposRenderizados.add(item.group)
             const itemsDelGrupo = navItems.filter((i) => i.group === item.group)
             return (
-              <NavGroup key={item.group} titulo={item.group} items={itemsDelGrupo} categoryLocked={categoryLocked} />
+              <NavGroup
+                key={item.group}
+                titulo={item.group}
+                items={itemsDelGrupo}
+                categoryLocked={categoryLocked}
+                soloLecturaGlobal={soloLecturaGlobal}
+              />
             )
           }
 
-          const bloqueado = categoryLocked && !rutaPermitidaParaStaff(item.to)
+          const bloqueado = rutaBloqueadaParaVisitante(item.to, categoryLocked, soloLecturaGlobal)
           return (
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className={navLinkClass}>
               <span aria-hidden>{item.icon}</span>
@@ -69,11 +76,21 @@ export function Sidebar() {
 }
 
 /** Submenú desplegable del Sidebar (ej. "Estructura de Trabajo") — se abre solo si contiene la ruta activa. */
-function NavGroup({ titulo, items, categoryLocked }: { titulo: string; items: NavItem[]; categoryLocked: boolean }) {
+function NavGroup({
+  titulo,
+  items,
+  categoryLocked,
+  soloLecturaGlobal,
+}: {
+  titulo: string
+  items: NavItem[]
+  categoryLocked: boolean
+  soloLecturaGlobal: boolean
+}) {
   const location = useLocation()
   const contieneActivo = items.some((item) => item.to === location.pathname)
   const [abierto, setAbierto] = useState(contieneActivo)
-  const grupoBloqueado = categoryLocked && items.every((item) => !rutaPermitidaParaStaff(item.to))
+  const grupoBloqueado = items.every((item) => rutaBloqueadaParaVisitante(item.to, categoryLocked, soloLecturaGlobal))
 
   return (
     <div>
@@ -102,7 +119,7 @@ function NavGroup({ titulo, items, categoryLocked }: { titulo: string; items: Na
       {abierto && (
         <div className="ml-4 mt-1 flex flex-col gap-1 border-l border-slate-200 pl-3 dark:border-slate-700">
           {items.map((item) => {
-            const bloqueado = categoryLocked && !rutaPermitidaParaStaff(item.to)
+            const bloqueado = rutaBloqueadaParaVisitante(item.to, categoryLocked, soloLecturaGlobal)
             return (
               <NavLink key={item.to} to={item.to} className={navLinkClass}>
                 <span aria-hidden>{item.icon}</span>

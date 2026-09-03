@@ -22,6 +22,18 @@ export function construirLinkTerminalFuerza(categoryId: string): string {
   return `${window.location.origin}/terminal-fuerza?category=${categoryId}&locked=true`
 }
 
+/**
+ * "Link de sólo lectura, todo el club" (Fase 35) — a diferencia de
+ * `construirLinkStaff` en `CategoriesTab.tsx` (escopeado a UNA categoría, y
+ * restringido a Dashboard/Planificador), este `?locked=true` SIN `category`
+ * habilita ver cualquier categoría y navegar a casi toda la app — bloquea
+ * sólo Administración y Ficha Médica (ver `staffAccess.ts`). Quien lo abre
+ * nunca puede crear, editar ni borrar nada, esté logueado o no.
+ */
+export function construirLinkSoloLecturaGlobal(): string {
+  return `${window.location.origin}/?locked=true`
+}
+
 export async function copiarLinkMagico(
   url: string,
   showToast: (t: 'success' | 'error', m: string) => void,

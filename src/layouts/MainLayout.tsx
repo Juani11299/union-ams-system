@@ -7,7 +7,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { ToastContainer } from '@/components/ToastContainer'
 import { LockedModuleView } from '@/components/LockedModuleView'
 import { useScopedCategoryFromUrl } from '@/hooks/useScopedCategoryFromUrl'
-import { rutaPermitidaParaStaff } from '@/utils/staffAccess'
+import { rutaBloqueadaParaVisitante } from '@/utils/staffAccess'
 
 function EstadoCarga() {
   return (
@@ -53,13 +53,14 @@ export function MainLayout() {
   const isLoading = useAppStore((s) => s.isLoading)
   const error = useAppStore((s) => s.error)
   const categoryLocked = useAppStore((s) => s.categoryLocked)
+  const soloLecturaGlobal = useAppStore((s) => s.soloLecturaGlobal)
   const fetchInitialData = useAppStore((s) => s.fetchInitialData)
   const [toastCerrado, setToastCerrado] = useState(false)
   const location = useLocation()
 
   useScopedCategoryFromUrl()
 
-  const bloqueadoPorModoStaff = categoryLocked && !rutaPermitidaParaStaff(location.pathname)
+  const bloqueadoPorModoStaff = rutaBloqueadaParaVisitante(location.pathname, categoryLocked, soloLecturaGlobal)
 
   useEffect(() => {
     fetchInitialData()
@@ -75,7 +76,13 @@ export function MainLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         <main className="flex-1 overflow-y-auto px-4 pb-20 pt-4 md:px-8 md:pb-8 md:pt-6">
-          {isLoading ? <EstadoCarga /> : bloqueadoPorModoStaff ? <LockedModuleView /> : <Outlet />}
+          {isLoading ? (
+            <EstadoCarga />
+          ) : bloqueadoPorModoStaff ? (
+            <LockedModuleView modo={categoryLocked ? 'staff' : 'soloLecturaGlobal'} />
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
       <BottomTabBar />

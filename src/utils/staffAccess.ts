@@ -21,9 +21,44 @@
  */
 const PREFIJOS_PERMITIDOS_STAFF = ['/planificador']
 
-export function rutaPermitidaParaStaff(pathname: string): boolean {
+function rutaPermitidaParaStaff(pathname: string): boolean {
   if (pathname === '/') return true
   return PREFIJOS_PERMITIDOS_STAFF.some(
     (prefijo) => pathname === prefijo || pathname.startsWith(`${prefijo}/`),
   )
+}
+
+/**
+ * Fase 35 — "Link de sólo lectura, todo el club". A diferencia del Modo
+ * Staff de arriba (allowlist chico, pensado para un asistente acotado a UNA
+ * categoría), acá el criterio se invierte a BLOCKLIST: se abre TODO el
+ * árbol de `MainLayout` salvo Administración (gestión de usuarios/
+ * categorías/temporadas del club) y Ficha Médica (datos sensibles de
+ * jugadores) — decisión explícita del club sobre qué compartir ampliamente,
+ * no un default técnico.
+ */
+const PREFIJOS_BLOQUEADOS_SOLO_LECTURA_GLOBAL = ['/admin', '/medical']
+
+function rutaPermitidaParaSoloLecturaGlobal(pathname: string): boolean {
+  return !PREFIJOS_BLOQUEADOS_SOLO_LECTURA_GLOBAL.some(
+    (prefijo) => pathname === prefijo || pathname.startsWith(`${prefijo}/`),
+  )
+}
+
+/**
+ * Punto único de decisión para los 3 lugares (`MainLayout`, `Sidebar`,
+ * `BottomTabBar`) que necesitan saber si una ruta está bloqueada para el
+ * visitante actual — evita que cada uno arme su propio if/else de cuál de
+ * los dos modos manda cuando, en teoría, podrían estar los dos flags en
+ * `true` a la vez (no debería pasar en la práctica, pero así no depende de
+ * en qué orden se chequeen).
+ */
+export function rutaBloqueadaParaVisitante(
+  pathname: string,
+  categoryLocked: boolean,
+  soloLecturaGlobal: boolean,
+): boolean {
+  if (categoryLocked) return !rutaPermitidaParaStaff(pathname)
+  if (soloLecturaGlobal) return !rutaPermitidaParaSoloLecturaGlobal(pathname)
+  return false
 }

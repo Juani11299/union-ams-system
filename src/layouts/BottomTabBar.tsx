@@ -1,15 +1,16 @@
 import { NavLink } from 'react-router-dom'
 import { navItems } from './navConfig'
 import { useAppStore } from '@/store/useAppStore'
-import { rutaPermitidaParaStaff } from '@/utils/staffAccess'
+import { rutaBloqueadaParaVisitante } from '@/utils/staffAccess'
 
 export function BottomTabBar() {
   const categoryLocked = useAppStore((s) => s.categoryLocked)
+  const soloLecturaGlobal = useAppStore((s) => s.soloLecturaGlobal)
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 flex overflow-x-auto border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden dark:border-slate-800 dark:bg-slate-900">
       {navItems.map((item) => {
-        const bloqueado = categoryLocked && !rutaPermitidaParaStaff(item.to)
+        const bloqueado = rutaBloqueadaParaVisitante(item.to, categoryLocked, soloLecturaGlobal)
         return (
           <NavLink
             key={item.to}

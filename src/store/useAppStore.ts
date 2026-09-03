@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { idbStorage } from '@/utils/idbStorage'
+import { useAuthStore } from '@/store/useAuthStore'
 import type {
   Athlete,
   SessionPlan,
@@ -176,6 +177,18 @@ interface AppState {
    * que sólo debe activarse cuando la URL lo pide explícitamente, nunca
    * sobrevivir a un refresh sin la URL escopeada. */
   categoryLocked: boolean
+  /** Link mágico con `?locked=true` SIN `category` (Fase 35, "Link de sólo
+   * lectura, todo el club") — a diferencia de `categoryLocked`, no fija
+   * ninguna categoría (el selector del TopBar sigue habilitado, el
+   * visitante puede ver cualquiera) y habilita navegar a CASI todas las
+   * rutas de `MainLayout` (ver `rutaBloqueadaParaVisitante` en
+   * `staffAccess.ts` — bloquea sólo Administración y Ficha Médica). Al
+   * igual que `categoryLocked`, deliberadamente no se persiste: sin la URL
+   * que lo pide, no debe sobrevivir a un refresh. El bloqueo real de
+   * ESCRITURA para ambos modos vive centralizado más abajo, envolviendo
+   * cada acción que graba en Supabase — no hace falta que cada vista nueva
+   * se acuerde de chequear `useSoloLectura()` a mano. */
+  soloLecturaGlobal: boolean
   isLoading: boolean
   error: string | null
   /** Filtros de la vista "Control Carga Interna" (Fase 9). */
@@ -188,6 +201,8 @@ interface AppState {
   setActiveCategory: (categoryId: string) => void
   /** Fija la categoría activa Y bloquea el selector — usado por los links mágicos escopeados (Fase 19). */
   setActiveCategoryLocked: (categoryId: string) => void
+  /** Activa el "Link de sólo lectura, todo el club" (Fase 35) — no toca la categoría activa. */
+  setSoloLecturaGlobal: () => void
   setFiltroNombre: (nombre: string) => void
   setFiltroPosicion: (posicion: GrupoPosicion | 'todas') => void
   abrirModalIngreso: (tab?: 'wellness' | 'rpe') => void
@@ -329,6 +344,7 @@ export const useAppStore = create<AppState>()(
   activeSeasonId: null,
   activeCategoryId: null,
   categoryLocked: false,
+  soloLecturaGlobal: false,
   isLoading: true,
   error: null,
   filtroNombre: '',
@@ -339,6 +355,7 @@ export const useAppStore = create<AppState>()(
   setActiveSeason: (seasonId) => set({ activeSeasonId: seasonId }),
   setActiveCategory: (categoryId) => set({ activeCategoryId: categoryId }),
   setActiveCategoryLocked: (categoryId) => set({ activeCategoryId: categoryId, categoryLocked: true }),
+  setSoloLecturaGlobal: () => set({ soloLecturaGlobal: true }),
   setFiltroNombre: (nombre) => set({ filtroNombre: nombre }),
   setFiltroPosicion: (posicion) => set({ filtroPosicion: posicion }),
   abrirModalIngreso: (tab) => set({ modalIngresoAbierto: true, modalIngresoTab: tab ?? 'wellness' }),
@@ -1498,6 +1515,94 @@ export const useAppStore = create<AppState>()(
     },
   ),
 )
+
+/**
+ * Guard centralizado de escritura (Fase 35, "Link de sólo lectura") —
+ * envuelve TODAS las acciones que graban en Supabase (todo lo que aparece
+ * en `ACCIONES_DE_ESCRITURA`) para que, en modo sólo lectura, ninguna
+ * llegue a ejecutar su lógica real, sin importar desde qué botón de qué
+ * vista se la haya llamado. Es un solo punto de control en vez de tener
+ * que acordarse de chequear `useSoloLectura()` en cada componente nuevo
+ * que se agregue — así una vista que hoy no existe todavía queda cubierta
+ * de entrada, no sólo las que ya se auditaron a mano (Dashboard y
+ * Planificador, que además dan una UX más prolija: ocultan los botones en
+ * vez de dejarlos fallar al tocarlos).
+ *
+ * Importante: esto es una barrera de UX, no de seguridad de backend — las
+ * políticas RLS de Supabase siguen aceptando escritura con la key `anon`
+ * (ver `staffAccess.ts`). Bloquea el 100% de lo que la app misma puede
+ * disparar; no bloquea a alguien que decida llamar a Supabase directo
+ * desde la consola del navegador.
+ */
+const ACCIONES_DE_ESCRITURA = [
+  'submitSessionLoad',
+  'submitWellness',
+  'updateClub',
+  'createSeason',
+  'marcarTemporadaActiva',
+  'deleteSeason',
+  'createCategory',
+  'deleteCategory',
+  'createAthlete',
+  'updateAthlete',
+  'deleteAthlete',
+  'assignAthletesToRoster',
+  'importAthletesBulk',
+  'removeAthleteFromRoster',
+  'createSessionPlan',
+  'updateSessionPlanConfig',
+  'deleteSessionPlan',
+  'updateSessionPlanGymSheet',
+  'submitExternalLoadsBulk',
+  'submitPhysicalTest',
+  'createStrengthBlock',
+  'moveStrengthBlock',
+  'deleteStrengthBlock',
+  'createDailyTask',
+  'updateDailyTask',
+  'updateDailyTaskTacboard',
+  'updateDailyTaskGpsObjetivo',
+  'deleteDailyTask',
+  'submitMatchDayResultsBulk',
+  'createStrengthTemplate',
+  'deleteStrengthTemplate',
+  'addStrengthTemplateExercise',
+  'deleteStrengthTemplateExercise',
+  'assignTemplateToDay',
+  'deleteStrengthAssignment',
+  'submitGymExternalLoad',
+  'createComplementaryPlan',
+  'updateComplementaryPlan',
+  'deleteComplementaryPlan',
+  'cloneComplementaryPlan',
+  'createVideoMatch',
+  'deleteVideoMatch',
+  'createVideoTag',
+  'updateVideoTag',
+  'deleteVideoTag',
+] as const satisfies readonly (keyof AppState)[]
+
+function estaEnSoloLectura(): boolean {
+  const { categoryLocked, soloLecturaGlobal } = useAppStore.getState()
+  return !useAuthStore.getState().session || categoryLocked || soloLecturaGlobal
+}
+
+const accionesOriginales = useAppStore.getState()
+const accionesEnvueltas = Object.fromEntries(
+  ACCIONES_DE_ESCRITURA.map((nombre) => {
+    const original = accionesOriginales[nombre] as (...args: unknown[]) => unknown
+    const envuelta = (...args: unknown[]) => {
+      if (estaEnSoloLectura()) {
+        return Promise.reject(
+          new Error('Estás viendo esta página en modo sólo lectura — no se puede guardar ni eliminar nada.'),
+        )
+      }
+      return original(...args)
+    }
+    return [nombre, envuelta]
+  }),
+) as Partial<AppState>
+useAppStore.setState(accionesEnvueltas)
 
 /** Atletas de la categoría/temporada activa (vía Roster). */
 export function useAthletesActivos(): Athlete[] {

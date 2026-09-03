@@ -3,20 +3,27 @@ import { useSearchParams } from 'react-router-dom'
 import { useAppStore } from '@/store/useAppStore'
 
 /**
- * Lee `?category=<uuid>&locked=true` de la URL (Fase 19) y, si están
- * presentes, fija esa categoría como activa en el store global y bloquea el
- * selector de categoría del TopBar — así quien abre el link no puede, ni por
- * error, cambiarse a otra. Desde Fase 23 también determina el "Modo Staff"
- * (`categoryLocked`) que usa `MainLayout` para restringir rutas fuera del
- * allowlist — ver `staffAccess.ts`.
+ * Lee `?locked=true` de la URL (Fase 19, ampliado en Fase 35) y activa el
+ * modo de sólo lectura correspondiente según venga o no acompañado de
+ * `category`:
  *
- * Fase 32: `categoryLocked` ahora hace un segundo trabajo, más importante —
- * es la señal que usa `useSoloLectura` para forzar modo sólo lectura en el
- * Planificador (además de `ProtectedRoute`, que deja entrar sin sesión a
- * `/planificador?locked=true`). Este hook no cambió: sigue leyendo la URL
- * igual, sin importar si hay sesión de Supabase Auth o no — es justo esa
- * independencia de la sesión la que permite que el mismo link sirva para un
- * visitante 100% anónimo.
+ * - `?category=<uuid>&locked=true` — link ESCOPEADO (Fase 19): fija esa
+ *   categoría como activa y bloquea el selector de categoría del TopBar,
+ *   además de restringir la navegación a un allowlist chico de rutas (ver
+ *   `staffAccess.ts`). Pensado para compartir el Planificador de UNA
+ *   división puntual.
+ * - `?locked=true` SOLO (sin `category`) — link GLOBAL (Fase 35, "Link de
+ *   sólo lectura, todo el club"): no toca la categoría activa (el
+ *   visitante puede cambiarla con el selector, ve cualquier división), y
+ *   habilita navegar a casi todas las rutas — bloquea sólo Administración
+ *   y Ficha Médica (`soloLecturaGlobal`, ver `staffAccess.ts`).
+ *
+ * En ambos casos, `categoryLocked`/`soloLecturaGlobal` son la señal que usa
+ * `useSoloLectura` para forzar modo sólo lectura (además de
+ * `ProtectedRoute`, que deja entrar sin sesión cuando cualquiera de los dos
+ * está presente en la URL). Este hook lee la URL igual sin importar si hay
+ * sesión de Supabase Auth o no — es justo esa independencia de la sesión la
+ * que permite que el mismo link sirva para un visitante 100% anónimo.
  *
  * Sólo aplica al árbol de rutas montado bajo `MainLayout` (donde vive el
  * selector global de `activeCategoryId`); la Terminal de Fuerza es una ruta
@@ -26,13 +33,17 @@ import { useAppStore } from '@/store/useAppStore'
 export function useScopedCategoryFromUrl() {
   const [searchParams] = useSearchParams()
   const setActiveCategoryLocked = useAppStore((s) => s.setActiveCategoryLocked)
+  const setSoloLecturaGlobal = useAppStore((s) => s.setSoloLecturaGlobal)
 
   useEffect(() => {
     const categoryId = searchParams.get('category')
     const locked = searchParams.get('locked') === 'true'
-    if (!categoryId || !locked) return
+    if (!locked) return
 
-    const aplicar = () => setActiveCategoryLocked(categoryId)
+    const aplicar = () => {
+      if (categoryId) setActiveCategoryLocked(categoryId)
+      else setSoloLecturaGlobal()
+    }
 
     // `activeCategoryId` está persistido en IndexedDB (Fase 18) y rehidrata
     // de forma ASÍNCRONA — si aplicáramos el link ya, la rehidratación puede

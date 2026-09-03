@@ -11,42 +11,50 @@ import { useAppStore } from '@/store/useAppStore'
  * — es una exclusión estructural (imposible de romper por accidente
  * agregando un prefijo a una whitelist), no una lista de regex de rutas.
  *
- * Excepción deliberada para links mágicos con `locked=true` (Fase 32/33) —
- * dos señales, porque hay un problema de orden de arranque real:
+ * Excepción deliberada para links mágicos con `locked=true` (Fase 32/33,
+ * ampliado en Fase 35) — dos señales, porque hay un problema de orden de
+ * arranque real:
  *
- * 1. `esEntradaPublicaPorUrl`: lee `locked=true` DIRECTO de la URL actual,
- *    sólo para `/` o `/planificador`. Hace falta este chequeo puntual (no
- *    sólo el flag del store de abajo) porque `categoryLocked` recién se fija
- *    dentro de `useScopedCategoryFromUrl` — un hook que sólo corre una vez
- *    que `MainLayout` ya montó. En el primerísimo render de una entrada
- *    fresca por link (`/?category=X&locked=true`), el store todavía no
- *    procesó la URL — sin este chequeo directo quedaría en un bucle: no se
- *    puede entrar a `MainLayout` para fijar el flag, porque hace falta el
- *    flag para entrar a `MainLayout`.
- * 2. `categoryLocked` (store, persistido): una vez que la señal de arriba ya
- *    lo fijó en `true`, sigue valiendo aunque el visitante navegue
- *    DESPUÉS a otra ruta sin `locked=true` en su propia URL (ej. clickea
- *    "Administración" en el Sidebar) — así llega hasta `MainLayout`, que es
- *    quien de verdad decide qué se ve: `rutaPermitidaParaStaff` (ver
- *    `staffAccess.ts`) muestra `LockedModuleView` para todo lo que no sea
- *    `/`/`/planificador`, en vez de cortar acá con un redirect a `/login`
- *    que sacaría al visitante de la app.
+ * 1. `esEntradaPublicaPorUrl`: lee `locked=true` DIRECTO de la URL actual.
+ *    Hace falta este chequeo puntual (no sólo el flag del store de abajo)
+ *    porque `categoryLocked`/`soloLecturaGlobal` recién se fijan dentro de
+ *    `useScopedCategoryFromUrl` — un hook que sólo corre una vez que
+ *    `MainLayout` ya montó. En el primerísimo render de una entrada fresca
+ *    por link, el store todavía no procesó la URL — sin este chequeo
+ *    directo quedaría en un bucle: no se puede entrar a `MainLayout` para
+ *    fijar el flag, porque hace falta el flag para entrar a `MainLayout`.
+ *    El link ESCOPEADO (`?category=X&locked=true`) sólo vale para `/` o
+ *    `/planificador` — el link GLOBAL (`?locked=true` sin `category`) vale
+ *    para cualquier ruta, porque su propósito es justo "entrar a todos
+ *    lados" (MainLayout igual sigue decidiendo qué bloquea, ver abajo).
+ * 2. `categoryLocked`/`soloLecturaGlobal` (store, no persistidos): una vez
+ *    que la señal de arriba ya fijó cualquiera de los dos en `true`, sigue
+ *    valiendo aunque el visitante navegue DESPUÉS a otra ruta sin
+ *    `locked=true` en su propia URL (ej. clickea otro item del Sidebar) —
+ *    así llega hasta `MainLayout`, que es quien de verdad decide qué se ve
+ *    (`rutaBloqueadaParaVisitante`, ver `staffAccess.ts`), en vez de cortar
+ *    acá con un redirect a `/login` que sacaría al visitante de la app.
  *
- * El bloqueo real de EDICIÓN para este caso vive en `useSoloLectura` (visto
- * por `DashboardEquipo`, `PlanificadorView` y sus hijos) — este guard sólo
- * decide si se puede ENTRAR sin sesión.
+ * El bloqueo real de EDICIÓN para este caso vive centralizado en el store
+ * (ver el final de `useAppStore.ts`) — este guard sólo decide si se puede
+ * ENTRAR sin sesión.
  */
 export function ProtectedRoute() {
   const session = useAuthStore((s) => s.session)
   const isLoading = useAuthStore((s) => s.isLoading)
   const categoryLocked = useAppStore((s) => s.categoryLocked)
+  const soloLecturaGlobal = useAppStore((s) => s.soloLecturaGlobal)
   const location = useLocation()
 
-  const esEntradaPublicaPorUrl =
-    new URLSearchParams(location.search).get('locked') === 'true' &&
-    (location.pathname === '/' || location.pathname.startsWith('/planificador'))
+  const params = new URLSearchParams(location.search)
+  const lockedEnUrl = params.get('locked') === 'true'
+  const categoryEnUrl = params.get('category')
 
-  const esLinkMagicoStaff = categoryLocked || esEntradaPublicaPorUrl
+  const esEntradaPublicaPorUrl =
+    lockedEnUrl &&
+    (categoryEnUrl ? location.pathname === '/' || location.pathname.startsWith('/planificador') : true)
+
+  const esLinkMagicoStaff = categoryLocked || soloLecturaGlobal || esEntradaPublicaPorUrl
 
   if (isLoading) {
     return (

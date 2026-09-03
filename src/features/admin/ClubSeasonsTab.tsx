@@ -6,6 +6,7 @@ import { Badge } from '@/components/Badge'
 import { Field, inputClass } from '@/components/FormField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { getErrorMessage } from '@/utils/errors'
+import { construirLinkSoloLecturaGlobal, copiarLinkMagico } from '@/utils/magicLinks'
 import type { Season } from '@/types'
 
 export function ClubSeasonsTab() {
@@ -214,6 +215,22 @@ export function ClubSeasonsTab() {
             ))}
           </div>
         )}
+      </Card>
+
+      <Card className="flex flex-col gap-2 lg:col-span-2">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">🔗 Link de sólo lectura</h2>
+        <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          Compartí este link con quien quieras que pueda ENTRAR A TODO el club (cualquier categoría,
+          Planificador, Día de Partido, Video, Metodología, etc.) sin poder crear, editar ni borrar nada.
+          Administración y Ficha Médica quedan afuera. Sirve igual si la persona no tiene cuenta.
+        </p>
+        <button
+          type="button"
+          onClick={() => copiarLinkMagico(construirLinkSoloLecturaGlobal(), showToast, 'Link de sólo lectura copiado')}
+          className="mt-1 flex w-fit items-center gap-2 rounded-lg bg-union-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-union-red-700"
+        >
+          📋 Copiar link de sólo lectura
+        </button>
       </Card>
 
       {temporadaAEliminar && (
