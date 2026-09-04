@@ -14,7 +14,7 @@ const COPY = {
   soloLecturaGlobal: {
     titulo: 'Sección no disponible en este link',
     mensaje:
-      'Este link de sólo lectura no incluye Administración ni Ficha Médica — son datos de gestión o sensibles del club. El resto de la app sí está disponible para ver.',
+      'Este link de sólo lectura no incluye Administración, Ficha Médica ni los manuales generales (Fuerza, Isometría) — sólo se comparten los 4 tomos LTAD por categoría. El resto de la app sí está disponible para ver.',
   },
 } as const
 

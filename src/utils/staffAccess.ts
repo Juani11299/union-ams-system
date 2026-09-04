@@ -39,7 +39,24 @@ function rutaPermitidaParaStaff(pathname: string): boolean {
  */
 const PREFIJOS_BLOQUEADOS_SOLO_LECTURA_GLOBAL = ['/admin', '/medical']
 
+/**
+ * Fase 35.1 — el club pidió ocultar del link de sólo lectura el Manual
+ * General de Área de Fuerza y la Escuela de Movimiento (Isometría), y con
+ * ellos la Biblioteca de Manuales (el índice, que linkea a los dos) —
+ * dejando visibles ÚNICAMENTE los 4 tomos LTAD (uno por categoría). A
+ * diferencia de `/admin`/`/medical` de arriba, acá NO alcanza con bloquear
+ * por prefijo: `/metodologia/ltad-*` cuelga del mismo prefijo
+ * `/metodologia` y tiene que seguir visible, así que estas 3 son rutas
+ * EXACTAS, no prefijos.
+ */
+const RUTAS_EXACTAS_BLOQUEADAS_SOLO_LECTURA_GLOBAL = [
+  '/metodologia',
+  '/metodologia/manual-fuerza',
+  '/metodologia/isometria',
+]
+
 function rutaPermitidaParaSoloLecturaGlobal(pathname: string): boolean {
+  if (RUTAS_EXACTAS_BLOQUEADAS_SOLO_LECTURA_GLOBAL.includes(pathname)) return false
   return !PREFIJOS_BLOQUEADOS_SOLO_LECTURA_GLOBAL.some(
     (prefijo) => pathname === prefijo || pathname.startsWith(`${prefijo}/`),
   )
