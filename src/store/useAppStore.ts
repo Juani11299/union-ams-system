@@ -1533,10 +1533,22 @@ export const useAppStore = create<AppState>()(
  * (ver `staffAccess.ts`). Bloquea el 100% de lo que la app misma puede
  * disparar; no bloquea a alguien que decida llamar a Supabase directo
  * desde la consola del navegador.
+ *
+ * FALSO POSITIVO CORREGIDO (2026-09-04): `estaEnSoloLectura()` trata "sin
+ * sesión de Supabase Auth" como sinónimo de "visitante de link de sólo
+ * lectura" — correcto para todo lo que cuelga de `MainLayout`/
+ * `ProtectedRoute`, pero `/ingreso-rapido` (Wellness/RPE, `MagicLinkView`)
+ * y `/terminal-fuerza` (carga externa de gimnasio, `RegistroModal`) son
+ * rutas públicas HERMANAS de ese árbol (ver `App.tsx`): el atleta NUNCA
+ * tiene sesión ahí, por diseño — no es un estado transitorio que "termine
+ * de cargar", es el estado normal y permanente de ese flujo. Antes de este
+ * fix, `submitWellness`/`submitSessionLoad`/`submitGymExternalLoad`
+ * estaban en esta lista y bloqueaban el 100% de esos envíos con el error
+ * de "modo sólo lectura" — quedan afuera a propósito, sin excepción de
+ * sesión, porque ninguna de las dos rutas pasa nunca por el mecanismo de
+ * `?locked=true`.
  */
 const ACCIONES_DE_ESCRITURA = [
-  'submitSessionLoad',
-  'submitWellness',
   'updateClub',
   'createSeason',
   'marcarTemporadaActiva',
@@ -1570,7 +1582,6 @@ const ACCIONES_DE_ESCRITURA = [
   'deleteStrengthTemplateExercise',
   'assignTemplateToDay',
   'deleteStrengthAssignment',
-  'submitGymExternalLoad',
   'createComplementaryPlan',
   'updateComplementaryPlan',
   'deleteComplementaryPlan',
