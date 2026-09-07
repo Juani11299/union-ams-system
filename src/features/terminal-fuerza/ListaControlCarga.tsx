@@ -25,11 +25,21 @@ interface ListaControlCargaProps {
  * (ver `ConfiguracionSesionDiaria`/Microciclo semanal). Series/Reps también
  * se guardan si se tocan, pero sólo junto con un Top Set > 0 — cargar
  * series sin peso no crea un registro fantasma.
+ *
+ * Ajuste (2026-09-08): el campo que importa recorrer rápido, jugador tras
+ * jugador, es UNO solo — el Top Set. Series/Reps casi nunca cambian del
+ * plan, así que en vez de 3 inputs por ejercicio (mucho ruido visual para
+ * recorrer 26 filas), la celda muestra Series/Reps como texto fijo con un
+ * lápiz al lado — sólo se abren como inputs si alguien realmente necesita
+ * corregirlos para un jugador puntual ese día. Un jugador ausente
+ * simplemente se deja con el Top Set vacío — no bloquea nada, no hace
+ * falta marcarlo aparte, el resto de la tabla (mismo u otro ejercicio) se
+ * completa en cualquier orden.
  */
 export function ListaControlCarga({ jugadores, sesionId, ejercicios }: ListaControlCargaProps) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/10">
-      <table className="w-full min-w-[640px] border-collapse text-sm">
+      <table className="w-full min-w-[480px] border-collapse text-sm">
         <thead>
           <tr className="bg-white/5">
             <th className="sticky left-0 z-10 bg-union-charcoal px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white/50">
@@ -38,7 +48,6 @@ export function ListaControlCarga({ jugadores, sesionId, ejercicios }: ListaCont
             {ejercicios.map((ej) => (
               <th
                 key={ej.id}
-                colSpan={3}
                 className="border-l border-white/10 px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white/70"
               >
                 {ej.nombre}
@@ -47,18 +56,6 @@ export function ListaControlCarga({ jugadores, sesionId, ejercicios }: ListaCont
                     Plan: {ej.series || '—'} x {ej.repeticiones || '—'}
                   </span>
                 )}
-              </th>
-            ))}
-          </tr>
-          <tr className="bg-white/5 text-[10px] uppercase tracking-wide text-white/40">
-            <th className="sticky left-0 z-10 bg-union-charcoal px-4 pb-2 text-left"> </th>
-            {ejercicios.map((ej) => (
-              <th key={ej.id} colSpan={3} className="border-l border-white/10 px-3 pb-2">
-                <div className="grid grid-cols-3 gap-1 text-center">
-                  <span>Series</span>
-                  <span>Reps</span>
-                  <span>Top Set (kg)</span>
-                </div>
               </th>
             ))}
           </tr>
@@ -113,6 +110,10 @@ function CeldaEjercicio({
       : 0,
   )
   const [guardando, setGuardando] = useState(false)
+  // Series/Reps arrancan cerrados (sólo texto "4x5") — se abren como inputs
+  // editables sólo si el profe realmente necesita corregirlos para este
+  // jugador puntual, en vez de ocupar espacio en las 26 filas de siempre.
+  const [editandoPlan, setEditandoPlan] = useState(false)
 
   async function guardarSiCorresponde() {
     // Sin Top Set cargado no hay nada que guardar — evita crear un registro
@@ -136,32 +137,12 @@ function CeldaEjercicio({
     }
   }
 
-  const celdaClase =
-    'w-16 rounded-md border border-white/10 bg-white/5 px-1.5 py-1 text-center text-sm text-white focus:border-union-red-500 focus:outline-none focus:ring-1 focus:ring-union-red-500 disabled:opacity-50'
+  const celdaChicaClase =
+    'w-11 rounded-md border border-white/10 bg-white/5 px-1 py-0.5 text-center text-xs text-white focus:border-union-red-500 focus:outline-none focus:ring-1 focus:ring-union-red-500 disabled:opacity-50'
 
   return (
     <td className="border-l border-white/10 px-3 py-2">
-      <div className="grid grid-cols-3 gap-1">
-        <input
-          type="number"
-          min={1}
-          value={series}
-          disabled={guardando}
-          onChange={(e) => setSeries(Number(e.target.value) || 1)}
-          onBlur={guardarSiCorresponde}
-          className={celdaClase}
-          aria-label={`Series de ${ejercicio.nombre} para ${jugador.nombre}`}
-        />
-        <input
-          type="number"
-          min={1}
-          value={reps}
-          disabled={guardando}
-          onChange={(e) => setReps(Number(e.target.value) || 1)}
-          onBlur={guardarSiCorresponde}
-          className={celdaClase}
-          aria-label={`Repeticiones de ${ejercicio.nombre} para ${jugador.nombre}`}
-        />
+      <div className="flex flex-col items-center gap-1">
         <input
           type="number"
           min={0}
@@ -171,11 +152,54 @@ function CeldaEjercicio({
           disabled={guardando}
           onChange={(e) => setTopSetKg(Number(e.target.value) || 0)}
           onBlur={guardarSiCorresponde}
-          className={`${celdaClase} font-bold ${
-            registroExistente ? 'border-emerald-500/50 text-emerald-400' : 'text-white'
+          className={`w-24 rounded-lg border-2 bg-white/5 px-2 py-2 text-center text-2xl font-black focus:outline-none focus:ring-2 focus:ring-union-red-500 disabled:opacity-50 ${
+            registroExistente ? 'border-emerald-500/60 text-emerald-400' : 'border-white/10 text-white'
           }`}
           aria-label={`Top Set en kg de ${ejercicio.nombre} para ${jugador.nombre}`}
         />
+
+        {editandoPlan ? (
+          <div className="flex items-center gap-1 text-white/60">
+            <input
+              type="number"
+              min={1}
+              value={series}
+              disabled={guardando}
+              onChange={(e) => setSeries(Number(e.target.value) || 1)}
+              onBlur={guardarSiCorresponde}
+              className={celdaChicaClase}
+              aria-label={`Series de ${ejercicio.nombre} para ${jugador.nombre}`}
+            />
+            <span className="text-[10px]">x</span>
+            <input
+              type="number"
+              min={1}
+              value={reps}
+              disabled={guardando}
+              onChange={(e) => setReps(Number(e.target.value) || 1)}
+              onBlur={guardarSiCorresponde}
+              className={celdaChicaClase}
+              aria-label={`Repeticiones de ${ejercicio.nombre} para ${jugador.nombre}`}
+            />
+            <button
+              type="button"
+              onClick={() => setEditandoPlan(false)}
+              aria-label="Cerrar edición de series/repeticiones"
+              className="px-1 text-white/40 hover:text-white/70"
+            >
+              ✓
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditandoPlan(true)}
+            title="Corregir series/repeticiones para este jugador"
+            className="text-[10px] text-white/40 hover:text-white/70"
+          >
+            ✏️ {series}x{reps}
+          </button>
+        )}
       </div>
     </td>
   )
