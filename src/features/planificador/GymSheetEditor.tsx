@@ -94,20 +94,20 @@ export function GymSheetEditor({ plan, onClose }: GymSheetEditorProps) {
   }
 
   /**
-   * Marca cuál es el ejercicio troncal a medir en la Terminal de Fuerza
-   * (Fase 17) — sólo puede haber uno `isTracked` en TODA la planilla (no por
-   * bloque), así la Terminal no tiene ambigüedad sobre qué pedirle al
-   * jugador. Tocar el 🎯 del que ya está marcado lo desmarca.
+   * Marca/desmarca un ejercicio troncal a medir en la Terminal de Fuerza
+   * (Fase 17, multi-ejercicio desde Fase 37) — puede haber MÁS DE UNO
+   * marcado en toda la planilla (ej. sentadilla + press banca): la Terminal
+   * le va a pedir el Top Set de cada uno marcado, no sólo el primero. Tocar
+   * el 🎯 de uno ya marcado sólo lo desmarca a él, no toca los demás.
    */
   function marcarTrackeado(bloqueId: string, ejercicioId: string) {
     setSheet((s) => ({
       ...s,
       bloques: s.bloques.map((b) => ({
         ...b,
-        ejercicios: b.ejercicios.map((e) => ({
-          ...e,
-          isTracked: b.id === bloqueId && e.id === ejercicioId ? !e.isTracked : false,
-        })),
+        ejercicios: b.ejercicios.map((e) =>
+          b.id === bloqueId && e.id === ejercicioId ? { ...e, isTracked: !e.isTracked } : e,
+        ),
       })),
     }))
   }

@@ -1318,9 +1318,14 @@ export const useAppStore = create<AppState>()(
   submitGymExternalLoad: async (input) => {
     exigirSupabase(set)
 
+    // Fase 37 — la constraint pasó a (athlete_id, session_id, exercise_name)
+    // para permitir más de un ejercicio trackeado por sesión (ver
+    // migration_fase37_multi_ejercicio_trackeado.sql). El upsert sigue
+    // sirviendo tanto para el primer registro de un ejercicio como para
+    // corregirlo si el jugador (o el profe) vuelve a cargarlo.
     const { data, error } = await supabase
       .from('gym_external_loads')
-      .upsert(gymExternalLoadToUpsertRow(input), { onConflict: 'athlete_id,session_id' })
+      .upsert(gymExternalLoadToUpsertRow(input), { onConflict: 'athlete_id,session_id,exercise_name' })
       .select()
       .single()
 

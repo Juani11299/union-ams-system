@@ -14,11 +14,11 @@ export interface GymSheetEjercicio {
   descanso: string
   notas: string
   /**
-   * Ejercicio troncal a medir en la Terminal de Fuerza (Fase 17) — el
-   * profe lo marca con 🎯 en `GymSheetEditor`. A lo sumo uno puede estar en
-   * `true` en toda la planilla (`GymSheetEditor.marcarTrackeado` fuerza esa
-   * exclusividad al togglear), así la Terminal no tiene ambigüedad sobre qué
-   * ejercicio pedirle al jugador.
+   * Ejercicio troncal a medir en la Terminal de Fuerza (Fase 17; multi-
+   * ejercicio desde Fase 37) — el profe lo marca con 🎯 en `GymSheetEditor`.
+   * Puede haber más de uno marcado en la misma planilla (ej. sentadilla +
+   * press banca) — la Terminal pide el Top Set de CADA uno marcado, no sólo
+   * el primero.
    */
   isTracked?: boolean
 }

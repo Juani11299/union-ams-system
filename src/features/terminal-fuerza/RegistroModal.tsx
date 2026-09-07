@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
@@ -8,44 +8,139 @@ import type { Athlete, GymSet, GymSheetEjercicio } from '@/types'
 interface RegistroModalProps {
   jugador: Athlete
   sesionId: string
-  ejercicio: GymSheetEjercicio
+  /** Fase 37 — todos los ejercicios marcados 🎯 en la planilla de hoy (antes era uno solo). */
+  ejercicios: GymSheetEjercicio[]
   onClose: () => void
 }
 
 /** Extrae el primer número de un campo libre de la planilla (ej. "6" o "8-10" → 8, 6). */
-function parsearNumero(texto: string, fallback: number): number {
+export function parsearNumero(texto: string, fallback: number): number {
   const match = texto.match(/\d+([.,]\d+)?/)
   if (!match) return fallback
   const valor = Number(match[0].replace(',', '.'))
   return Number.isFinite(valor) && valor > 0 ? Math.round(valor) : fallback
 }
 
-const SERIES_DEFAULT = 3
-const REPS_DEFAULT = 8
-const PESO_INICIAL_DEFAULT = 20
+export const SERIES_DEFAULT = 3
+export const REPS_DEFAULT = 8
+export const PESO_INICIAL_DEFAULT = 20
 
 /**
- * Modal táctil a pantalla completa ("Top Set Tracking", Fase 29) — el
- * cuello de botella real de "40 atletas en 40 minutos" no era la UI táctil
- * en sí (ya eran botones grandes, Fase 17), sino pedir CADA serie una por
- * una. En fuerza, lo único que un jugador necesita reportar rápido es el
- * peso de su serie efectiva (Top Set); series y repeticiones ya están
- * decididas en la planificación y sólo se ajustan si hoy se desvió del
- * plan — por eso son un stepper chico y secundario, no el foco. El foco
- * táctil (stepper gigante) es sólo el peso. Guarda igual `setsData` con N
- * series idénticas al Top Set (mismo tonelaje/`GymExternalLoad` que antes,
- * sólo cambia cómo se carga).
+ * Modal táctil a pantalla completa ("Top Set Tracking", Fase 29; multi-
+ * ejercicio desde Fase 37) — el cuello de botella real de "40 atletas en 40
+ * minutos" no era la UI táctil en sí (ya eran botones grandes, Fase 17),
+ * sino pedir CADA serie una por una. En fuerza, lo único que un jugador
+ * necesita reportar rápido es el peso de su serie efectiva (Top Set); series
+ * y repeticiones ya están decididas en la planificación y sólo se ajustan si
+ * hoy se desvió del plan.
+ *
+ * Fase 37 — cuando el profe marca más de un ejercicio 🎯, este modal pasa a
+ * tener una pestaña por ejercicio arriba (con ✓ en el que ya se guardó) en
+ * vez de asumir uno solo. Cada pestaña es un `RegistroEjercicioForm`
+ * separado, montado con `key={ejercicio.id}` — así el estado (series, reps,
+ * Top Set) arranca de cero al cambiar de pestaña en vez de arrastrar el
+ * valor del ejercicio anterior.
  */
-export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: RegistroModalProps) {
+export function RegistroModal({ jugador, sesionId, ejercicios, onClose }: RegistroModalProps) {
+  const gymExternalLoads = useAppStore((s) => s.gymExternalLoads)
+  const [indiceActivo, setIndiceActivo] = useState(() => {
+    // Arranca en el primer ejercicio que este jugador todavía no cargó hoy
+    // — si ya cargó todos (viene a corregir), arranca en el primero.
+    const primeroSinCargar = ejercicios.findIndex(
+      (e) => !gymExternalLoads.some((g) => g.athleteId === jugador.id && g.sessionId === sesionId && g.exerciseName === e.nombre),
+    )
+    return primeroSinCargar >= 0 ? primeroSinCargar : 0
+  })
+
+  const ejercicioActivo = ejercicios[indiceActivo]
+
+  function estaGuardado(ejercicio: GymSheetEjercicio): boolean {
+    return gymExternalLoads.some(
+      (g) => g.athleteId === jugador.id && g.sessionId === sesionId && g.exerciseName === ejercicio.nombre,
+    )
+  }
+
+  function handleGuardadoDeEjercicio() {
+    // Fase 37 — al guardar, saltar directo al próximo ejercicio sin cargar
+    // (si hay uno) en vez de obligar al jugador a tocar la pestaña a mano;
+    // si ya están todos, cerrar el modal solo.
+    const siguienteSinCargar = ejercicios.findIndex((e, i) => i !== indiceActivo && !estaGuardado(e))
+    if (siguienteSinCargar >= 0) {
+      setIndiceActivo(siguienteSinCargar)
+    } else {
+      onClose()
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col bg-union-charcoal text-white">
+      <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/50">
+            {ejercicios.length > 1 ? `Ejercicio ${indiceActivo + 1} de ${ejercicios.length}` : ejercicioActivo.nombre}
+          </p>
+          <h2 className="truncate text-2xl font-black">{jugador.nombre}</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl hover:bg-white/20"
+        >
+          ✕
+        </button>
+      </div>
+
+      {ejercicios.length > 1 && (
+        <div className="flex flex-wrap gap-2 border-b border-white/10 px-4 py-3">
+          {ejercicios.map((ej, i) => (
+            <button
+              key={ej.id}
+              type="button"
+              onClick={() => setIndiceActivo(i)}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                i === indiceActivo
+                  ? 'bg-union-red-600 text-white'
+                  : 'bg-white/10 text-white/70 hover:bg-white/20'
+              }`}
+            >
+              {estaGuardado(ej) && <span aria-hidden>✓</span>}
+              {ej.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <RegistroEjercicioForm
+        key={ejercicioActivo.id}
+        jugador={jugador}
+        sesionId={sesionId}
+        ejercicio={ejercicioActivo}
+        onGuardado={handleGuardadoDeEjercicio}
+      />
+    </div>
+  )
+}
+
+interface RegistroEjercicioFormProps {
+  jugador: Athlete
+  sesionId: string
+  ejercicio: GymSheetEjercicio
+  onGuardado: () => void
+}
+
+/** El formulario de un solo ejercicio — antes era todo `RegistroModal`; se separó en Fase 37 para poder montar uno por pestaña. */
+function RegistroEjercicioForm({ jugador, sesionId, ejercicio, onGuardado }: RegistroEjercicioFormProps) {
   const gymExternalLoads = useAppStore((s) => s.gymExternalLoads)
   const submitGymExternalLoad = useAppStore((s) => s.submitGymExternalLoad)
   const showToast = useToastStore((s) => s.showToast)
   const [guardando, setGuardando] = useState(false)
 
-  // Si el jugador ya se registró hoy para esta sesión, reabrir con sus datos
-  // (permite corregir sin duplicar — el store hace upsert por athlete+session).
+  // Si el jugador ya se registró hoy para ESTE ejercicio, reabrir con sus
+  // datos (permite corregir sin duplicar — el store hace upsert por
+  // athlete+session+exercise desde Fase 37).
   const registroExistente = gymExternalLoads.find(
-    (g) => g.athleteId === jugador.id && g.sessionId === sesionId,
+    (g) => g.athleteId === jugador.id && g.sessionId === sesionId && g.exerciseName === ejercicio.nombre,
   )
 
   const ultimoRegistroDelEjercicio = [...gymExternalLoads]
@@ -76,7 +171,7 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
       : pesoSugerido,
   )
 
-  const tonelaje = useMemo(() => series * reps * topSetKg, [series, reps, topSetKg])
+  const tonelaje = series * reps * topSetKg
 
   async function handleGuardar() {
     setGuardando(true)
@@ -89,8 +184,8 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
         setsData,
         totalTonnage: tonelaje,
       })
-      showToast('success', `¡${jugador.nombre.split(' ')[0]} registró su Top Set!`)
-      onClose()
+      showToast('success', `¡${jugador.nombre.split(' ')[0]} registró ${ejercicio.nombre}!`)
+      onGuardado()
     } catch (err) {
       showToast('error', getErrorMessage(err, 'No se pudo guardar el entrenamiento.'))
     } finally {
@@ -99,29 +194,11 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-union-charcoal text-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold uppercase tracking-widest text-white/50">
-            {ejercicio.nombre}
-          </p>
-          <h2 className="truncate text-2xl font-black">{jugador.nombre}</h2>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={guardando}
-          aria-label="Cerrar"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl hover:bg-white/20 disabled:opacity-50"
-        >
-          ✕
-        </button>
-      </div>
-
+    <>
       <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-4 py-6">
         <div className="flex flex-col items-center gap-2">
           <span className="text-sm font-bold uppercase tracking-widest text-white/60">
-            🔥 Peso del Top Set
+            🔥 Peso del Top Set — {ejercicio.nombre}
           </span>
           <div className="flex items-center gap-4">
             <StepperButton
@@ -187,10 +264,10 @@ export function RegistroModal({ jugador, sesionId, ejercicio, onClose }: Registr
           disabled={guardando}
           className="w-full rounded-2xl bg-union-red-600 py-6 text-2xl font-black uppercase tracking-wide text-white hover:bg-union-red-700 disabled:opacity-60"
         >
-          {guardando ? 'Guardando…' : 'Guardar Top Set'}
+          {guardando ? 'Guardando…' : `Guardar ${ejercicio.nombre}`}
         </button>
       </div>
-    </div>
+    </>
   )
 }
 
