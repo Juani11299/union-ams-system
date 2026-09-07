@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   useAppStore,
   useSessionPlansActivos,
@@ -914,7 +914,7 @@ function NuevoPlanForm({ fecha, seasonId, categoryId, onCreated }: NuevoPlanForm
       </Field>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <Field label="Microciclo" required>
+        <Field label="Sesión" required>
           <select
             className={inputClass}
             value={matchDay}
@@ -1298,6 +1298,90 @@ function DiaDetalleModal({ fecha, sesiones, seasonId, categoryId, onClose }: Dia
 }
 
 // ---------------------------------------------------------------------------
+// "Microciclo Nº" opcional por semana (Fase 36) — no confundir con "Sesión"
+// (la etiqueta MD/MD+1/MD-2 de cada sesión individual, más abajo en el
+// formulario de creación): esto es UN solo número para toda la semana que
+// se está viendo, para que el profe sepa en qué microciclo de la temporada
+// está. Guarda con `onBlur` (no hay botón "Guardar" — es un recuadro
+// chico, no un formulario), y vaciarlo borra el número en vez de guardar 0.
+// ---------------------------------------------------------------------------
+
+function MicrocicloSemanalInput({
+  seasonId,
+  categoryId,
+  semanaInicio,
+}: {
+  seasonId: string
+  categoryId: string
+  semanaInicio: string
+}) {
+  const soloLectura = useSoloLectura()
+  const weeklyMicrocycles = useAppStore((s) => s.weeklyMicrocycles)
+  const setWeeklyMicrocicloNumero = useAppStore((s) => s.setWeeklyMicrocicloNumero)
+  const showToast = useToastStore((s) => s.showToast)
+
+  const existente = weeklyMicrocycles.find(
+    (m) => m.seasonId === seasonId && m.categoryId === categoryId && m.semanaInicio === semanaInicio,
+  )
+  const [valor, setValor] = useState(existente?.numero.toString() ?? '')
+  const [guardando, setGuardando] = useState(false)
+
+  // Al cambiar de semana (o al llegar el valor real desde Supabase) hay que
+  // resincronizar el input — si no, seguiría mostrando el número de la
+  // semana anterior hasta que el profe lo tocara a mano.
+  useEffect(() => {
+    setValor(existente?.numero.toString() ?? '')
+  }, [existente?.numero, semanaInicio])
+
+  async function handleBlur() {
+    const numeroActual = existente?.numero ?? null
+    const numeroNuevo = valor.trim() === '' ? null : Number(valor)
+    if (numeroNuevo === numeroActual) return
+
+    if (numeroNuevo !== null && (!Number.isFinite(numeroNuevo) || numeroNuevo <= 0)) {
+      showToast('error', 'El número de microciclo tiene que ser mayor a 0.')
+      setValor(existente?.numero.toString() ?? '')
+      return
+    }
+
+    setGuardando(true)
+    try {
+      await setWeeklyMicrocicloNumero(seasonId, categoryId, semanaInicio, numeroNuevo)
+    } catch (err) {
+      showToast('error', getErrorMessage(err, 'No se pudo guardar el microciclo.'))
+      setValor(existente?.numero.toString() ?? '')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  if (soloLectura) {
+    if (!existente) return null
+    return (
+      <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+        Microciclo {existente.numero}
+      </span>
+    )
+  }
+
+  return (
+    <label className="flex items-center gap-1.5 text-xs text-slate-400">
+      Microciclo Nº
+      <input
+        type="number"
+        min={1}
+        placeholder="—"
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        onBlur={handleBlur}
+        disabled={guardando}
+        className="w-14 rounded-md border border-slate-200 bg-white px-1.5 py-1 text-center text-xs text-slate-700 focus:border-union-red-500 focus:outline-none focus:ring-1 focus:ring-union-red-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+      />
+    </label>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // PLANIFICADOR — vista principal (la semana).
 // ---------------------------------------------------------------------------
 
@@ -1467,6 +1551,13 @@ export function PlanificadorView() {
           >
             Semana siguiente ›
           </button>
+          {activeSeasonId && activeCategoryId && (
+            <MicrocicloSemanalInput
+              seasonId={activeSeasonId}
+              categoryId={activeCategoryId}
+              semanaInicio={dias[0]}
+            />
+          )}
         </div>
 
         <button

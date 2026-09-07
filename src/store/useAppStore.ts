@@ -29,6 +29,7 @@ import type {
   ComplementaryPlan,
   VideoMatch,
   VideoTag,
+  WeeklyMicrocycle,
 } from '@/types'
 import type { GrupoPosicion } from '@/utils/posicion'
 import { supabase, isSupabaseConfigured } from '@/utils/supabase'
@@ -72,6 +73,8 @@ import {
   videoMatchToInsertRow,
   videoTagFromRow,
   videoTagToInsertRow,
+  weeklyMicrocycleFromRow,
+  type WeeklyMicrocycleRow,
   type AthleteRow,
   type AthleteInput,
   type SessionPlanRow,
@@ -169,6 +172,8 @@ interface AppState {
   complementaryPlans: ComplementaryPlan[]
   videoMatches: VideoMatch[]
   videoTags: VideoTag[]
+  /** "Microciclo Nº" opcional por semana (Fase 36) — ver `WeeklyMicrocycle`. */
+  weeklyMicrocycles: WeeklyMicrocycle[]
   activeSeasonId: string | null
   activeCategoryId: string | null
   /** Link mágico con `?locked=true` (Fase 19) — mientras esté en `true`, el
@@ -269,6 +274,17 @@ interface AppState {
   createVideoTag: (input: NuevoVideoTagInput) => Promise<VideoTag>
   updateVideoTag: (id: string, input: Partial<NuevoVideoTagInput>) => Promise<void>
   deleteVideoTag: (id: string) => Promise<void>
+
+  // ---------------------------------------------------------------------------
+  // "Microciclo Nº" opcional por semana (Fase 36) — ver migration_fase36_microciclos_semanales.sql
+  // ---------------------------------------------------------------------------
+  /** Crea/actualiza el número para esa semana, o lo borra si `numero` es `null` (vaciar el recuadro). */
+  setWeeklyMicrocicloNumero: (
+    seasonId: string,
+    categoryId: string,
+    semanaInicio: string,
+    numero: number | null,
+  ) => Promise<void>
 }
 
 /** Lanza y deja el mensaje en `error` del store si Supabase no está configurado. */
@@ -341,6 +357,7 @@ export const useAppStore = create<AppState>()(
   complementaryPlans: [],
   videoMatches: [],
   videoTags: [],
+  weeklyMicrocycles: [],
   activeSeasonId: null,
   activeCategoryId: null,
   categoryLocked: false,
@@ -399,6 +416,7 @@ export const useAppStore = create<AppState>()(
           supabase.from('complementary_plans').select('*'),
           supabase.from('video_matches').select('*').order('fecha', { ascending: false }),
           supabase.from('video_tags').select('*'),
+          supabase.from('weekly_microcycles').select('*'),
         ]),
         timeout,
       ])
@@ -424,6 +442,7 @@ export const useAppStore = create<AppState>()(
         complementaryPlansRes,
         videoMatchesRes,
         videoTagsRes,
+        weeklyMicrocyclesRes,
       ] = resultados
 
       // Resiliente a fallas parciales: una tabla que falle (RLS mal configurada, tabla
@@ -450,6 +469,7 @@ export const useAppStore = create<AppState>()(
         complementaryPlansRes,
         videoMatchesRes,
         videoTagsRes,
+        weeklyMicrocyclesRes,
       ].find((r) => r.error)?.error
 
       const seasons = (seasonsRes.data ?? []) as Season[]
@@ -507,6 +527,9 @@ export const useAppStore = create<AppState>()(
         ),
         videoMatches: ((videoMatchesRes.data ?? []) as VideoMatchRow[]).map(videoMatchFromRow),
         videoTags: ((videoTagsRes.data ?? []) as VideoTagRow[]).map(videoTagFromRow),
+        weeklyMicrocycles: ((weeklyMicrocyclesRes.data ?? []) as WeeklyMicrocycleRow[]).map(
+          weeklyMicrocycleFromRow,
+        ),
         activeSeasonId,
         activeCategoryId,
         isLoading: false,
@@ -1480,6 +1503,57 @@ export const useAppStore = create<AppState>()(
       videoTags: state.videoTags.filter((t) => t.id !== id),
     }))
   },
+
+  setWeeklyMicrocicloNumero: async (seasonId, categoryId, semanaInicio, numero) => {
+    exigirSupabase(set)
+
+    const coincide = (m: WeeklyMicrocycle) =>
+      m.seasonId === seasonId && m.categoryId === categoryId && m.semanaInicio === semanaInicio
+
+    if (numero === null) {
+      // Vaciar el recuadro borra la fila en vez de guardar `null` — así una
+      // semana sin número simplemente no tiene fila, en vez de acumular filas
+      // "vacías" con `numero: null` que después habría que filtrar en todos
+      // lados.
+      const { error } = await supabase
+        .from('weekly_microcycles')
+        .delete()
+        .eq('season_id', seasonId)
+        .eq('category_id', categoryId)
+        .eq('semana_inicio', semanaInicio)
+
+      if (error) {
+        set({ error: error.message })
+        throw error
+      }
+
+      set((state) => ({ weeklyMicrocycles: state.weeklyMicrocycles.filter((m) => !coincide(m)) }))
+      return
+    }
+
+    // Upsert por la unique constraint (season_id, category_id, semana_inicio)
+    // de migration_fase36_microciclos_semanales.sql — la misma semana nunca
+    // tiene más de una fila, escribir de nuevo actualiza la existente.
+    const { data, error } = await supabase
+      .from('weekly_microcycles')
+      .upsert(
+        { season_id: seasonId, category_id: categoryId, semana_inicio: semanaInicio, numero },
+        { onConflict: 'season_id,category_id,semana_inicio' },
+      )
+      .select()
+      .single()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const actualizado = weeklyMicrocycleFromRow(data as WeeklyMicrocycleRow)
+    set((state) => {
+      const sinLaVieja = state.weeklyMicrocycles.filter((m) => !coincide(m))
+      return { weeklyMicrocycles: [...sinLaVieja, actualizado] }
+    })
+  },
     }),
     {
       name: 'soma-app-store',
@@ -1591,6 +1665,7 @@ const ACCIONES_DE_ESCRITURA = [
   'createVideoTag',
   'updateVideoTag',
   'deleteVideoTag',
+  'setWeeklyMicrocicloNumero',
 ] as const satisfies readonly (keyof AppState)[]
 
 /**

@@ -33,6 +33,7 @@ import type {
   EventoTipoTag,
   FaseJuego,
   BandaCancha,
+  WeeklyMicrocycle,
   CarrilCancha,
 } from '@/types'
 
@@ -913,5 +914,27 @@ export function videoTagToInsertRow(input: NuevoVideoTagInput) {
     zona_banda: input.zona?.banda ?? null,
     zona_carril: input.zona?.carril ?? null,
     nota: input.nota ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// "Microciclo Nº" opcional por semana (Fase 36) — ver migration_fase36_microciclos_semanales.sql
+// ---------------------------------------------------------------------------
+
+export interface WeeklyMicrocycleRow {
+  id: string
+  season_id: string
+  category_id: string
+  semana_inicio: string
+  numero: number
+}
+
+export function weeklyMicrocycleFromRow(row: WeeklyMicrocycleRow): WeeklyMicrocycle {
+  return {
+    id: row.id,
+    seasonId: row.season_id,
+    categoryId: row.category_id,
+    semanaInicio: row.semana_inicio,
+    numero: row.numero,
   }
 }
