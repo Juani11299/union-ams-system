@@ -265,6 +265,7 @@ function ConfiguracionSesionDiaria({ plan }: { plan: SessionPlan }) {
   const [rpeEsperado, setRpeEsperado] = useState(plan.rpeEsperado ?? 5)
   const [duracionRealMin, setDuracionRealMin] = useState(plan.duracionRealMin ?? plan.duracionEstimadaMin)
   const [guardando, setGuardando] = useState(false)
+  const [errorDuracion, setErrorDuracion] = useState<string | null>(null)
 
   // "Carga Interna Proyectada" — Fase 14: rpeEsperado × duracionRealMin, la
   // misma fórmula que fija `cargaObjetivo` al crear la sesión. Se recalcula
@@ -296,6 +297,21 @@ function ConfiguracionSesionDiaria({ plan }: { plan: SessionPlan }) {
   }
 
   async function handleGuardar() {
+    // Blindaje (2026-09-07): el input es `type="number"` controlado por
+    // `Number(e.target.value)` — si el profe borra el campo para escribir
+    // un valor nuevo, ese estado intermedio es `Number('') === 0`, no
+    // `NaN`. Antes de este chequeo, si por cualquier motivo se llegaba a
+    // "Guardar configuración" en ese instante (doble click, blur+click muy
+    // rápido), se guardaba 0 silenciosamente — el toast decía "guardado"
+    // igual, y el sRPE quedaba desincronizado sin que nada lo avisara. Acá
+    // se corta ANTES de llamar al store, con el mismo criterio de
+    // validación que ya usa el resto del formulario (`duracionEstimadaMin`
+    // más abajo en este archivo).
+    if (!Number.isFinite(duracionRealMin) || duracionRealMin <= 0) {
+      setErrorDuracion('Ingresá una duración válida (mayor a 0) antes de guardar.')
+      return
+    }
+    setErrorDuracion(null)
     setGuardando(true)
     try {
       await updateSessionPlanConfig(plan.id, {
@@ -331,13 +347,16 @@ function ConfiguracionSesionDiaria({ plan }: { plan: SessionPlan }) {
             onChange={(e) => setRpeEsperado(Number(e.target.value))}
           />
         </Field>
-        <Field label="Tiempo Total de Trabajo (min)">
+        <Field label="Tiempo Total de Trabajo (min)" error={errorDuracion ?? undefined}>
           <input
             type="number"
             min={0}
             className={inputClass}
             value={duracionRealMin}
-            onChange={(e) => setDuracionRealMin(Number(e.target.value))}
+            onChange={(e) => {
+              setErrorDuracion(null)
+              setDuracionRealMin(Number(e.target.value))
+            }}
           />
         </Field>
       </div>

@@ -1593,6 +1593,24 @@ const ACCIONES_DE_ESCRITURA = [
   'deleteVideoTag',
 ] as const satisfies readonly (keyof AppState)[]
 
+/**
+ * Blindaje (2026-09-07) — las tres acciones que rompieron Wellness/RPE/
+ * Terminal de Fuerza (ver el comentario grande más arriba) NUNCA deben
+ * volver a esta lista. En vez de confiar en que quien la edite en el
+ * futuro se acuerde de este detalle, se falla fuerte acá mismo si alguna
+ * de las tres reaparece — mejor un error ruidoso al arrancar la app en
+ * desarrollo que un jugador viendo el cartel de "modo sólo lectura" de
+ * nuevo sin que nadie se entere hasta la próxima queja.
+ */
+const ACCIONES_QUE_NUNCA_DEBEN_BLOQUEARSE = ['submitWellness', 'submitSessionLoad', 'submitGymExternalLoad'] as const
+for (const nombre of ACCIONES_QUE_NUNCA_DEBEN_BLOQUEARSE) {
+  if ((ACCIONES_DE_ESCRITURA as readonly string[]).includes(nombre)) {
+    throw new Error(
+      `${nombre} está en ACCIONES_DE_ESCRITURA — eso rompe Wellness/RPE/Terminal de Fuerza (rutas públicas sin sesión, ver useAppStore.ts). Sacalo de la lista.`,
+    )
+  }
+}
+
 function estaEnSoloLectura(): boolean {
   const { categoryLocked, soloLecturaGlobal } = useAppStore.getState()
   return !useAuthStore.getState().session || categoryLocked || soloLecturaGlobal
