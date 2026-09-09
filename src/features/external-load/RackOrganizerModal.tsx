@@ -17,28 +17,28 @@ interface RackOrganizerModalProps {
 }
 
 const GRUPO_ESTILO: Record<ClaveGrupoRack, string> = {
-  A: 'border-union-red-500/40 bg-union-red-500/10',
-  B: 'border-amber-400/40 bg-amber-400/10',
-  C: 'border-emerald-400/40 bg-emerald-400/10',
-  'sin-calibrar': 'border-white/10 bg-white/5',
+  fuerte: 'border-union-red-500/40 bg-union-red-500/10',
+  'en-desarrollo': 'border-amber-400/40 bg-amber-400/10',
+  'sin-cargas': 'border-white/10 bg-white/5',
 }
 
 const GRUPO_ICONO: Record<ClaveGrupoRack, string> = {
-  A: '🔴',
-  B: '🟡',
-  C: '🟢',
-  'sin-calibrar': '⚪',
+  fuerte: '🔴',
+  'en-desarrollo': '🟡',
+  'sin-cargas': '⚪',
 }
 
 /**
- * "Organizador de Racks" (Fase 29) — antes de una sesión de Fuerza, el
- * profe elige el ejercicio troncal del día y ve al plantel dividido en 3
- * terciles de fuerza (según el Top Set máximo histórico de cada uno, ver
- * `rackOrganizer.ts`) para no tener que armar los grupos de memoria ni
- * andar preguntando "vos cuánto levantás". Estética de pizarra de
- * vestuario (charcoal + tiza) a propósito, distinta del resto del panel de
- * Administración — esto se piensa para proyectar o mostrar en el gimnasio,
- * no para completar un formulario.
+ * "Organizador de Racks" (Fase 29, 3 columnas desde Fase 39) — antes de una
+ * sesión de Fuerza, el profe elige el ejercicio troncal del día y ve al
+ * plantel dividido en 3 grupos según el Top Set máximo histórico de cada
+ * uno (ver `rackOrganizer.ts`): Fuerte, No Tan Fuerte/En Desarrollo, y Sin
+ * Cargas Registradas — este último para detectar de un vistazo a quién
+ * calibrarle una carga en el momento. Sin tener que armar los grupos de
+ * memoria ni andar preguntando "vos cuánto levantás". Estética de pizarra
+ * de vestuario (charcoal + tiza) a propósito, distinta del resto del panel
+ * de Administración — esto se piensa para proyectar o mostrar en el
+ * gimnasio, no para completar un formulario.
  */
 export function RackOrganizerModal({ athletes, gymExternalLoads, sessionPlans, onClose }: RackOrganizerModalProps) {
   const showToast = useToastStore((s) => s.showToast)
@@ -72,7 +72,7 @@ export function RackOrganizerModal({ athletes, gymExternalLoads, sessionPlans, o
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
           <div>
             <h3 className="text-base font-semibold">🗂️ Organizador de Racks</h3>
-            <p className="text-xs text-white/50">Terciles de fuerza para armar los grupos antes de entrenar</p>
+            <p className="text-xs text-white/50">3 grupos de fuerza para armar los racks antes de entrenar</p>
           </div>
           <button
             type="button"
@@ -118,7 +118,7 @@ export function RackOrganizerModal({ athletes, gymExternalLoads, sessionPlans, o
                   Nadie del plantel tiene un Top Set registrado de "{ejercicio}" todavía.
                 </div>
               ) : (
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                   {grupos.map((grupo) => (
                     <div
                       key={grupo.clave}
@@ -127,11 +127,12 @@ export function RackOrganizerModal({ athletes, gymExternalLoads, sessionPlans, o
                       <div>
                         <p className="text-sm font-black uppercase tracking-wide">
                           {GRUPO_ICONO[grupo.clave]} {grupo.nombre}
+                          <span className="ml-1.5 font-semibold text-white/50">({grupo.atletas.length})</span>
                         </p>
                         <p className="text-xs font-semibold text-white/60">
                           {grupo.rangoKg
                             ? `${grupo.rangoKg.min}kg - ${grupo.rangoKg.max}kg`
-                            : grupo.clave === 'sin-calibrar'
+                            : grupo.clave === 'sin-cargas'
                               ? 'Sin dato de partida'
                               : '—'}
                         </p>

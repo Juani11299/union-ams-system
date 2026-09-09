@@ -1,6 +1,6 @@
 import type { Athlete, GymExternalLoad, SessionPlan } from '@/types'
 
-export type ClaveGrupoRack = 'A' | 'B' | 'C' | 'sin-calibrar'
+export type ClaveGrupoRack = 'fuerte' | 'en-desarrollo' | 'sin-cargas'
 
 export interface AtletaConTopSet {
   athlete: Athlete
@@ -35,18 +35,25 @@ function calcularRango(atletas: AtletaConTopSet[]): { min: number; max: number }
 }
 
 /**
- * "Organizador de Racks" (Fase 29) — para un ejercicio troncal, agrupa a
- * los atletas activos en 3 terciles de fuerza según su Top Set máximo
- * registrado en `gym_external_loads` dentro de una ventana de días (default
- * 60, dentro del rango "30-60 días" pedido — más ancho para no dejar a un
- * atleta activo "Sin Calibrar" sólo porque su último registro tiene 35
- * días). Terciles = dividir por CANTIDAD de atletas (no por rango de kg
- * fijo): con 9 atletas calibrados, 3 van a cada grupo; el rango de kg de
- * cada tarjeta se muestra recién DESPUÉS de armar los grupos, como el
- * min-max real de ese grupo, no un umbral inventado de antemano.
+ * "Organizador de Racks" (Fase 29, simplificado a 3 grupos en Fase 39) —
+ * para un ejercicio troncal, agrupa a los atletas activos en 3 columnas
+ * según su Top Set máximo registrado en `gym_external_loads` dentro de una
+ * ventana de días (default 60, dentro del rango "30-60 días" pedido — más
+ * ancho para no dejar a un atleta activo "Sin Cargas" sólo porque su
+ * último registro tiene 35 días):
  *
- * Atletas sin ningún registro de ese ejercicio en la ventana van a "Sin
- * Calibrar" — no se puede asignarles un rack sin un dato real de partida.
+ * - "Grupo Fuerte": la mitad de los atletas CALIBRADOS con mayor Top Set.
+ * - "Grupo No Tan Fuerte / En Desarrollo": la otra mitad.
+ * - "Sin Cargas Registradas": nunca cargaron un Top Set de ese ejercicio en
+ *   la ventana — no se puede asignarles un rack sin un dato real de partida,
+ *   así el cuerpo técnico los detecta rápido y les toma una carga en el momento.
+ *
+ * La división Fuerte/En Desarrollo es por CANTIDAD de atletas (mitad y
+ * mitad, no por un umbral de kg fijo): el rango de kg de cada tarjeta se
+ * muestra recién DESPUÉS de armar los grupos, como el min-max real de ese
+ * grupo. (Antes de Fase 39 eran 3 terciles — A/B/C — en vez de 2 mitades;
+ * se simplificó a 2 porque distinguir "medio" de "liviano" no cambiaba en
+ * la práctica qué rack se les asignaba.)
  */
 export function organizarRacks(
   athletes: Athlete[],
@@ -61,7 +68,7 @@ export function organizarRacks(
   const ahora = fechaReferencia.getTime()
 
   const conTopSet: AtletaConTopSet[] = []
-  const sinCalibrar: AtletaConTopSet[] = []
+  const sinCargas: AtletaConTopSet[] = []
 
   for (const athlete of athletes) {
     const registros = gymExternalLoads.filter((g) => {
@@ -74,7 +81,7 @@ export function organizarRacks(
     })
 
     if (registros.length === 0) {
-      sinCalibrar.push({ athlete, topSetKg: null })
+      sinCargas.push({ athlete, topSetKg: null })
       continue
     }
 
@@ -82,18 +89,25 @@ export function organizarRacks(
     conTopSet.push({ athlete, topSetKg })
   }
 
+  // Fuerte/En Desarrollo ordenados por Top Set descendente (el orden en sí
+  // ya es información útil); Sin Cargas no tiene una métrica para ordenar,
+  // así que va alfabético — más fácil de ubicar un nombre puntual en la lista.
   conTopSet.sort((a, b) => (b.topSetKg ?? 0) - (a.topSetKg ?? 0))
+  sinCargas.sort((a, b) => a.athlete.nombre.localeCompare(b.athlete.nombre, 'es'))
 
-  const [tamañoA, tamañoB] = tamañosBalanceados(conTopSet.length, 3)
-  const grupoA = conTopSet.slice(0, tamañoA)
-  const grupoB = conTopSet.slice(tamañoA, tamañoA + tamañoB)
-  const grupoC = conTopSet.slice(tamañoA + tamañoB)
+  const [tamañoFuerte] = tamañosBalanceados(conTopSet.length, 2)
+  const grupoFuerte = conTopSet.slice(0, tamañoFuerte)
+  const grupoEnDesarrollo = conTopSet.slice(tamañoFuerte)
 
   return [
-    { clave: 'A', nombre: 'Grupo A — Pesado', rangoKg: calcularRango(grupoA), atletas: grupoA },
-    { clave: 'B', nombre: 'Grupo B — Medio', rangoKg: calcularRango(grupoB), atletas: grupoB },
-    { clave: 'C', nombre: 'Grupo C — Ligero/Desarrollo', rangoKg: calcularRango(grupoC), atletas: grupoC },
-    { clave: 'sin-calibrar', nombre: 'Sin Calibrar', rangoKg: null, atletas: sinCalibrar },
+    { clave: 'fuerte', nombre: 'Grupo Fuerte', rangoKg: calcularRango(grupoFuerte), atletas: grupoFuerte },
+    {
+      clave: 'en-desarrollo',
+      nombre: 'Grupo No Tan Fuerte / En Desarrollo',
+      rangoKg: calcularRango(grupoEnDesarrollo),
+      atletas: grupoEnDesarrollo,
+    },
+    { clave: 'sin-cargas', nombre: 'Sin Cargas Registradas', rangoKg: null, atletas: sinCargas },
   ]
 }
 
