@@ -21,6 +21,7 @@ import {
   clasificarMonotonia,
   calcularStrain,
   compararConObjetivo,
+  calcularCargaEsperadaDia,
   UMBRAL_MONOTONIA_ALTA,
   UMBRAL_DIAS_CALIBRACION,
   type NivelRiesgoAcwr,
@@ -153,11 +154,13 @@ export function DashboardEquipo() {
 
   const categoriaActual = categories.find((c) => c.id === activeCategoryId)
   const hoy = fechaHoyLocal()
-  // Fase 13 ("Doble Turno"): hoy puede tener varias sesiones (Campo + Gimnasio) —
-  // el objetivo del día es la suma de las de todas, no la de una sola.
+  // Fase 13 ("Doble Turno"): hoy puede tener varias sesiones (Campo + Gimnasio).
+  // Fase 40: el objetivo del día ya NO es la suma lineal de cada sesión —
+  // `calcularCargaEsperadaDia` pondera Campo+Gimnasio combinados para que no
+  // se dispare de forma irreal (ver comentario de esa función).
   const sesionesHoy = sessionPlans.filter((p) => p.fecha === hoy)
   const hayPlanHoy = sesionesHoy.length > 0
-  const cargaObjetivoHoy = sesionesHoy.reduce((sum, p) => sum + p.cargaObjetivo, 0)
+  const cargaObjetivoHoy = calcularCargaEsperadaDia(sesionesHoy)
 
   const aptos = athletes.filter((a) => a.estadoSalud === 'Activo').length
   const bajasMedicas = athletes.filter((a) => a.estadoSalud !== 'Activo').length

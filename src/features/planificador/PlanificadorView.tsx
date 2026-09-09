@@ -26,6 +26,8 @@ import {
   compararConObjetivo,
   calcularCargaEjecutadaReal,
   calcularCargaInterna,
+  calcularCargaEsperadaDia,
+  defaultsSesionParaFecha,
 } from '@/features/workload/calculations'
 import { diasDeLaSemanaActual, formatFechaCorta, fechaHoyLocal } from '@/utils/fecha'
 import { getErrorMessage } from '@/utils/errors'
@@ -95,7 +97,11 @@ function ResumenDiaCard({
 }: ResumenDiaCardProps) {
   const [sobrevolada, setSobrevolada] = useState(false)
   const primeraSesion = sesiones[0]
-  const cargaObjetivoTotal = sesiones.reduce((sum, s) => sum + s.cargaObjetivo, 0)
+  // Fase 40 — "Opción A": si el día combina Campo + Gimnasio, el objetivo no
+  // es la suma lineal de cada `cargaObjetivo` (dispararía irreal) — la
+  // sesión más exigente entra completa y la otra atenuada. Ver
+  // `calcularCargaEsperadaDia`.
+  const cargaObjetivoTotal = calcularCargaEsperadaDia(sesiones)
   const duracionEstimadaTotal = sesiones.reduce((sum, s) => sum + s.duracionEstimadaMin, 0)
   const tituloCombinado = sesiones.map((s) => s.titulo).join(' + ')
   const hayPartido = sesiones.some((s) => s.tipo === 'Partido')
@@ -850,11 +856,15 @@ function NuevoPlanForm({ fecha, seasonId, categoryId, onCreated }: NuevoPlanForm
   const createSessionPlan = useAppStore((s) => s.createSessionPlan)
   const showToast = useToastStore((s) => s.showToast)
 
+  // Fase 40 — 90 min de Campo + RPE fijo de la matriz del club según el día
+  // de semana de `fecha` (sábado sugiere directo un Partido); domingo cae en
+  // los genéricos de siempre. Sólo el valor inicial del form — el profe lo
+  // ajusta como cualquier otro día.
   const [titulo, setTitulo] = useState('')
   const [matchDay, setMatchDay] = useState<MatchDayTag>('MD-2')
-  const [tipo, setTipo] = useState<TipoSesion>('Campo')
-  const [duracionEstimadaMin, setDuracionEstimadaMin] = useState(60)
-  const [rpeEsperado, setRpeEsperado] = useState(5)
+  const [tipo, setTipo] = useState<TipoSesion>(() => defaultsSesionParaFecha(fecha).tipo)
+  const [duracionEstimadaMin, setDuracionEstimadaMin] = useState(() => defaultsSesionParaFecha(fecha).duracionEstimadaMin)
+  const [rpeEsperado, setRpeEsperado] = useState(() => defaultsSesionParaFecha(fecha).rpeEsperado)
   const [descripcion, setDescripcion] = useState('')
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [guardando, setGuardando] = useState(false)
@@ -1004,10 +1014,21 @@ function NuevaSesionForm({ fecha, seasonId, categoryId, matchDay, onClose }: Nue
   const createSessionPlan = useAppStore((s) => s.createSessionPlan)
   const showToast = useToastStore((s) => s.showToast)
 
+  // Fase 40 — este form es específicamente Campo/Gimnasio (Doble Turno), así
+  // que la matriz del club sólo aplica si el día cae en la ventana Lunes-
+  // Viernes que la matriz define para Campo (`defaultsSesionParaFecha`
+  // sugiere Partido para sábado, que acá no es una opción válida) — el resto
+  // de los casos cae en los genéricos de siempre (60 min / RPE 5).
   const [tipo, setTipo] = useState<'Campo' | 'Gimnasio'>('Campo')
   const [titulo, setTitulo] = useState('')
-  const [duracionEstimadaMin, setDuracionEstimadaMin] = useState(60)
-  const [rpeEsperado, setRpeEsperado] = useState(5)
+  const [duracionEstimadaMin, setDuracionEstimadaMin] = useState(() => {
+    const defaults = defaultsSesionParaFecha(fecha)
+    return defaults.tipo === 'Campo' ? defaults.duracionEstimadaMin : 60
+  })
+  const [rpeEsperado, setRpeEsperado] = useState(() => {
+    const defaults = defaultsSesionParaFecha(fecha)
+    return defaults.tipo === 'Campo' ? defaults.rpeEsperado : 5
+  })
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [guardando, setGuardando] = useState(false)
 

@@ -1,9 +1,99 @@
-import type { SessionExecution, SessionPlan, WellnessEntry } from '@/types'
+import type { SessionExecution, SessionPlan, TipoSesion, WellnessEntry } from '@/types'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { fechaHoyLocal, parsearFechaLocal, inicioDeSemana } from '@/utils/fecha'
 
 export function calcularCargaInterna(rpe: number, duracionMin: number): number {
   return rpe * duracionMin
+}
+
+/**
+ * Matriz fija de RPE Esperado de Campo por día de semana (Fase 40) — el
+ * microciclo estándar del club: sube de Lunes a Miércoles (pico MD-3), baja
+ * Jueves-Viernes (descarga previa al partido). Sábado es día de Partido
+ * (RPE alto fijo, no un bloque de Campo más). Domingo no tiene valor
+ * definido a propósito — no se inventa un número que nadie pidió, se deja
+ * el default genérico de siempre.
+ * `Date.getDay()`: 0=domingo, 1=lunes, …, 6=sábado.
+ */
+const RPE_CAMPO_POR_DIA: Record<number, number> = {
+  1: 4, // Lunes
+  2: 8, // Martes
+  3: 9, // Miércoles
+  4: 7, // Jueves
+  5: 4, // Viernes
+  6: 9, // Sábado — día de Partido
+}
+
+const DURACION_CAMPO_BASE_MIN = 90
+
+export interface DefaultsSesionDia {
+  tipo: TipoSesion
+  duracionEstimadaMin: number
+  rpeEsperado: number
+}
+
+/**
+ * Defaults sugeridos al crear una sesión nueva, según el día de semana de
+ * `fecha` (Fase 40) — 90 min de Campo + el RPE fijo de la matriz del club
+ * de lunes a viernes; sábado sugiere directo un Partido (90 min, RPE 9) en
+ * vez de una sesión de Campo más. Domingo no tiene matriz definida, así que
+ * devuelve los genéricos de siempre (60 min / RPE 5).
+ *
+ * Deliberadamente NO toca datos ya guardados ni recalcula carga histórica
+ * — sólo cambia el valor con el que arranca el formulario; el profe lo
+ * ajusta como cualquier otro día.
+ */
+export function defaultsSesionParaFecha(fecha: string): DefaultsSesionDia {
+  const diaSemana = parsearFechaLocal(fecha).getDay()
+  const rpeCampo = RPE_CAMPO_POR_DIA[diaSemana]
+  if (rpeCampo === undefined) return { tipo: 'Campo', duracionEstimadaMin: 60, rpeEsperado: 5 }
+  if (diaSemana === 6) {
+    return { tipo: 'Partido', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo }
+  }
+  return { tipo: 'Campo', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo }
+}
+
+/**
+ * sRPE Esperado del día combinando TODAS las sesiones planificadas (Fase 40
+ * — "Opción A: Suma de Volúmenes y Ponderación de Intensidad"). Evita que
+ * Campo + Gimnasio el mismo día disparen la carga sumando linealmente dos
+ * bloques como si fueran esfuerzos aislados que se acumulan sin límite.
+ *
+ * CORRECCIÓN MATEMÁTICA (la primera versión de esta función usaba "minutos
+ * totales × RPE predominante (el más alto)" — se descartó por incorrecta:
+ * como el RPE predominante es, por definición, ≥ cada RPE individual,
+ * `(Σmin) × max(RPE)` es SIEMPRE ≥ `Σ(RPE_i × min_i)` (la suma simple) —
+ * nunca la achica, la infla más todavía. Prueba numérica: Campo 90min×RPE4
+ * + Gimnasio 60min×RPE8 → suma simple = 840, pero 150min×RPE8 = 1200. Es
+ * matemáticamente imposible que "minutos totales × una intensidad ≥ al
+ * promedio ponderado" dé un número menor a la suma simple — hace falta una
+ * intensidad efectiva POR DEBAJO del promedio ponderado real.)
+ *
+ * Regla real: si el día tiene Campo Y Gimnasio (sin Partido de por medio),
+ * el sRPE esperado del día es el `cargaObjetivo` de la sesión más exigente
+ * completo, más el de la otra sesión atenuado (`FACTOR_ATENUACION_SEGUNDO_BLOQUE`)
+ * — reconoce que el segundo estímulo del día fatiga menos que si fuera el
+ * único, sin pretender una "intensidad ponderada" que matemáticamente no
+ * puede cumplir su propio objetivo. Cualquier otro caso (una sola sesión,
+ * día de Partido, dos sesiones del mismo tipo) usa la suma simple de
+ * siempre — es exactamente lo que ya se guarda en `cargaObjetivo` de cada
+ * sesión desde Fase 14, no hay ambigüedad que resolver ahí.
+ */
+const FACTOR_ATENUACION_SEGUNDO_BLOQUE = 0.7
+
+export function calcularCargaEsperadaDia(sesiones: SessionPlan[]): number {
+  const sumaSimple = sesiones.reduce((sum, s) => sum + s.cargaObjetivo, 0)
+  if (sesiones.length <= 1) return sumaSimple
+
+  const tienePartido = sesiones.some((s) => s.tipo === 'Partido')
+  const tieneCampo = sesiones.some((s) => s.tipo === 'Campo')
+  const tieneGimnasio = sesiones.some((s) => s.tipo === 'Gimnasio')
+  if (tienePartido || !tieneCampo || !tieneGimnasio) return sumaSimple
+
+  const ordenadas = [...sesiones].sort((a, b) => b.cargaObjetivo - a.cargaObjetivo)
+  const [masExigente, ...resto] = ordenadas
+  const atenuadas = resto.reduce((sum, s) => sum + s.cargaObjetivo * FACTOR_ATENUACION_SEGUNDO_BLOQUE, 0)
+  return masExigente.cargaObjetivo + atenuadas
 }
 
 /**
