@@ -57,30 +57,33 @@ export function defaultsSesionParaFecha(fecha: string): DefaultsSesionDia {
  * sRPE Esperado del día combinando TODAS las sesiones planificadas (Fase 40
  * — "Opción A: Suma de Volúmenes y Ponderación de Intensidad"). Evita que
  * Campo + Gimnasio el mismo día disparen la carga sumando linealmente dos
- * bloques como si fueran esfuerzos aislados que se acumulan sin límite.
+ * `cargaObjetivo` calculados por separado, como si fueran dos sesiones
+ * completamente aisladas del método de Foster en vez de un único bloque de
+ * estrés diario.
  *
- * CORRECCIÓN MATEMÁTICA (la primera versión de esta función usaba "minutos
- * totales × RPE predominante (el más alto)" — se descartó por incorrecta:
- * como el RPE predominante es, por definición, ≥ cada RPE individual,
- * `(Σmin) × max(RPE)` es SIEMPRE ≥ `Σ(RPE_i × min_i)` (la suma simple) —
- * nunca la achica, la infla más todavía. Prueba numérica: Campo 90min×RPE4
- * + Gimnasio 60min×RPE8 → suma simple = 840, pero 150min×RPE8 = 1200. Es
- * matemáticamente imposible que "minutos totales × una intensidad ≥ al
- * promedio ponderado" dé un número menor a la suma simple — hace falta una
- * intensidad efectiva POR DEBAJO del promedio ponderado real.)
+ * Regla (estándar sRPE de Foster): si el día tiene Campo Y Gimnasio (sin
+ * Partido de por medio), el sRPE esperado del día es
+ * `minutos totales del día × RPE predominante` (el más alto de los RPE
+ * Esperado de esas sesiones) — UNA sola sesión de entrenamiento con UNA
+ * sola intensidad representativa, exactamente el criterio real de "session
+ * RPE": no importa si el pico de esfuerzo fue en el bloque de Campo o en
+ * el de Gimnasio, el día entero queda coloreado por esa intensidad
+ * predominante, no diluido promediándola con el bloque más liviano.
+ * (Antes esta función usaba un factor de atenuación 0.7 inventado sin
+ * respaldo científico sobre el bloque de menor `cargaObjetivo` — se sacó:
+ * comparaba el resultado contra la suma de dos sRPE calculados por
+ * separado, que es justamente el número irreal que había que evitar, no
+ * una meta a igualar o superar.)
  *
- * Regla real: si el día tiene Campo Y Gimnasio (sin Partido de por medio),
- * el sRPE esperado del día es el `cargaObjetivo` de la sesión más exigente
- * completo, más el de la otra sesión atenuado (`FACTOR_ATENUACION_SEGUNDO_BLOQUE`)
- * — reconoce que el segundo estímulo del día fatiga menos que si fuera el
- * único, sin pretender una "intensidad ponderada" que matemáticamente no
- * puede cumplir su propio objetivo. Cualquier otro caso (una sola sesión,
- * día de Partido, dos sesiones del mismo tipo) usa la suma simple de
- * siempre — es exactamente lo que ya se guarda en `cargaObjetivo` de cada
- * sesión desde Fase 14, no hay ambigüedad que resolver ahí.
+ * Cualquier otro caso (una sola sesión, día de Partido, dos sesiones del
+ * mismo tipo) usa la suma simple de siempre — es exactamente lo que ya se
+ * guarda en `cargaObjetivo` de cada sesión desde Fase 14, no hay
+ * ambigüedad que resolver ahí.
+ *
+ * `rpeEsperado` es opcional en sesiones viejas (pre-Fase 14) — si falta, se
+ * reconstruye desde `cargaObjetivo / duracionEstimadaMin` en vez de asumir
+ * 0, para no subestimar el RPE predominante de una sesión histórica.
  */
-const FACTOR_ATENUACION_SEGUNDO_BLOQUE = 0.7
-
 export function calcularCargaEsperadaDia(sesiones: SessionPlan[]): number {
   const sumaSimple = sesiones.reduce((sum, s) => sum + s.cargaObjetivo, 0)
   if (sesiones.length <= 1) return sumaSimple
@@ -90,10 +93,13 @@ export function calcularCargaEsperadaDia(sesiones: SessionPlan[]): number {
   const tieneGimnasio = sesiones.some((s) => s.tipo === 'Gimnasio')
   if (tienePartido || !tieneCampo || !tieneGimnasio) return sumaSimple
 
-  const ordenadas = [...sesiones].sort((a, b) => b.cargaObjetivo - a.cargaObjetivo)
-  const [masExigente, ...resto] = ordenadas
-  const atenuadas = resto.reduce((sum, s) => sum + s.cargaObjetivo * FACTOR_ATENUACION_SEGUNDO_BLOQUE, 0)
-  return masExigente.cargaObjetivo + atenuadas
+  const minutosTotales = sesiones.reduce((sum, s) => sum + s.duracionEstimadaMin, 0)
+  const rpePredominante = Math.max(
+    ...sesiones.map(
+      (s) => s.rpeEsperado ?? (s.duracionEstimadaMin > 0 ? s.cargaObjetivo / s.duracionEstimadaMin : 0),
+    ),
+  )
+  return minutosTotales * rpePredominante
 }
 
 /**

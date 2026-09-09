@@ -98,9 +98,9 @@ function ResumenDiaCard({
   const [sobrevolada, setSobrevolada] = useState(false)
   const primeraSesion = sesiones[0]
   // Fase 40 — "Opción A": si el día combina Campo + Gimnasio, el objetivo no
-  // es la suma lineal de cada `cargaObjetivo` (dispararía irreal) — la
-  // sesión más exigente entra completa y la otra atenuada. Ver
-  // `calcularCargaEsperadaDia`.
+  // es la suma lineal de cada `cargaObjetivo` (dispararía irreal) — es
+  // minutos totales del día × RPE predominante (estándar sRPE de Foster,
+  // un solo bloque de estrés). Ver `calcularCargaEsperadaDia`.
   const cargaObjetivoTotal = calcularCargaEsperadaDia(sesiones)
   const duracionEstimadaTotal = sesiones.reduce((sum, s) => sum + s.duracionEstimadaMin, 0)
   const tituloCombinado = sesiones.map((s) => s.titulo).join(' + ')
