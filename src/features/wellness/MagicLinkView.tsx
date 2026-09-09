@@ -7,9 +7,10 @@ import { EmojiSlider } from '@/components/EmojiSlider'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { colorRpe } from '@/features/workload/calculations'
+import { parsearNumero, SERIES_DEFAULT, REPS_DEFAULT } from '@/features/terminal-fuerza/RegistroModal'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
-import type { Athlete, WellnessRating } from '@/types'
+import type { Athlete, GymSheetEjercicio, WellnessRating } from '@/types'
 
 const RPE_LABEL: Record<number, string> = {
   0: 'Reposo',
@@ -344,6 +345,8 @@ function FormularioWellness({ athleteId, nombre, categoriaNombre, onCambiarJugad
 function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }: FormularioProps) {
   const [searchParams] = useSearchParams()
   const submitSessionLoad = useAppStore((s) => s.submitSessionLoad)
+  const submitGymExternalLoad = useAppStore((s) => s.submitGymExternalLoad)
+  const sessionPlans = useAppStore((s) => s.sessionPlans)
   const seasonId = searchParams.get('season')
   const categoryId = searchParams.get('category')
   const titulo = tituloModulo('rpe', categoriaNombre)
@@ -352,14 +355,76 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
   const [enviando, setEnviando] = useState(false)
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [advertenciaCargaExterna, setAdvertenciaCargaExterna] = useState<string | null>(null)
+
+  // Fase 38 — mismo criterio de `TerminalFuerzaView`: la sesión de Gimnasio
+  // de HOY para esta temporada+categoría, y de ahí los ejercicios que el
+  // profe marcó 🎯 en la Planilla de Fuerza (`GymSheetEditor.marcarTrackeado`,
+  // puede haber más de uno desde Fase 37). Si hoy no hay Gimnasio, o no se
+  // marcó ningún ejercicio, este bloque simplemente no aparece.
+  const hoy = fechaHoyLocal()
+  const sesionGimnasioHoy = useMemo(
+    () =>
+      sessionPlans.find(
+        (p) => p.season_id === seasonId && p.category_id === categoryId && p.fecha === hoy && p.tipo === 'Gimnasio',
+      ) ?? null,
+    [sessionPlans, seasonId, categoryId, hoy],
+  )
+  const ejerciciosTrackeados: GymSheetEjercicio[] = useMemo(
+    () => (sesionGimnasioHoy?.gymSheetData?.bloques ?? []).flatMap((b) => b.ejercicios.filter((e) => e.isTracked)),
+    [sesionGimnasioHoy],
+  )
+  const [pesosPorEjercicio, setPesosPorEjercicio] = useState<Record<string, string>>({})
 
   if (!seasonId || !categoryId) return <PantallaLinkInvalido />
+
+  /**
+   * Vinculación con Carga Externa (Fase 38) — un `gym_external_loads` por
+   * ejercicio marcado con peso cargado (vacío = el jugador lo saltó, no todos
+   * los días hay Gimnasio ni todos los ejercicios se completan). Mismo
+   * cálculo de tonelaje que `RegistroEjercicioForm` (Terminal de Fuerza) para
+   * que el dato sea consistente sin importar desde qué pantalla se cargó.
+   * Un fallo puntual (ej. se cae la conexión a mitad de guardar) no bloquea
+   * la pantalla de éxito del RPE — que es el dato principal y obligatorio de
+   * este formulario — sólo queda avisado en `advertenciaCargaExterna`.
+   */
+  async function guardarCargaExterna() {
+    if (!sesionGimnasioHoy || ejerciciosTrackeados.length === 0) return
+    const fallidos: string[] = []
+    for (const ejercicio of ejerciciosTrackeados) {
+      const texto = (pesosPorEjercicio[ejercicio.nombre] ?? '').trim()
+      if (!texto) continue
+      const peso = Number(texto.replace(',', '.'))
+      if (!Number.isFinite(peso) || peso <= 0) continue
+
+      const series = parsearNumero(ejercicio.series, SERIES_DEFAULT)
+      const reps = parsearNumero(ejercicio.repeticiones, REPS_DEFAULT)
+      try {
+        await submitGymExternalLoad({
+          athleteId,
+          sessionId: sesionGimnasioHoy.id,
+          exerciseName: ejercicio.nombre,
+          setsData: Array.from({ length: series }, () => ({ reps, weightKg: peso })),
+          totalTonnage: series * reps * peso,
+        })
+      } catch (err) {
+        console.error(`[RPE] no se pudo guardar la carga externa de "${ejercicio.nombre}":`, err)
+        fallidos.push(ejercicio.nombre)
+      }
+    }
+    if (fallidos.length > 0) {
+      setAdvertenciaCargaExterna(
+        `Tu RPE se guardó, pero no se pudo registrar la carga externa de: ${fallidos.join(', ')}.`,
+      )
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (enviando) return
     setEnviando(true)
     setError(null)
+    setAdvertenciaCargaExterna(null)
     try {
       await submitSessionLoad({
         planId: null,
@@ -374,6 +439,7 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
         duracionMin: 0,
         cargaInternaCalculada: 0,
       })
+      await guardarCargaExterna()
       setEnviado(true)
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo guardar el registro.'))
@@ -391,6 +457,11 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
             ¡Gracias, {nombre.split(' ')[0]}!
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">Tu RPE de la sesión fue registrado.</p>
+          {advertenciaCargaExterna && (
+            <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+              ⚠️ {advertenciaCargaExterna}
+            </p>
+          )}
         </Card>
       </Pantalla>
     )
@@ -427,6 +498,37 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
             minLabel="🛋️ Descanso"
             maxLabel="🥵 Esfuerzo Máximo"
           />
+
+          {ejerciciosTrackeados.length > 0 && (
+            <Card className="flex flex-col gap-3">
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                🏋️ Carga externa de la sesión
+              </span>
+              <p className="text-xs text-slate-400">
+                Ingresá el peso de tu última serie en cada ejercicio marcado — opcional, ayuda al profe a ver
+                los kilos levantados sin que tengas que cargar una planilla aparte.
+              </p>
+              {ejerciciosTrackeados.map((ejercicio) => (
+                <label key={ejercicio.id} className="flex flex-col gap-1 text-sm">
+                  <span className="font-medium text-slate-700 dark:text-slate-300">
+                    {ejercicio.nombre} (kg de la última serie/repetición)
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step={0.5}
+                    value={pesosPorEjercicio[ejercicio.nombre] ?? ''}
+                    onChange={(e) =>
+                      setPesosPorEjercicio((prev) => ({ ...prev, [ejercicio.nombre]: e.target.value }))
+                    }
+                    placeholder="Ej. 60"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 placeholder:text-slate-400 focus:border-union-red-500 focus:outline-none focus:ring-1 focus:ring-union-red-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  />
+                </label>
+              ))}
+            </Card>
+          )}
 
           <button
             type="submit"
