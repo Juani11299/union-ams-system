@@ -229,6 +229,12 @@ function DiaVacio({
   onDropTemplate: (templateId: string, tipo: TipoPlantillaFuerza) => void
 }) {
   const [sobrevolada, setSobrevolada] = useState(false)
+  // Fase 41 — mostrar la base del club aunque no haya nada cargado todavía,
+  // para que el profe vea de un vistazo qué toma ese día sin tener que abrir
+  // el form (mismo valor con el que arranca "Agregar sesión", ver
+  // `defaultsSesionParaFecha`). Domingo no tiene matriz real (`esBaseDelClub:
+  // false`), así que no se muestra ningún cartel ese día.
+  const baseDelDia = defaultsSesionParaFecha(fecha)
 
   return (
     <button
@@ -255,6 +261,11 @@ function DiaVacio({
       <p className="text-xs capitalize">{formatFechaCorta(fecha)}</p>
       <span className="text-2xl">+</span>
       <span className="text-xs font-medium">Agregar sesión</span>
+      {baseDelDia.esBaseDelClub && (
+        <span className="mt-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          Base: {baseDelDia.tipo} {baseDelDia.duracionEstimadaMin}min · RPE {baseDelDia.rpeEsperado}
+        </span>
+      )}
     </button>
   )
 }

@@ -30,6 +30,8 @@ export interface DefaultsSesionDia {
   tipo: TipoSesion
   duracionEstimadaMin: number
   rpeEsperado: number
+  /** `false` en Domingo (sin matriz del club definida) — cae en genéricos 60min/RPE5, no en una base real. */
+  esBaseDelClub: boolean
 }
 
 /**
@@ -37,7 +39,10 @@ export interface DefaultsSesionDia {
  * `fecha` (Fase 40) — 90 min de Campo + el RPE fijo de la matriz del club
  * de lunes a viernes; sábado sugiere directo un Partido (90 min, RPE 9) en
  * vez de una sesión de Campo más. Domingo no tiene matriz definida, así que
- * devuelve los genéricos de siempre (60 min / RPE 5).
+ * devuelve los genéricos de siempre (60 min / RPE 5), marcados
+ * `esBaseDelClub: false` para que la UI (Fase 41) no muestre un cartel de
+ * "esto es lo que toma hoy" con un número que en realidad no representa
+ * ninguna base real del club.
  *
  * Deliberadamente NO toca datos ya guardados ni recalcula carga histórica
  * — sólo cambia el valor con el que arranca el formulario; el profe lo
@@ -46,11 +51,13 @@ export interface DefaultsSesionDia {
 export function defaultsSesionParaFecha(fecha: string): DefaultsSesionDia {
   const diaSemana = parsearFechaLocal(fecha).getDay()
   const rpeCampo = RPE_CAMPO_POR_DIA[diaSemana]
-  if (rpeCampo === undefined) return { tipo: 'Campo', duracionEstimadaMin: 60, rpeEsperado: 5 }
-  if (diaSemana === 6) {
-    return { tipo: 'Partido', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo }
+  if (rpeCampo === undefined) {
+    return { tipo: 'Campo', duracionEstimadaMin: 60, rpeEsperado: 5, esBaseDelClub: false }
   }
-  return { tipo: 'Campo', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo }
+  if (diaSemana === 6) {
+    return { tipo: 'Partido', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo, esBaseDelClub: true }
+  }
+  return { tipo: 'Campo', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo, esBaseDelClub: true }
 }
 
 /**

@@ -22,6 +22,7 @@ import {
   calcularStrain,
   compararConObjetivo,
   calcularCargaEsperadaDia,
+  defaultsSesionParaFecha,
   UMBRAL_MONOTONIA_ALTA,
   UMBRAL_DIAS_CALIBRACION,
   type NivelRiesgoAcwr,
@@ -231,6 +232,21 @@ export function DashboardEquipo() {
           )}
         </div>
       </div>
+
+      {!hayPlanHoy &&
+        (() => {
+          const baseHoy = defaultsSesionParaFecha(hoy)
+          if (!baseHoy.esBaseDelClub) return null
+          return (
+            <div className="flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-300">
+              <span aria-hidden>ℹ️</span>
+              <span>
+                <strong>Hoy no hay nada planificado.</strong> Base del club para hoy: {baseHoy.tipo}{' '}
+                {baseHoy.duracionEstimadaMin} min · RPE {baseHoy.rpeEsperado}.
+              </span>
+            </div>
+          )
+        })()}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatCard label="Plantel" value={athletes.length} />
