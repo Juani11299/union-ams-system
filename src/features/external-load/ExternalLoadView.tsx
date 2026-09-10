@@ -3,14 +3,16 @@ import { Tabs, type TabItem } from '@/components/Tabs'
 import { GymLoadHistoryTab } from './GymLoadHistoryTab'
 import { GpsPlaceholderTab } from './GpsPlaceholderTab'
 import { DashboardIntegrado } from './DashboardIntegrado'
+import { ExternalLoadDashboardTab } from './ExternalLoadDashboardTab'
 
 const TABS: TabItem[] = [
+  { id: 'rendimiento', label: 'Rendimiento 🎯', icon: '📊' },
   { id: 'gimnasio', label: 'Gimnasio (Kg)', icon: '🏋️' },
   { id: 'campo', label: 'Campo (GPS)', icon: '📡' },
 ]
 
 export function ExternalLoadView() {
-  const [tabActiva, setTabActiva] = useState('gimnasio')
+  const [tabActiva, setTabActiva] = useState('rendimiento')
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,15 +27,18 @@ export function ExternalLoadView() {
 
       <Tabs tabs={TABS} activeId={tabActiva} onChange={setTabActiva} />
 
+      {tabActiva === 'rendimiento' && <ExternalLoadDashboardTab />}
       {tabActiva === 'gimnasio' && <GymLoadHistoryTab />}
       {tabActiva === 'campo' && <GpsPlaceholderTab />}
 
-      <div>
-        <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-200">
-          Dashboard Integrado
-        </h2>
-        <DashboardIntegrado />
-      </div>
+      {tabActiva !== 'rendimiento' && (
+        <div>
+          <h2 className="mb-3 text-base font-semibold text-slate-800 dark:text-slate-200">
+            Dashboard Integrado
+          </h2>
+          <DashboardIntegrado />
+        </div>
+      )}
     </div>
   )
 }
