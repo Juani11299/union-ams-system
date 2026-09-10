@@ -505,15 +505,13 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
                 🏋️ Carga externa de la sesión
               </span>
               <p className="text-xs text-slate-400">
-                Ingresá el <strong className="text-slate-500 dark:text-slate-300">peso TOTAL movido</strong> en
-                tu última serie: <strong className="text-slate-500 dark:text-slate-300">la suma de los discos
-                de los DOS lados + la barra (20 kg)</strong>. Opcional, pero le ahorra al profe cargar una
-                planilla aparte.
+                Ingresá el peso de tu última serie — el total movido (los discos de los dos lados + la barra
+                de 20 kg), no el de un solo disco. Opcional.
               </p>
               {ejerciciosTrackeados.map((ejercicio) => (
                 <label key={ejercicio.id} className="flex flex-col gap-1 text-sm">
                   <span className="font-medium text-slate-700 dark:text-slate-300">
-                    {ejercicio.nombre} — kg totales de la última serie (discos de ambos lados + barra 20 kg)
+                    {ejercicio.nombre} (kg de la última serie/repetición)
                   </span>
                   <input
                     type="number"
