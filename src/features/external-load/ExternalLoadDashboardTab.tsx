@@ -129,20 +129,6 @@ export function ExternalLoadDashboardTab() {
     () => loadsFiltrados.filter((l) => l.fecha === fechaMasReciente),
     [loadsFiltrados, fechaMasReciente],
   )
-  // TODOS los registros de carga externa de ese día (sin el filtro de
-  // ejercicio) — sirve para saber si un jugador cargó *algo*, aunque haya
-  // sido de un ejercicio que después dejó de estar marcado con 🎯 (pasa
-  // cuando el profe cambia el ejercicio a trackear). Así el "⚠️ Falta" y la
-  // adhesión no penalizan a alguien que sí registró carga.
-  const idsConAlgunaCargaDelDia = useMemo(
-    () =>
-      new Set(
-        fechaMasReciente
-          ? loadsDivision.filter((l) => l.fecha === fechaMasReciente).map((l) => l.athlete.id)
-          : [],
-      ),
-    [loadsDivision, fechaMasReciente],
-  )
 
   // Récord personal (histórico completo, sin filtro de rango) y sesión previa
   // por atleta+ejercicio, para la comparativa de la matriz.
@@ -165,15 +151,16 @@ export function ExternalLoadDashboardTab() {
       ),
     [sessionExecutions, fechaMasReciente],
   )
+  const idsConKilosDelDia = new Set(loadsDelDia.map((l) => l.athlete.id))
+
   // Base de la adhesión = todos los que se sabe que entrenaron ese día:
-  // mandaron RPE O cargaron alguna carga externa (un jugador puede cargar en
-  // la Terminal de Fuerza sin mandar RPE — dos flujos distintos — así que el
-  // ratio crudo "kilos / RPE" puede pasar de 100%). "⚠️ Falta" = mandó RPE
-  // pero NO cargó NINGÚN ejercicio ese día (no penaliza al que cargó otro
-  // ejercicio si el 🎯 cambió).
-  const idsEntrenaronDelDia = new Set([...idsRpeDelDia, ...idsConAlgunaCargaDelDia])
+  // mandaron RPE O cargaron kilos (un jugador puede cargar en la Terminal de
+  // Fuerza sin mandar RPE — dos flujos distintos — así que el ratio crudo
+  // "kilos / RPE" puede pasar de 100%). Se listan como "⚠️ Falta" los que
+  // mandaron RPE pero no cargaron kilos.
+  const idsEntrenaronDelDia = new Set([...idsRpeDelDia, ...idsConKilosDelDia])
   const atletasSinCargar = [...idsRpeDelDia]
-    .filter((id) => !idsConAlgunaCargaDelDia.has(id))
+    .filter((id) => !idsConKilosDelDia.has(id))
     .map((id) => athletesById.get(id))
     .filter((a): a is Athlete => !!a)
 
@@ -186,7 +173,7 @@ export function ExternalLoadDashboardTab() {
     null,
   )
   const adhesionPct = idsEntrenaronDelDia.size
-    ? Math.min(100, Math.round((idsConAlgunaCargaDelDia.size / idsEntrenaronDelDia.size) * 100))
+    ? Math.min(100, Math.round((idsConKilosDelDia.size / idsEntrenaronDelDia.size) * 100))
     : null
 
   // Progresión temporal: promedio de Top Set por semana (media de la
@@ -306,7 +293,7 @@ export function ExternalLoadDashboardTab() {
               </span>
               <span className="text-xs text-slate-400">
                 {idsEntrenaronDelDia.size
-                  ? `${idsConAlgunaCargaDelDia.size} de ${idsEntrenaronDelDia.size} que entrenaron`
+                  ? `${idsConKilosDelDia.size} de ${idsEntrenaronDelDia.size} que entrenaron`
                   : 'Sin actividad registrada ese día'}
               </span>
             </Card>
