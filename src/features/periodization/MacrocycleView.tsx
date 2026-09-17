@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Tabs, type TabItem } from '@/components/Tabs'
 import { PeriodizacionTab } from './PeriodizacionTab'
-import { EvaluacionesRendimientoTab } from './EvaluacionesRendimientoTab'
+import { PerformanceEvaluationsView } from './evaluations/PerformanceEvaluationsView'
 
 const TABS: TabItem[] = [
   { id: 'periodizacion', label: 'Periodización', icon: '🗺️' },
@@ -24,7 +24,7 @@ export function MacrocycleView() {
       <Tabs tabs={TABS} activeId={tabActiva} onChange={setTabActiva} />
 
       {tabActiva === 'periodizacion' && <PeriodizacionTab />}
-      {tabActiva === 'evaluaciones' && <EvaluacionesRendimientoTab />}
+      {tabActiva === 'evaluaciones' && <PerformanceEvaluationsView />}
     </div>
   )
 }

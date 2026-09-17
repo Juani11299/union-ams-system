@@ -34,6 +34,7 @@ import type {
   FaseJuego,
   BandaCancha,
   WeeklyMicrocycle,
+  PerformanceEvaluation,
   CarrilCancha,
 } from '@/types'
 
@@ -936,5 +937,57 @@ export function weeklyMicrocycleFromRow(row: WeeklyMicrocycleRow): WeeklyMicrocy
     categoryId: row.category_id,
     semanaInicio: row.semana_inicio,
     numero: row.numero,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Evaluaciones de Rendimiento (Fase 38) — ver migration_fase38_evaluaciones_rendimiento.sql
+// ---------------------------------------------------------------------------
+
+export interface PerformanceEvaluationRow {
+  id: string
+  season_id: string
+  category_id: string
+  athlete_id: string
+  evaluation_name: string
+  fecha: string
+  metrics: Record<string, number>
+  body_weight_kg: number | null
+  created_at: string
+}
+
+export function performanceEvaluationFromRow(row: PerformanceEvaluationRow): PerformanceEvaluation {
+  return {
+    id: row.id,
+    seasonId: row.season_id,
+    categoryId: row.category_id,
+    athleteId: row.athlete_id,
+    evaluationName: row.evaluation_name,
+    fecha: row.fecha,
+    metrics: row.metrics ?? {},
+    bodyWeightKg: row.body_weight_kg ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+export interface NuevaPerformanceEvaluationInput {
+  seasonId: string
+  categoryId: string
+  athleteId: string
+  evaluationName: string
+  fecha: string
+  metrics: Record<string, number>
+  bodyWeightKg?: number | null
+}
+
+export function performanceEvaluationToInsertRow(input: NuevaPerformanceEvaluationInput) {
+  return {
+    season_id: input.seasonId,
+    category_id: input.categoryId,
+    athlete_id: input.athleteId,
+    evaluation_name: input.evaluationName,
+    fecha: input.fecha,
+    metrics: input.metrics,
+    body_weight_kg: input.bodyWeightKg ?? null,
   }
 }

@@ -30,6 +30,7 @@ import type {
   VideoMatch,
   VideoTag,
   WeeklyMicrocycle,
+  PerformanceEvaluation,
 } from '@/types'
 import type { GrupoPosicion } from '@/utils/posicion'
 import { supabase, isSupabaseConfigured } from '@/utils/supabase'
@@ -75,6 +76,10 @@ import {
   videoTagToInsertRow,
   weeklyMicrocycleFromRow,
   type WeeklyMicrocycleRow,
+  performanceEvaluationFromRow,
+  performanceEvaluationToInsertRow,
+  type PerformanceEvaluationRow,
+  type NuevaPerformanceEvaluationInput,
   type AthleteRow,
   type AthleteInput,
   type SessionPlanRow,
@@ -174,6 +179,8 @@ interface AppState {
   videoTags: VideoTag[]
   /** "Microciclo Nº" opcional por semana (Fase 36) — ver `WeeklyMicrocycle`. */
   weeklyMicrocycles: WeeklyMicrocycle[]
+  /** Evaluaciones de Rendimiento importadas por CSV (Fase 38) — ver `PerformanceEvaluation`. */
+  performanceEvaluations: PerformanceEvaluation[]
   activeSeasonId: string | null
   activeCategoryId: string | null
   /** Link mágico con `?locked=true` (Fase 19) — mientras esté en `true`, el
@@ -285,6 +292,15 @@ interface AppState {
     semanaInicio: string,
     numero: number | null,
   ) => Promise<void>
+
+  // ---------------------------------------------------------------------------
+  // Evaluaciones de Rendimiento (Fase 38) — ver migration_fase38_evaluaciones_rendimiento.sql
+  // ---------------------------------------------------------------------------
+  /** Inserta muchas filas de una — un CSV importado entero en un solo viaje a Supabase. Devuelve cuántas se insertaron. */
+  importPerformanceEvaluationsBulk: (inputs: NuevaPerformanceEvaluationInput[]) => Promise<number>
+  deletePerformanceEvaluation: (id: string) => Promise<void>
+  /** Borra TODA una evaluación (todas las filas con ese nombre) — usado por "Borrar esta evaluación" en el import, para corregir un CSV mal cargado sin dejar filas sueltas. */
+  deletePerformanceEvaluationByName: (evaluationName: string) => Promise<void>
 }
 
 /** Lanza y deja el mensaje en `error` del store si Supabase no está configurado. */
@@ -358,6 +374,7 @@ export const useAppStore = create<AppState>()(
   videoMatches: [],
   videoTags: [],
   weeklyMicrocycles: [],
+  performanceEvaluations: [],
   activeSeasonId: null,
   activeCategoryId: null,
   categoryLocked: false,
@@ -417,6 +434,7 @@ export const useAppStore = create<AppState>()(
           supabase.from('video_matches').select('*').order('fecha', { ascending: false }),
           supabase.from('video_tags').select('*'),
           supabase.from('weekly_microcycles').select('*'),
+          supabase.from('performance_evaluations').select('*').order('fecha', { ascending: false }),
         ]),
         timeout,
       ])
@@ -443,6 +461,7 @@ export const useAppStore = create<AppState>()(
         videoMatchesRes,
         videoTagsRes,
         weeklyMicrocyclesRes,
+        performanceEvaluationsRes,
       ] = resultados
 
       // Resiliente a fallas parciales: una tabla que falle (RLS mal configurada, tabla
@@ -470,6 +489,7 @@ export const useAppStore = create<AppState>()(
         videoMatchesRes,
         videoTagsRes,
         weeklyMicrocyclesRes,
+        performanceEvaluationsRes,
       ].find((r) => r.error)?.error
 
       const seasons = (seasonsRes.data ?? []) as Season[]
@@ -529,6 +549,9 @@ export const useAppStore = create<AppState>()(
         videoTags: ((videoTagsRes.data ?? []) as VideoTagRow[]).map(videoTagFromRow),
         weeklyMicrocycles: ((weeklyMicrocyclesRes.data ?? []) as WeeklyMicrocycleRow[]).map(
           weeklyMicrocycleFromRow,
+        ),
+        performanceEvaluations: ((performanceEvaluationsRes.data ?? []) as PerformanceEvaluationRow[]).map(
+          performanceEvaluationFromRow,
         ),
         activeSeasonId,
         activeCategoryId,
@@ -1559,6 +1582,58 @@ export const useAppStore = create<AppState>()(
       return { weeklyMicrocycles: [...sinLaVieja, actualizado] }
     })
   },
+
+  importPerformanceEvaluationsBulk: async (inputs) => {
+    exigirSupabase(set)
+    if (inputs.length === 0) return 0
+
+    const { data, error } = await supabase
+      .from('performance_evaluations')
+      .insert(inputs.map(performanceEvaluationToInsertRow))
+      .select()
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    const insertadas = ((data ?? []) as PerformanceEvaluationRow[]).map(performanceEvaluationFromRow)
+    set((state) => ({ performanceEvaluations: [...state.performanceEvaluations, ...insertadas] }))
+    return insertadas.length
+  },
+
+  deletePerformanceEvaluation: async (id) => {
+    exigirSupabase(set)
+
+    const { error } = await supabase.from('performance_evaluations').delete().eq('id', id)
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    set((state) => ({
+      performanceEvaluations: state.performanceEvaluations.filter((e) => e.id !== id),
+    }))
+  },
+
+  deletePerformanceEvaluationByName: async (evaluationName) => {
+    exigirSupabase(set)
+
+    const { error } = await supabase
+      .from('performance_evaluations')
+      .delete()
+      .eq('evaluation_name', evaluationName)
+
+    if (error) {
+      set({ error: error.message })
+      throw error
+    }
+
+    set((state) => ({
+      performanceEvaluations: state.performanceEvaluations.filter((e) => e.evaluationName !== evaluationName),
+    }))
+  },
     }),
     {
       name: 'soma-app-store',
@@ -1671,6 +1746,9 @@ const ACCIONES_DE_ESCRITURA = [
   'updateVideoTag',
   'deleteVideoTag',
   'setWeeklyMicrocicloNumero',
+  'importPerformanceEvaluationsBulk',
+  'deletePerformanceEvaluation',
+  'deletePerformanceEvaluationByName',
 ] as const satisfies readonly (keyof AppState)[]
 
 /**
