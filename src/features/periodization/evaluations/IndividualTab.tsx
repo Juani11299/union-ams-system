@@ -8,9 +8,10 @@ import { SmartAnalysisPanel } from './SmartAnalysisPanel'
 import { calcularRadarJugador, generarSmartAnalysis } from './calculations'
 
 interface IndividualTabProps {
-  /** Temporada/categoría del selector LOCAL de `PerformanceEvaluationsView` — a propósito NO son `activeSeasonId`/`activeCategoryId` del store global (Fase 39, panel 100% independiente). */
+  /** Temporada del selector LOCAL de `PerformanceEvaluationsView` — a propósito NO es `activeSeasonId` del store global (Fase 39, panel 100% independiente). */
   seasonId: string
-  categoryId: string
+  /** Categoría elegida en el filtro "AGRUPAR POR" (Fase 41) — sale de la columna Categoría/Category/Division del propio CSV, NUNCA de la tabla real de categorías del club. `''` = todas. */
+  categoryLabel: string
 }
 
 /**
@@ -18,15 +19,18 @@ interface IndividualTabProps {
  * Score Global (todas las métricas que tenga, de cualquier evaluación),
  * línea de tiempo de UNA métrica elegida, y las tarjetas de Smart Analysis.
  */
-export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
+export function IndividualTab({ seasonId, categoryLabel }: IndividualTabProps) {
   const performanceEvaluations = useAppStore((s) => s.performanceEvaluations)
 
   const [playerKeyElegido, setPlayerKeyElegido] = useState('')
   const [metricaElegida, setMetricaElegida] = useState('')
 
   const evaluacionesDeLaCategoria = useMemo(
-    () => performanceEvaluations.filter((e) => e.seasonId === seasonId && e.categoryId === categoryId),
-    [performanceEvaluations, seasonId, categoryId],
+    () =>
+      performanceEvaluations.filter(
+        (e) => e.seasonId === seasonId && (!categoryLabel || e.categoryLabel === categoryLabel),
+      ),
+    [performanceEvaluations, seasonId, categoryLabel],
   )
 
   const jugadoresDisponibles = useMemo(() => {
@@ -73,10 +77,10 @@ export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
 
   const alertas = useMemo(() => generarSmartAnalysis(evaluacionesDelJugador), [evaluacionesDelJugador])
 
-  if (!seasonId || !categoryId) {
+  if (!seasonId) {
     return (
       <Card className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-        Elegí una temporada y una categoría arriba para ver evaluaciones de rendimiento.
+        Elegí una temporada arriba para ver evaluaciones de rendimiento.
       </Card>
     )
   }

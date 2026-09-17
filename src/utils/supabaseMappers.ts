@@ -949,7 +949,7 @@ export function weeklyMicrocycleFromRow(row: WeeklyMicrocycleRow): WeeklyMicrocy
 export interface PerformanceEvaluationRow {
   id: string
   season_id: string
-  category_id: string
+  category_label: string
   player_name: string
   player_key: string
   evaluation_name: string
@@ -963,7 +963,7 @@ export function performanceEvaluationFromRow(row: PerformanceEvaluationRow): Per
   return {
     id: row.id,
     seasonId: row.season_id,
-    categoryId: row.category_id,
+    categoryLabel: row.category_label,
     playerName: row.player_name,
     playerKey: row.player_key,
     evaluationName: row.evaluation_name,
@@ -976,7 +976,7 @@ export function performanceEvaluationFromRow(row: PerformanceEvaluationRow): Per
 
 export interface NuevaPerformanceEvaluationInput {
   seasonId: string
-  categoryId: string
+  categoryLabel: string
   playerName: string
   playerKey: string
   evaluationName: string
@@ -988,7 +988,7 @@ export interface NuevaPerformanceEvaluationInput {
 export function performanceEvaluationToInsertRow(input: NuevaPerformanceEvaluationInput) {
   return {
     season_id: input.seasonId,
-    category_id: input.categoryId,
+    category_label: input.categoryLabel,
     player_name: input.playerName,
     player_key: input.playerKey,
     evaluation_name: input.evaluationName,

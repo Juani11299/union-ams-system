@@ -22,9 +22,10 @@ import {
 const selectClass = inputClass
 
 interface GrupalTabProps {
-  /** Temporada/categoría del selector LOCAL de `PerformanceEvaluationsView` — a propósito NO son `activeSeasonId`/`activeCategoryId` del store global (Fase 39, panel 100% independiente). */
+  /** Temporada del selector LOCAL de `PerformanceEvaluationsView` — a propósito NO es `activeSeasonId` del store global (Fase 39, panel 100% independiente). */
   seasonId: string
-  categoryId: string
+  /** Categoría elegida en el filtro "AGRUPAR POR" (Fase 41) — sale de la columna Categoría/Category/Division del propio CSV, NUNCA de la tabla real de categorías del club. `''` = todas. */
+  categoryLabel: string
 }
 
 /**
@@ -32,9 +33,10 @@ interface GrupalTabProps {
  * componentes de la carpeta a partir de dos selectores: qué EVALUACIÓN
  * (tipo de test, ej. "CMJ — Marzo 2026") y qué MÉTRICA de esa evaluación
  * mirar. Todo lo demás (KPIs, tabla, gráfico, rankings) se deriva de esos
- * dos selectores + la temporada/categoría del panel (prop, no store global).
+ * dos selectores + la temporada del panel + la categoría "AGRUPAR POR"
+ * (props, ninguna del store global).
  */
-export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
+export function GrupalTab({ seasonId, categoryLabel }: GrupalTabProps) {
   const performanceEvaluations = useAppStore((s) => s.performanceEvaluations)
   const deletePerformanceEvaluationByName = useAppStore((s) => s.deletePerformanceEvaluationByName)
   const showToast = useToastStore((s) => s.showToast)
@@ -46,8 +48,11 @@ export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
   const [borrando, setBorrando] = useState(false)
 
   const evaluacionesDeLaCategoria = useMemo(
-    () => performanceEvaluations.filter((e) => e.seasonId === seasonId && e.categoryId === categoryId),
-    [performanceEvaluations, seasonId, categoryId],
+    () =>
+      performanceEvaluations.filter(
+        (e) => e.seasonId === seasonId && (!categoryLabel || e.categoryLabel === categoryLabel),
+      ),
+    [performanceEvaluations, seasonId, categoryLabel],
   )
 
   const nombresEvaluaciones = useMemo(
@@ -130,10 +135,10 @@ export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
     }
   }
 
-  if (!seasonId || !categoryId) {
+  if (!seasonId) {
     return (
       <Card className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-        Elegí una temporada y una categoría arriba para ver evaluaciones de rendimiento.
+        Elegí una temporada arriba para ver evaluaciones de rendimiento.
       </Card>
     )
   }
@@ -199,7 +204,6 @@ export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
       {mostrarImport && (
         <ImportCsvPanel
           seasonId={seasonId}
-          categoryId={categoryId}
           onImportado={() => {
             setMostrarImport(false)
           }}

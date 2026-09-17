@@ -3,14 +3,16 @@
  * clasificador de `useEvaluationsDashboardStore.ts`, Fase 33.2, que vivía
  * acoplado a ese store efímero). El CSV puede traer CUALQUIER batería de
  * test (CMJ_Height, Fuerza_Max_Izq, Asimetria_RSI, Peso, etc.) — acá se
- * separan en 3 grupos: identidad del jugador (para matchear contra el
- * plantel real, ver `smartEntityMatcher.ts`), peso corporal (campo propio,
- * no una métrica más — se usa para relativizar otras métricas), y el resto
- * de las columnas numéricas (las métricas de verdad).
+ * separan en grupos: identidad del jugador (Fase 40 — el nombre se toma tal
+ * cual, ya no matchea contra el plantel real), categoría (Fase 41 — ídem,
+ * se toma tal cual del CSV, ver `columnaCategoria`), peso corporal (campo
+ * propio, no una métrica más — se usa para relativizar otras métricas), y
+ * el resto de las columnas numéricas (las métricas de verdad).
  */
 
 const PATRONES_JUGADOR = ['jugador', 'player', 'nombre', 'atleta', 'name']
 const PATRONES_PESO = ['peso', 'weight', 'pesocorporal', 'bodyweight', 'bodymass', 'masacorporal', 'pesokg']
+const PATRONES_CATEGORIA = ['categoria', 'category', 'division']
 const PATRONES_IGNORAR = [
   // Columnas de identidad/metadata que nunca son una métrica a graficar,
   // aunque a veces vengan como número (ej. DNI).
@@ -19,9 +21,7 @@ const PATRONES_IGNORAR = [
   'id',
   'fecha',
   'date',
-  'categoria',
-  'category',
-  'division',
+  ...PATRONES_CATEGORIA,
   'posicion',
   'position',
   'pos',
@@ -66,7 +66,9 @@ export function parsearNumeroCsv(valor: unknown): number | null {
 export interface ClasificacionCsvEvaluacion {
   columnaJugador: string
   columnaPeso: string | null
-  /** Columnas numéricas que van al selector de métricas — ya sin jugador, peso, ni las columnas de metadata de `PATRONES_IGNORAR`. */
+  /** Fase 41 — columna que trae la categoría/división del jugador tal cual la puso el CSV (`null` si no se detectó ninguna, ver `PATRONES_CATEGORIA`). Es la base del filtro "AGRUPAR POR" del dashboard. */
+  columnaCategoria: string | null
+  /** Columnas numéricas que van al selector de métricas — ya sin jugador, peso, categoría, ni las columnas de metadata de `PATRONES_IGNORAR`. */
   metricas: string[]
 }
 
@@ -79,8 +81,11 @@ export function clasificarColumnasEvaluacion(
 
   const columnaJugador = encontrar(PATRONES_JUGADOR) ?? columnas[0]
   const columnaPeso = encontrar(PATRONES_PESO)
+  const columnaCategoria = encontrar(PATRONES_CATEGORIA)
 
-  const excluidas = new Set([columnaJugador, columnaPeso].filter((c): c is string => c !== null))
+  const excluidas = new Set(
+    [columnaJugador, columnaPeso, columnaCategoria].filter((c): c is string => c !== null),
+  )
 
   const metricas = columnas.filter((c) => {
     if (excluidas.has(c)) return false
@@ -88,5 +93,5 @@ export function clasificarColumnasEvaluacion(
     return esColumnaNumerica(c, filas)
   })
 
-  return { columnaJugador, columnaPeso, metricas }
+  return { columnaJugador, columnaPeso, columnaCategoria, metricas }
 }

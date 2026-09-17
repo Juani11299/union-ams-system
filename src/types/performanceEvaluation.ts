@@ -1,7 +1,8 @@
 /**
  * Evaluación de Rendimiento (Fase 38; Fase 40 — el jugador se identifica
  * por NOMBRE tal cual viene del CSV, ya no matchea contra el plantel real
- * `athletes`/`rosters`) — UN resultado de UN jugador en UNA batería de test
+ * `athletes`/`rosters`; Fase 41 — lo mismo para la categoría, ver
+ * `categoryLabel`) — UN resultado de UN jugador en UNA batería de test
  * (CMJ, Sprint 30m, Fuerza Isométrica, etc.), importada por CSV. `metrics`
  * es flexible a propósito (JSONB en Supabase): cada tipo de test trae
  * columnas numéricas distintas.
@@ -16,11 +17,22 @@
  * en un CSV de CMJ y "juan perez" en un CSV de Curl Nórdico se reconozcan
  * como la misma persona y sumen sus evaluaciones. `playerName` guarda el
  * nombre tal cual vino del CSV, sólo para mostrar.
+ *
+ * `categoryLabel` (Fase 41) reemplaza al viejo `categoryId` (FK a
+ * `team_categories`) — ya NO se matchea contra las categorías reales del
+ * club: se toma tal cual viene en la columna "Categoria"/"Category"/
+ * "Division" del propio CSV, fila por fila (un mismo archivo puede traer
+ * jugadores de más de una categoría). Si el CSV no tiene esa columna, cae
+ * en `'Sin categoría'`. Es la base del filtro "AGRUPAR POR" del dashboard —
+ * a propósito no depende de ninguna tabla del club, sólo de los datos
+ * crudos importados. `seasonId` SÍ sigue siendo el selector local de
+ * temporada del panel (Fase 39) — no forma parte de este desacople, es sólo
+ * un balde temporal para no mezclar evaluaciones de años distintos.
  */
 export interface PerformanceEvaluation {
   id: string
   seasonId: string
-  categoryId: string
+  categoryLabel: string
   playerName: string
   playerKey: string
   evaluationName: string

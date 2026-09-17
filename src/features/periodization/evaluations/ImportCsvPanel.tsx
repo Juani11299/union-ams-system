@@ -10,29 +10,34 @@ import { normalizarNombre } from '@/utils/smartEntityMatcher'
 import { clasificarColumnasEvaluacion, parsearNumeroCsv } from './csvClassifier'
 import type { NuevaPerformanceEvaluationInput } from '@/utils/supabaseMappers'
 
+const SIN_CATEGORIA = 'Sin categoría'
+
 interface FilaParseada {
   playerName: string
   playerKey: string
+  categoryLabel: string
   valores: Record<string, number>
   pesoKg: number | null
 }
 
 /**
- * Importación de CSV (Fase 38, Paso "Ingesta"; Fase 39 — temporada/categoría
- * pasan a ser props del selector LOCAL del panel; Fase 40 — el jugador ya NO
- * se matchea contra el plantel real: se toma el nombre TAL CUAL viene en la
- * columna "Jugador"/"Nombre" del CSV. `playerKey` (nombre normalizado) es la
- * clave de identidad real, así un jugador que no está cargado como atleta en
- * el sistema igual puede acumular evaluaciones de distintos tests (ej. subís
- * "CMJ.csv" y después "Curl Nordico.csv") con sólo compartir el nombre.
+ * Importación de CSV (Fase 38, Paso "Ingesta"; Fase 39 — temporada pasa a
+ * ser prop del selector LOCAL del panel; Fase 40 — el jugador ya NO se
+ * matchea contra el plantel real: se toma el nombre TAL CUAL viene en la
+ * columna "Jugador"/"Nombre" del CSV, y `playerKey` (nombre normalizado) es
+ * su clave de identidad real; Fase 41 — lo mismo para la categoría: se toma
+ * tal cual viene en la columna "Categoria"/"Category"/"Division" del propio
+ * CSV (fila por fila, un mismo archivo puede traer más de una categoría),
+ * sin matchear contra las categorías reales del club. Si el CSV no trae esa
+ * columna, cae en "Sin categoría". Nada de esto depende del estado global
+ * de la app (ni `athletes`, ni `activeCategoryId`) — el dashboard se arma
+ * 100% con lo que vino en el archivo.
  */
 export function ImportCsvPanel({
   seasonId,
-  categoryId,
   onImportado,
 }: {
   seasonId: string
-  categoryId: string
   onImportado: () => void
 }) {
   const importPerformanceEvaluationsBulk = useAppStore((s) => s.importPerformanceEvaluationsBulk)
@@ -43,6 +48,7 @@ export function ImportCsvPanel({
   const [metricasDisponibles, setMetricasDisponibles] = useState<string[]>([])
   const [metricasElegidas, setMetricasElegidas] = useState<Set<string>>(new Set())
   const [columnaPeso, setColumnaPeso] = useState<string | null>(null)
+  const [columnaCategoria, setColumnaCategoria] = useState<string | null>(null)
   const [nombreEvaluacion, setNombreEvaluacion] = useState('')
   const [fecha, setFecha] = useState(fechaHoyLocal())
   const [importando, setImportando] = useState(false)
@@ -66,19 +72,21 @@ export function ImportCsvPanel({
         const filasParseadas: FilaParseada[] = resultado.data.map((fila) => {
           const playerName = (fila[clasif.columnaJugador] ?? '').trim()
           const playerKey = normalizarNombre(playerName)
+          const categoryLabel = clasif.columnaCategoria ? (fila[clasif.columnaCategoria] ?? '').trim() : ''
           const valores: Record<string, number> = {}
           for (const metrica of clasif.metricas) {
             const num = parsearNumeroCsv(fila[metrica])
             if (num !== null) valores[metrica] = num
           }
           const pesoKg = clasif.columnaPeso ? parsearNumeroCsv(fila[clasif.columnaPeso]) : null
-          return { playerName, playerKey, valores, pesoKg }
+          return { playerName, playerKey, categoryLabel: categoryLabel || SIN_CATEGORIA, valores, pesoKg }
         })
 
         setFilas(filasParseadas)
         setMetricasDisponibles(clasif.metricas)
         setMetricasElegidas(new Set(clasif.metricas))
         setColumnaPeso(clasif.columnaPeso)
+        setColumnaCategoria(clasif.columnaCategoria)
         setNombreEvaluacion((prev) => prev || file.name.replace(/\.csv$/i, ''))
       },
       error: (err) => {
@@ -101,6 +109,7 @@ export function ImportCsvPanel({
     setMetricasDisponibles([])
     setMetricasElegidas(new Set())
     setColumnaPeso(null)
+    setColumnaCategoria(null)
     setNombreEvaluacion('')
   }
 
@@ -108,7 +117,7 @@ export function ImportCsvPanel({
   const filasSinNombre = filas?.filter((f) => f.playerName === '').length ?? 0
 
   async function handleImportar() {
-    if (!seasonId || !categoryId || filasValidas.length === 0 || metricasElegidas.size === 0) return
+    if (!seasonId || filasValidas.length === 0 || metricasElegidas.size === 0) return
     if (!nombreEvaluacion.trim()) {
       showToast('error', 'Ponele un nombre a la evaluación (ej. "CMJ — Marzo 2026").')
       return
@@ -123,7 +132,7 @@ export function ImportCsvPanel({
         }
         return {
           seasonId,
-          categoryId,
+          categoryLabel: f.categoryLabel,
           playerName: f.playerName,
           playerKey: f.playerKey,
           evaluationName: nombreEvaluacion.trim(),
@@ -149,9 +158,10 @@ export function ImportCsvPanel({
         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar evaluaciones (CSV)</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
           Cualquier CSV con una columna de jugador (o nombre) y columnas numéricas de métricas (ej. CMJ_Height,
-          Fuerza_Max_Izq, Asimetria_RSI, Peso). El nombre se toma tal cual viene en el CSV — no hace falta que el
-          jugador ya esté cargado en el sistema. Si subís otro CSV de un test distinto con el mismo nombre, sus
-          evaluaciones se suman a la misma persona.
+          Fuerza_Max_Izq, Asimetria_RSI, Peso). El nombre y la categoría (columna "Categoria"/"Category"/"Division",
+          si la trae) se toman tal cual vienen en el CSV — no hace falta que el jugador ya esté cargado en el
+          sistema ni que la categoría exista en el club. Si subís otro CSV de un test distinto con el mismo nombre,
+          sus evaluaciones se suman a la misma persona.
         </p>
         <div
           onClick={() => inputRef.current?.click()}
@@ -229,6 +239,16 @@ export function ImportCsvPanel({
             aparte, para las métricas relativas al peso.
           </p>
         )}
+        <p className="mt-1 text-[11px] text-slate-400">
+          {columnaCategoria ? (
+            <>
+              🗂️ Columna de categoría detectada: <span className="font-medium">{columnaCategoria}</span> — se usa
+              para agrupar en "AGRUPAR POR".
+            </>
+          ) : (
+            <>🗂️ No se detectó columna de categoría en el CSV — se importa como "{SIN_CATEGORIA}".</>
+          )}
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
