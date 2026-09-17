@@ -6,35 +6,25 @@ import { Card } from '@/components/Card'
 import { Field, inputClass } from '@/components/FormField'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
+import { normalizarNombre } from '@/utils/smartEntityMatcher'
 import { clasificarColumnasEvaluacion, parsearNumeroCsv } from './csvClassifier'
-import { useAthletesDeCategoria } from './useAthletesDeCategoria'
-import type { Athlete } from '@/types'
 import type { NuevaPerformanceEvaluationInput } from '@/utils/supabaseMappers'
 
-function normalizarNombreSimple(texto: string): string {
-  return texto
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-}
-
 interface FilaParseada {
-  nombreCsv: string
-  atleta: Athlete | null
+  playerName: string
+  playerKey: string
   valores: Record<string, number>
   pesoKg: number | null
 }
 
 /**
  * Importación de CSV (Fase 38, Paso "Ingesta"; Fase 39 — temporada/categoría
- * pasan a ser props del selector LOCAL del panel, no el selector global) —
- * mismo criterio de matching que `CsvImportTab.tsx` (carga externa GPS): el
- * nombre del jugador del CSV se cruza contra el plantel de la temporada/
- * categoría elegida EN ESTE PANEL — no contra todo el club, ni contra la
- * categoría activa del resto de la app. Una fila sin match no se importa
- * (no tiene sentido guardar una evaluación sin `athlete_id`, ver
- * migration_fase38).
+ * pasan a ser props del selector LOCAL del panel; Fase 40 — el jugador ya NO
+ * se matchea contra el plantel real: se toma el nombre TAL CUAL viene en la
+ * columna "Jugador"/"Nombre" del CSV. `playerKey` (nombre normalizado) es la
+ * clave de identidad real, así un jugador que no está cargado como atleta en
+ * el sistema igual puede acumular evaluaciones de distintos tests (ej. subís
+ * "CMJ.csv" y después "Curl Nordico.csv") con sólo compartir el nombre.
  */
 export function ImportCsvPanel({
   seasonId,
@@ -46,7 +36,6 @@ export function ImportCsvPanel({
   onImportado: () => void
 }) {
   const importPerformanceEvaluationsBulk = useAppStore((s) => s.importPerformanceEvaluationsBulk)
-  const athletes = useAthletesDeCategoria(seasonId, categoryId)
   const showToast = useToastStore((s) => s.showToast)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -75,16 +64,15 @@ export function ImportCsvPanel({
         }
 
         const filasParseadas: FilaParseada[] = resultado.data.map((fila) => {
-          const nombreCsv = fila[clasif.columnaJugador] ?? ''
-          const atleta =
-            athletes.find((a) => normalizarNombreSimple(a.nombre) === normalizarNombreSimple(nombreCsv)) ?? null
+          const playerName = (fila[clasif.columnaJugador] ?? '').trim()
+          const playerKey = normalizarNombre(playerName)
           const valores: Record<string, number> = {}
           for (const metrica of clasif.metricas) {
             const num = parsearNumeroCsv(fila[metrica])
             if (num !== null) valores[metrica] = num
           }
           const pesoKg = clasif.columnaPeso ? parsearNumeroCsv(fila[clasif.columnaPeso]) : null
-          return { nombreCsv, atleta, valores, pesoKg }
+          return { playerName, playerKey, valores, pesoKg }
         })
 
         setFilas(filasParseadas)
@@ -116,8 +104,8 @@ export function ImportCsvPanel({
     setNombreEvaluacion('')
   }
 
-  const filasValidas = filas?.filter((f) => f.atleta !== null) ?? []
-  const filasSinMatch = filas?.filter((f) => f.atleta === null && f.nombreCsv.trim() !== '') ?? []
+  const filasValidas = filas?.filter((f) => f.playerName !== '') ?? []
+  const filasSinNombre = filas?.filter((f) => f.playerName === '').length ?? 0
 
   async function handleImportar() {
     if (!seasonId || !categoryId || filasValidas.length === 0 || metricasElegidas.size === 0) return
@@ -136,7 +124,8 @@ export function ImportCsvPanel({
         return {
           seasonId,
           categoryId,
-          athleteId: f.atleta!.id,
+          playerName: f.playerName,
+          playerKey: f.playerKey,
           evaluationName: nombreEvaluacion.trim(),
           fecha,
           metrics,
@@ -159,8 +148,10 @@ export function ImportCsvPanel({
       <Card className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar evaluaciones (CSV)</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Cualquier CSV con una columna de jugador y columnas numéricas de métricas (ej. CMJ_Height, Fuerza_Max_Izq,
-          Asimetria_RSI, Peso). Se clasifican automáticamente y se matchean contra el plantel de la categoría activa.
+          Cualquier CSV con una columna de jugador (o nombre) y columnas numéricas de métricas (ej. CMJ_Height,
+          Fuerza_Max_Izq, Asimetria_RSI, Peso). El nombre se toma tal cual viene en el CSV — no hace falta que el
+          jugador ya esté cargado en el sistema. Si subís otro CSV de un test distinto con el mismo nombre, sus
+          evaluaciones se suman a la misma persona.
         </p>
         <div
           onClick={() => inputRef.current?.click()}
@@ -242,14 +233,11 @@ export function ImportCsvPanel({
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-          ✅ {filasValidas.length} jugador(es) matcheado(s) con el plantel activo
+          ✅ {filasValidas.length} jugador(es) detectado(s) en el CSV
         </span>
-        {filasSinMatch.length > 0 && (
-          <span
-            className="cursor-help rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
-            title={filasSinMatch.map((f) => f.nombreCsv).join(', ')}
-          >
-            ⚠️ {filasSinMatch.length} sin match (no se importan) — pasá el mouse para ver nombres
+        {filasSinNombre > 0 && (
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            ⚠️ {filasSinNombre} fila(s) sin nombre de jugador (no se importan)
           </span>
         )}
       </div>

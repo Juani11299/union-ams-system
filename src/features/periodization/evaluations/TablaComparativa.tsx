@@ -54,7 +54,7 @@ export function TablaComparativa({
           </thead>
           <tbody>
             {filas.map((f) => (
-              <tr key={f.athleteId} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+              <tr key={f.playerKey} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
                 <td className="py-2 pr-2 font-medium text-slate-800 dark:text-slate-100">{f.nombre}</td>
                 <td className="px-2 py-2 text-right text-slate-500 dark:text-slate-400">
                   {f.valorAnterior ?? '—'}

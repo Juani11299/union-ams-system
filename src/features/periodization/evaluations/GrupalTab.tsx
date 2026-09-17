@@ -8,7 +8,6 @@ import { ImportCsvPanel } from './ImportCsvPanel'
 import { TablaComparativa } from './TablaComparativa'
 import { GraficoTendenciaGrupal } from './GraficoTendenciaGrupal'
 import { RankingsTopFive } from './RankingsTopFive'
-import { useAthletesDeCategoria } from './useAthletesDeCategoria'
 import {
   separarActualYAnterior,
   calcularKpisGrupales,
@@ -38,7 +37,6 @@ interface GrupalTabProps {
 export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
   const performanceEvaluations = useAppStore((s) => s.performanceEvaluations)
   const deletePerformanceEvaluationByName = useAppStore((s) => s.deletePerformanceEvaluationByName)
-  const athletes = useAthletesDeCategoria(seasonId, categoryId)
   const showToast = useToastStore((s) => s.showToast)
 
   const [mostrarImport, setMostrarImport] = useState(false)
@@ -97,8 +95,8 @@ export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
     [actual, anterior, metricaElegida, invertirLogica],
   )
   const tabla = useMemo(
-    () => construirTablaComparativa(actual, anterior, metricaElegida, athletes, invertirLogica),
-    [actual, anterior, metricaElegida, athletes, invertirLogica],
+    () => construirTablaComparativa(actual, anterior, metricaElegida, invertirLogica),
+    [actual, anterior, metricaElegida, invertirLogica],
   )
   const serie = useMemo(
     () => calcularSerieTemporalGrupal(evaluacionesDelTipo, metricaElegida),
@@ -106,12 +104,12 @@ export function GrupalTab({ seasonId, categoryId }: GrupalTabProps) {
   )
   const hayColumnaPeso = actual.some((e) => e.bodyWeightKg != null)
   const mejoresRelativos = useMemo(
-    () => top5MejoresRelativos(actual, metricaElegida, athletes, invertirLogica),
-    [actual, metricaElegida, athletes, invertirLogica],
+    () => top5MejoresRelativos(actual, metricaElegida, invertirLogica),
+    [actual, metricaElegida, invertirLogica],
   )
   const peoresRelativos = useMemo(
-    () => top5PeoresRelativos(actual, metricaElegida, athletes, invertirLogica),
-    [actual, metricaElegida, athletes, invertirLogica],
+    () => top5PeoresRelativos(actual, metricaElegida, invertirLogica),
+    [actual, metricaElegida, invertirLogica],
   )
   const mayorMejora = useMemo(() => top5MayorMejora(tabla), [tabla])
   const mayorDesmejora = useMemo(() => top5MayorDesmejora(tabla), [tabla])

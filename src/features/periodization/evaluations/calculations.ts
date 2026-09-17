@@ -1,4 +1,4 @@
-import type { Athlete, PerformanceEvaluation } from '@/types'
+import type { PerformanceEvaluation } from '@/types'
 
 /**
  * Motor de cálculo del módulo de Evaluaciones de Rendimiento (Fase 38) —
@@ -121,7 +121,8 @@ export function calcularKpisGrupales(
 }
 
 export interface FilaComparativa {
-  athleteId: string
+  /** Fase 40 — identidad normalizada del jugador (no `athleteId`: ya no se matchea contra el plantel real, ver `PerformanceEvaluation.playerKey`). */
+  playerKey: string
   nombre: string
   valorAnterior: number | null
   valorActual: number | null
@@ -141,20 +142,18 @@ export function construirTablaComparativa(
   actual: PerformanceEvaluation[],
   anterior: PerformanceEvaluation[],
   metrica: string,
-  athletes: Athlete[],
   invertirLogica: boolean,
 ): FilaComparativa[] {
   const menosEsMejor = invertirLogica ? !esMetricaAsimetria(metrica) : esMetricaAsimetria(metrica)
-  const porAtletaAnterior = new Map(anterior.map((e) => [e.athleteId, e.metrics[metrica]]))
-  const idsVistos = new Set<string>()
+  const porJugadorAnterior = new Map(anterior.map((e) => [e.playerKey, e.metrics[metrica]]))
+  const clavesVistas = new Set<string>()
   const filas: FilaComparativa[] = []
 
   for (const ev of actual) {
-    if (idsVistos.has(ev.athleteId)) continue
-    idsVistos.add(ev.athleteId)
-    const nombre = athletes.find((a) => a.id === ev.athleteId)?.nombre ?? '—'
+    if (clavesVistas.has(ev.playerKey)) continue
+    clavesVistas.add(ev.playerKey)
     const valorActual = typeof ev.metrics[metrica] === 'number' ? ev.metrics[metrica] : null
-    const valorAnteriorRaw = porAtletaAnterior.get(ev.athleteId)
+    const valorAnteriorRaw = porJugadorAnterior.get(ev.playerKey)
     const valorAnterior = typeof valorAnteriorRaw === 'number' ? valorAnteriorRaw : null
 
     let variacionPct: number | null = null
@@ -165,7 +164,7 @@ export function construirTablaComparativa(
       mejora = variacionPct > 0
     }
 
-    filas.push({ athleteId: ev.athleteId, nombre, valorAnterior, valorActual, variacionPct, mejora })
+    filas.push({ playerKey: ev.playerKey, nombre: ev.playerName, valorAnterior, valorActual, variacionPct, mejora })
   }
 
   return filas.sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -195,7 +194,7 @@ export function calcularSerieTemporalGrupal(
 }
 
 export interface ItemRanking {
-  athleteId: string
+  playerKey: string
   nombre: string
   valor: number
 }
@@ -210,7 +209,6 @@ function valorRelativo(ev: PerformanceEvaluation, metrica: string): number | nul
 function rankingRelativo(
   actual: PerformanceEvaluation[],
   metrica: string,
-  athletes: Athlete[],
   invertirLogica: boolean,
   mejores: boolean,
 ): ItemRanking[] {
@@ -219,8 +217,7 @@ function rankingRelativo(
     .map((ev) => {
       const valor = valorRelativo(ev, metrica)
       if (valor === null) return null
-      const nombre = athletes.find((a) => a.id === ev.athleteId)?.nombre ?? '—'
-      return { athleteId: ev.athleteId, nombre, valor }
+      return { playerKey: ev.playerKey, nombre: ev.playerName, valor }
     })
     .filter((x): x is ItemRanking => x !== null)
 
@@ -229,19 +226,11 @@ function rankingRelativo(
   return items.slice(0, 5)
 }
 
-export const top5MejoresRelativos = (
-  actual: PerformanceEvaluation[],
-  metrica: string,
-  athletes: Athlete[],
-  invertirLogica: boolean,
-) => rankingRelativo(actual, metrica, athletes, invertirLogica, true)
+export const top5MejoresRelativos = (actual: PerformanceEvaluation[], metrica: string, invertirLogica: boolean) =>
+  rankingRelativo(actual, metrica, invertirLogica, true)
 
-export const top5PeoresRelativos = (
-  actual: PerformanceEvaluation[],
-  metrica: string,
-  athletes: Athlete[],
-  invertirLogica: boolean,
-) => rankingRelativo(actual, metrica, athletes, invertirLogica, false)
+export const top5PeoresRelativos = (actual: PerformanceEvaluation[], metrica: string, invertirLogica: boolean) =>
+  rankingRelativo(actual, metrica, invertirLogica, false)
 
 export function top5MayorMejora(tabla: FilaComparativa[]): FilaComparativa[] {
   return [...tabla]

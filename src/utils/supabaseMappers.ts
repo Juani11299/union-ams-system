@@ -941,14 +941,17 @@ export function weeklyMicrocycleFromRow(row: WeeklyMicrocycleRow): WeeklyMicrocy
 }
 
 // ---------------------------------------------------------------------------
-// Evaluaciones de Rendimiento (Fase 38) — ver migration_fase38_evaluaciones_rendimiento.sql
+// Evaluaciones de Rendimiento (Fase 38; jugador por nombre de CSV desde
+// Fase 40) — ver migration_fase38_evaluaciones_rendimiento.sql y
+// migration_fase40_jugador_por_nombre_csv.sql
 // ---------------------------------------------------------------------------
 
 export interface PerformanceEvaluationRow {
   id: string
   season_id: string
   category_id: string
-  athlete_id: string
+  player_name: string
+  player_key: string
   evaluation_name: string
   fecha: string
   metrics: Record<string, number>
@@ -961,7 +964,8 @@ export function performanceEvaluationFromRow(row: PerformanceEvaluationRow): Per
     id: row.id,
     seasonId: row.season_id,
     categoryId: row.category_id,
-    athleteId: row.athlete_id,
+    playerName: row.player_name,
+    playerKey: row.player_key,
     evaluationName: row.evaluation_name,
     fecha: row.fecha,
     metrics: row.metrics ?? {},
@@ -973,7 +977,8 @@ export function performanceEvaluationFromRow(row: PerformanceEvaluationRow): Per
 export interface NuevaPerformanceEvaluationInput {
   seasonId: string
   categoryId: string
-  athleteId: string
+  playerName: string
+  playerKey: string
   evaluationName: string
   fecha: string
   metrics: Record<string, number>
@@ -984,7 +989,8 @@ export function performanceEvaluationToInsertRow(input: NuevaPerformanceEvaluati
   return {
     season_id: input.seasonId,
     category_id: input.categoryId,
-    athlete_id: input.athleteId,
+    player_name: input.playerName,
+    player_key: input.playerKey,
     evaluation_name: input.evaluationName,
     fecha: input.fecha,
     metrics: input.metrics,

@@ -1587,15 +1587,16 @@ export const useAppStore = create<AppState>()(
     exigirSupabase(set)
     if (inputs.length === 0) return 0
 
-    // Fase 39 — upsert por (athlete_id, evaluation_name, fecha), no insert
-    // crudo: si el profe sube el mismo CSV dos veces (o dos CSVs que se
-    // superponen en jugador+evaluación+fecha), la fila existente se
-    // ACTUALIZA en vez de duplicarse (ver
-    // migration_fase39_evaluaciones_dedup_y_categoria_local.sql).
+    // Fase 39/40 — upsert por (player_key, evaluation_name, fecha,
+    // category_id), no insert crudo: si el profe sube el mismo CSV dos
+    // veces (o dos CSVs que se superponen en jugador+evaluación+fecha), la
+    // fila existente se ACTUALIZA en vez de duplicarse. `player_key` (no
+    // `athlete_id`, Fase 40) es la clave real de identidad — el jugador ya
+    // no se matchea contra el plantel real, se toma tal cual vino del CSV.
     const { data, error } = await supabase
       .from('performance_evaluations')
       .upsert(inputs.map(performanceEvaluationToInsertRow), {
-        onConflict: 'athlete_id,evaluation_name,fecha',
+        onConflict: 'player_key,evaluation_name,fecha,category_id',
       })
       .select()
 
@@ -1607,10 +1608,10 @@ export const useAppStore = create<AppState>()(
     const importadas = ((data ?? []) as PerformanceEvaluationRow[]).map(performanceEvaluationFromRow)
     // El upsert puede haber ACTUALIZADO filas que ya estaban en el store con
     // otro `id` local desincronizado — hay que reemplazarlas por su clave de
-    // negocio (jugador+evaluación+fecha), no por `id`, para no terminar con
-    // la fila vieja Y la nueva conviviendo.
-    const clave = (e: { athleteId: string; evaluationName: string; fecha: string }) =>
-      `${e.athleteId}|${e.evaluationName}|${e.fecha}`
+    // negocio (jugador+evaluación+fecha+categoría), no por `id`, para no
+    // terminar con la fila vieja Y la nueva conviviendo.
+    const clave = (e: { playerKey: string; evaluationName: string; fecha: string; categoryId: string }) =>
+      `${e.playerKey}|${e.evaluationName}|${e.fecha}|${e.categoryId}`
     const clavesImportadas = new Set(importadas.map(clave))
     set((state) => ({
       performanceEvaluations: [

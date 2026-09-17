@@ -5,7 +5,6 @@ import { inputClass } from '@/components/FormField'
 import { RadarPerfilJugador } from './RadarPerfilJugador'
 import { LineaTiempoIndividual } from './LineaTiempoIndividual'
 import { SmartAnalysisPanel } from './SmartAnalysisPanel'
-import { useAthletesDeCategoria } from './useAthletesDeCategoria'
 import { calcularRadarJugador, generarSmartAnalysis } from './calculations'
 
 interface IndividualTabProps {
@@ -21,9 +20,8 @@ interface IndividualTabProps {
  */
 export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
   const performanceEvaluations = useAppStore((s) => s.performanceEvaluations)
-  const athletes = useAthletesDeCategoria(seasonId, categoryId)
 
-  const [athleteId, setAthleteId] = useState('')
+  const [playerKeyElegido, setPlayerKeyElegido] = useState('')
   const [metricaElegida, setMetricaElegida] = useState('')
 
   const evaluacionesDeLaCategoria = useMemo(
@@ -31,17 +29,27 @@ export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
     [performanceEvaluations, seasonId, categoryId],
   )
 
-  useEffect(() => {
-    if (athletes.length === 0) {
-      setAthleteId('')
-    } else if (!athletes.some((a) => a.id === athleteId)) {
-      setAthleteId(athletes[0].id)
+  const jugadoresDisponibles = useMemo(() => {
+    const mapa = new Map<string, string>()
+    for (const e of evaluacionesDeLaCategoria) {
+      if (!mapa.has(e.playerKey)) mapa.set(e.playerKey, e.playerName)
     }
-  }, [athletes, athleteId])
+    return Array.from(mapa, ([playerKey, nombre]) => ({ playerKey, nombre })).sort((a, b) =>
+      a.nombre.localeCompare(b.nombre),
+    )
+  }, [evaluacionesDeLaCategoria])
+
+  useEffect(() => {
+    if (jugadoresDisponibles.length === 0) {
+      setPlayerKeyElegido('')
+    } else if (!jugadoresDisponibles.some((j) => j.playerKey === playerKeyElegido)) {
+      setPlayerKeyElegido(jugadoresDisponibles[0].playerKey)
+    }
+  }, [jugadoresDisponibles, playerKeyElegido])
 
   const evaluacionesDelJugador = useMemo(
-    () => evaluacionesDeLaCategoria.filter((e) => e.athleteId === athleteId),
-    [evaluacionesDeLaCategoria, athleteId],
+    () => evaluacionesDeLaCategoria.filter((e) => e.playerKey === playerKeyElegido),
+    [evaluacionesDeLaCategoria, playerKeyElegido],
   )
 
   const metricasDelJugador = useMemo(() => {
@@ -73,10 +81,10 @@ export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
     )
   }
 
-  if (athletes.length === 0) {
+  if (jugadoresDisponibles.length === 0) {
     return (
       <Card className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-        No hay jugadores en el plantel de esta categoría.
+        Todavía no hay evaluaciones importadas para esta categoría.
       </Card>
     )
   }
@@ -85,10 +93,14 @@ export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
     <div className="flex flex-col gap-4">
       <label className="flex w-fit flex-col gap-1 text-xs">
         <span className="font-medium text-slate-600 dark:text-slate-300">Jugador</span>
-        <select className={`${inputClass} min-w-[220px]`} value={athleteId} onChange={(e) => setAthleteId(e.target.value)}>
-          {athletes.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nombre}
+        <select
+          className={`${inputClass} min-w-[220px]`}
+          value={playerKeyElegido}
+          onChange={(e) => setPlayerKeyElegido(e.target.value)}
+        >
+          {jugadoresDisponibles.map((j) => (
+            <option key={j.playerKey} value={j.playerKey}>
+              {j.nombre}
             </option>
           ))}
         </select>
