@@ -1594,9 +1594,22 @@ export const useAppStore = create<AppState>()(
     // 40) y `category_label` (Fase 41) son la identidad real — ni el
     // jugador ni la categoría se matchean contra el plantel/categorías
     // reales del club, se toman tal cual vinieron del CSV.
+    //
+    // Fase 41.1 (bugfix) — Postgres rechaza un upsert si el MISMO conflict
+    // target aparece dos veces dentro del mismo statement ("ON CONFLICT DO
+    // UPDATE command cannot affect row a second time"). Como el jugador ya
+    // no matchea contra el plantel real, un CSV con una fila duplicada (o
+    // dos nombres que normalizan igual, ej. "Juan Perez" y "Perez, Juan")
+    // puede traer dos filas con la misma clave — se deduplican ACÁ antes de
+    // mandarlas, quedándose con la última (mismo criterio "lo más nuevo
+    // pisa lo viejo" que ya usa el upsert entre importaciones distintas).
+    const claveInput = (i: NuevaPerformanceEvaluationInput) =>
+      `${i.playerKey}|${i.evaluationName}|${i.fecha}|${i.categoryLabel}`
+    const inputsSinDuplicados = Array.from(new Map(inputs.map((i) => [claveInput(i), i])).values())
+
     const { data, error } = await supabase
       .from('performance_evaluations')
-      .upsert(inputs.map(performanceEvaluationToInsertRow), {
+      .upsert(inputsSinDuplicados.map(performanceEvaluationToInsertRow), {
         onConflict: 'player_key,evaluation_name,fecha,category_label',
       })
       .select()
