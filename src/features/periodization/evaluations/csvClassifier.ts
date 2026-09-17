@@ -11,16 +11,44 @@
  */
 
 const PATRONES_JUGADOR = ['jugador', 'player', 'nombre', 'atleta', 'name']
-const PATRONES_PESO = ['peso', 'weight', 'pesocorporal', 'bodyweight', 'bodymass', 'masacorporal', 'pesokg']
-const PATRONES_CATEGORIA = ['categoria', 'category', 'division']
+const PATRONES_PESO = [
+  'peso',
+  'weight',
+  'pesocorporal',
+  'bodyweight',
+  'bodymass',
+  'masacorporal',
+  'pesokg',
+  // "BW [KG]" — exportaciones de plataformas de fuerza (ForceDecks/Hawkin, Fase 42).
+  'bw',
+  'bwkg',
+]
+const PATRONES_CATEGORIA = [
+  'categoria',
+  'category',
+  'division',
+  // "AÑO"/"CAT" — exportaciones masivas de plataformas de fuerza (Fase 42):
+  // se tratan igual que Categoria/Category/Division, poblando "AGRUPAR POR".
+  'ano',
+  'cat',
+]
 const PATRONES_IGNORAR = [
   // Columnas de identidad/metadata que nunca son una métrica a graficar,
-  // aunque a veces vengan como número (ej. DNI).
+  // aunque a veces vengan como número (ej. DNI). Fase 42 — se suman los
+  // identificadores típicos de exportaciones masivas de CMJ Bilateral/
+  // Unilateral (ForceDecks/Hawkin): AT_ID, TEST_ID, ExternalId, Test Type,
+  // Tags, FEC NAC — nunca son métricas graficables.
   'dni',
   'documento',
   'id',
   'fecha',
   'date',
+  'fecnac',
+  'atid',
+  'testid',
+  'externalid',
+  'testtype',
+  'tags',
   ...PATRONES_CATEGORIA,
   'posicion',
   'position',

@@ -259,6 +259,7 @@ export function GrupalTab({ seasonId, categoryLabel }: GrupalTabProps) {
 
           <TablaComparativa
             filas={tabla}
+            metrica={metricaElegida}
             fechaAnterior={fechaAnterior}
             fechaActual={fechaActual}
             invertirLogica={invertirLogica}
@@ -268,6 +269,7 @@ export function GrupalTab({ seasonId, categoryLabel }: GrupalTabProps) {
           <GraficoTendenciaGrupal serie={serie} metrica={metricaElegida} />
 
           <RankingsTopFive
+            metrica={metricaElegida}
             mejoresRelativos={mejoresRelativos}
             peoresRelativos={peoresRelativos}
             mayorMejora={mayorMejora}

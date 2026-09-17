@@ -1,25 +1,39 @@
 import { Card } from '@/components/Card'
-import type { FilaComparativa } from './calculations'
+import { esMetricaAsimetria, semaforoAsimetria, type FilaComparativa } from './calculations'
+
+const PUNTO_SEMAFORO = {
+  rojo: '🔴',
+  amarillo: '🟡',
+  verde: '🟢',
+} as const
 
 /**
  * Tabla Jugador / Anterior / Actual / % Variación (Fase 38) — verde si
  * mejoró, rojo si empeoró, con el toggle "Invertir lógica de mejora" para
  * las métricas donde el detector automático de asimetría no adivine bien
  * (ej. una métrica de sprint que no tenga "sprint" en el nombre).
+ *
+ * Fase 42 — si `metrica` es una asimetría (ASIM/Asym/Asymmetry), se suma un
+ * punto de semáforo clínico junto al valor Actual, con el corte fijo
+ * (>10% rojo, 5%-10% amarillo, <5% verde) además del % Variación normal —
+ * el semáforo mide riesgo ACTUAL, el % Variación mide evolución.
  */
 export function TablaComparativa({
   filas,
+  metrica,
   fechaAnterior,
   fechaActual,
   invertirLogica,
   onToggleInvertir,
 }: {
   filas: FilaComparativa[]
+  metrica: string
   fechaAnterior: string | null
   fechaActual: string | null
   invertirLogica: boolean
   onToggleInvertir: () => void
 }) {
+  const esAsimetria = esMetricaAsimetria(metrica)
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -61,6 +75,11 @@ export function TablaComparativa({
                 </td>
                 <td className="px-2 py-2 text-right font-semibold text-slate-800 dark:text-slate-100">
                   {f.valorActual ?? '—'}
+                  {esAsimetria && f.valorActual !== null && (
+                    <span className="ml-1.5" title={`Semáforo de riesgo: ${semaforoAsimetria(f.valorActual)}`}>
+                      {PUNTO_SEMAFORO[semaforoAsimetria(f.valorActual)]}
+                    </span>
+                  )}
                 </td>
                 <td
                   className={`py-2 pl-2 text-right font-bold ${

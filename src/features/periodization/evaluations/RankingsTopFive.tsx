@@ -1,5 +1,5 @@
 import { Card } from '@/components/Card'
-import type { ItemRanking, FilaComparativa } from './calculations'
+import { esMetricaAsimetria, semaforoAsimetria, type ItemRanking, type FilaComparativa } from './calculations'
 
 function ListaRanking<T>({
   titulo,
@@ -11,11 +11,12 @@ function ListaRanking<T>({
   titulo: string
   icono: string
   items: T[]
-  render: (item: T) => { nombre: string; valor: string; tono: 'verde' | 'rojo' | 'neutro' }
+  render: (item: T) => { nombre: string; valor: string; tono: 'verde' | 'amarillo' | 'rojo' | 'neutro' }
   vacioTexto: string
 }) {
   const CLASE_TONO = {
     verde: 'text-emerald-600 dark:text-emerald-400',
+    amarillo: 'text-amber-600 dark:text-amber-400',
     rojo: 'text-union-red-600 dark:text-union-red-400',
     neutro: 'text-slate-700 dark:text-slate-300',
   } as const
@@ -52,14 +53,22 @@ function ListaRanking<T>({
  * Panel de 4 rankings Top 5 (Fase 38, pedidos textualmente): mejores/
  * peores valores relativos al peso corporal, y mayor mejora/desmejora en
  * % de evolución contra la evaluación anterior.
+ *
+ * Fase 42 — si `metrica` es una asimetría (ASIM/Asym/Asymmetry), "Mayor %
+ * de mejora"/"Mayor % de desmejora" pintan cada fila con el semáforo
+ * clínico (rojo >10%, amarillo 5%-10%, verde <5% — sobre el valor ACTUAL
+ * absoluto) en vez del verde/rojo de mejora-vs-anterior: para una
+ * asimetría importa el riesgo de HOY, no si bajó o subió un punto.
  */
 export function RankingsTopFive({
+  metrica,
   mejoresRelativos,
   peoresRelativos,
   mayorMejora,
   mayorDesmejora,
   hayColumnaPeso,
 }: {
+  metrica: string
   mejoresRelativos: ItemRanking[]
   peoresRelativos: ItemRanking[]
   mayorMejora: FilaComparativa[]
@@ -69,6 +78,13 @@ export function RankingsTopFive({
   const sinPesoTexto = hayColumnaPeso
     ? 'Sin datos de peso corporal para esta evaluación.'
     : 'El CSV no trajo una columna de peso corporal — no se puede relativizar.'
+  const esAsimetria = esMetricaAsimetria(metrica)
+
+  const renderMejoraDesmejora = (item: FilaComparativa, tonoPorDefecto: (v: number) => 'verde' | 'rojo') => {
+    const v = item.variacionPct ?? 0
+    const tono = esAsimetria && item.valorActual !== null ? semaforoAsimetria(item.valorActual) : tonoPorDefecto(v)
+    return { nombre: item.nombre, valor: `${v > 0 ? '+' : ''}${v.toFixed(1)}%`, tono }
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -91,20 +107,14 @@ export function RankingsTopFive({
         icono="📈"
         items={mayorMejora}
         vacioTexto="Hace falta una evaluación anterior del mismo tipo para calcular evolución."
-        render={(item: FilaComparativa) => {
-          const v = item.variacionPct ?? 0
-          return { nombre: item.nombre, valor: `${v > 0 ? '+' : ''}${v.toFixed(1)}%`, tono: v >= 0 ? 'verde' : 'rojo' }
-        }}
+        render={(item: FilaComparativa) => renderMejoraDesmejora(item, (v) => (v >= 0 ? 'verde' : 'rojo'))}
       />
       <ListaRanking
         titulo="Mayor % de desmejora (alarmas)"
         icono="🚨"
         items={mayorDesmejora}
         vacioTexto="Hace falta una evaluación anterior del mismo tipo para calcular evolución."
-        render={(item: FilaComparativa) => {
-          const v = item.variacionPct ?? 0
-          return { nombre: item.nombre, valor: `${v > 0 ? '+' : ''}${v.toFixed(1)}%`, tono: v < 0 ? 'rojo' : 'verde' }
-        }}
+        render={(item: FilaComparativa) => renderMejoraDesmejora(item, (v) => (v < 0 ? 'rojo' : 'verde'))}
       />
     </div>
   )

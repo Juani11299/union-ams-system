@@ -18,13 +18,35 @@ export function promedio(valores: number[]): number {
   return valores.reduce((s, v) => s + v, 0) / valores.length
 }
 
-/** "Asimetria_RSI", "Asym_Force", "Imbalance_pct" → true. En estas métricas MENOS es mejor, al revés que el resto (mismo criterio que el dashboard anterior, Fase 33.2). */
+/**
+ * "ASIM", "Asimetria_RSI", "Asym_Force", "Asymmetry (%)", "Imbalance_pct" →
+ * true (Fase 42 — se agrega el disparador corto "asim" además de la palabra
+ * completa "asimetria", para cabeceras abreviadas típicas de plataformas de
+ * fuerza). En estas métricas MENOS es mejor, al revés que el resto (mismo
+ * criterio que el dashboard anterior, Fase 33.2).
+ */
 export function esMetricaAsimetria(metrica: string): boolean {
   const clave = metrica
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
-  return clave.includes('asimetria') || clave.includes('asym') || clave.includes('imbalance')
+  return clave.includes('asim') || clave.includes('asym') || clave.includes('imbalance')
+}
+
+export type NivelSemaforo = 'rojo' | 'amarillo' | 'verde'
+
+/**
+ * Semáforo clínico de asimetrías (Fase 42, pedido explícito — reemplaza los
+ * cortes NSCA de Fase 38): sobre el valor ABSOLUTO del % de asimetría,
+ * > 10% Rojo (alto riesgo), 5%-10% Amarillo (precaución), < 5% Verde
+ * (equilibrado). El signo (qué lado está más fuerte) no cambia el nivel de
+ * riesgo, sólo la magnitud.
+ */
+export function semaforoAsimetria(valorPct: number): NivelSemaforo {
+  const abs = Math.abs(valorPct)
+  if (abs > 10) return 'rojo'
+  if (abs >= 5) return 'amarillo'
+  return 'verde'
 }
 
 /**
@@ -316,32 +338,34 @@ export interface AlertaSmartAnalysis {
 }
 
 /**
- * Umbrales de asimetría — NSCA/literatura de screening de asimetrías
- * bilaterales (Curl Nórdico, fuerza isométrica por pierna, etc.), pedidos
- * textualmente: <10% aceptable, 10-20% precaución, >20% riesgo alto.
+ * Umbrales de asimetría — semáforo clínico (Fase 42, pedido textualmente,
+ * reemplaza los cortes NSCA de Fase 38 <10%/10-20%/>20%): <5% aceptable,
+ * 5%-10% precaución, >10% riesgo alto. Usa `semaforoAsimetria` para que la
+ * misma regla de corte se aplique acá y en la Tabla Comparativa/Rankings.
  */
 function evaluarAsimetria(metrica: string, valorPct: number): AlertaSmartAnalysis {
-  if (valorPct > 20) {
+  const nivel = semaforoAsimetria(valorPct)
+  if (nivel === 'rojo') {
     return {
       nivel: 'riesgo',
       icono: '🔴',
       titulo: `Asimetría alta — ${metrica}`,
-      mensaje: `${valorPct.toFixed(1)}% de diferencia entre lados — riesgo de lesión alto. Trabajo unilateral correctivo prioritario.`,
+      mensaje: `${valorPct.toFixed(1)}% de diferencia entre lados — riesgo de lesión alto (>10%). Trabajo unilateral correctivo prioritario.`,
     }
   }
-  if (valorPct >= 10) {
+  if (nivel === 'amarillo') {
     return {
       nivel: 'precaucion',
       icono: '🟡',
       titulo: `Asimetría moderada — ${metrica}`,
-      mensaje: `${valorPct.toFixed(1)}% de diferencia entre lados — precaución. Se recomienda trabajo unilateral.`,
+      mensaje: `${valorPct.toFixed(1)}% de diferencia entre lados — precaución (5%-10%). Se recomienda trabajo unilateral.`,
     }
   }
   return {
     nivel: 'ok',
     icono: '🟢',
     titulo: `Asimetría aceptable — ${metrica}`,
-    mensaje: `${valorPct.toFixed(1)}% de diferencia entre lados — dentro de rango aceptable.`,
+    mensaje: `${valorPct.toFixed(1)}% de diferencia entre lados — equilibrado (<5%).`,
   }
 }
 
