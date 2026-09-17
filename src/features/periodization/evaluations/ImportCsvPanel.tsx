@@ -7,7 +7,7 @@ import { Field, inputClass } from '@/components/FormField'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
 import { normalizarNombre } from '@/utils/smartEntityMatcher'
-import { clasificarColumnasEvaluacion, parsearNumeroCsv } from './csvClassifier'
+import { clasificarColumnasEvaluacion, parsearFechaCsv, parsearNumeroCsv } from './csvClassifier'
 import type { NuevaPerformanceEvaluationInput } from '@/utils/supabaseMappers'
 
 const SIN_CATEGORIA = 'Sin categoría'
@@ -16,6 +16,8 @@ interface FilaParseada {
   playerName: string
   playerKey: string
   categoryLabel: string
+  /** Fase 42.1 — fecha DE ESTA FILA, sacada de la columna Fecha/Date del CSV (`null` si no se detectó esa columna o no se pudo interpretar el valor). Si es `null`, la fila usa la fecha manual del panel como fallback. */
+  fecha: string | null
   valores: Record<string, number>
   pesoKg: number | null
 }
@@ -29,9 +31,15 @@ interface FilaParseada {
  * tal cual viene en la columna "Categoria"/"Category"/"Division" del propio
  * CSV (fila por fila, un mismo archivo puede traer más de una categoría),
  * sin matchear contra las categorías reales del club. Si el CSV no trae esa
- * columna, cae en "Sin categoría". Nada de esto depende del estado global
- * de la app (ni `athletes`, ni `activeCategoryId`) — el dashboard se arma
- * 100% con lo que vino en el archivo.
+ * columna, cae en "Sin categoría". Fase 42.1 — lo mismo para la fecha: si
+ * el CSV trae una columna Fecha/Date (exportación LONGITUDINAL, con varias
+ * fechas de test mezcladas), cada fila usa SU PROPIA fecha en vez de la
+ * fecha manual tipeada una sola vez para todo el lote — así los gráficos de
+ * evolución (Tabla Comparativa, Línea de Tiempo) ven todas las fechas
+ * reales, no una sola fecha repetida para todos los tests. Nada de esto
+ * depende del estado global de la app (ni `athletes`, ni
+ * `activeCategoryId`) — el dashboard se arma 100% con lo que vino en el
+ * archivo.
  */
 export function ImportCsvPanel({
   seasonId,
@@ -49,6 +57,7 @@ export function ImportCsvPanel({
   const [metricasElegidas, setMetricasElegidas] = useState<Set<string>>(new Set())
   const [columnaPeso, setColumnaPeso] = useState<string | null>(null)
   const [columnaCategoria, setColumnaCategoria] = useState<string | null>(null)
+  const [columnaFecha, setColumnaFecha] = useState<string | null>(null)
   const [nombreEvaluacion, setNombreEvaluacion] = useState('')
   const [fecha, setFecha] = useState(fechaHoyLocal())
   const [importando, setImportando] = useState(false)
@@ -73,13 +82,14 @@ export function ImportCsvPanel({
           const playerName = (fila[clasif.columnaJugador] ?? '').trim()
           const playerKey = normalizarNombre(playerName)
           const categoryLabel = clasif.columnaCategoria ? (fila[clasif.columnaCategoria] ?? '').trim() : ''
+          const fechaFila = clasif.columnaFecha ? parsearFechaCsv(fila[clasif.columnaFecha]) : null
           const valores: Record<string, number> = {}
           for (const metrica of clasif.metricas) {
             const num = parsearNumeroCsv(fila[metrica])
             if (num !== null) valores[metrica] = num
           }
           const pesoKg = clasif.columnaPeso ? parsearNumeroCsv(fila[clasif.columnaPeso]) : null
-          return { playerName, playerKey, categoryLabel: categoryLabel || SIN_CATEGORIA, valores, pesoKg }
+          return { playerName, playerKey, categoryLabel: categoryLabel || SIN_CATEGORIA, fecha: fechaFila, valores, pesoKg }
         })
 
         setFilas(filasParseadas)
@@ -87,6 +97,7 @@ export function ImportCsvPanel({
         setMetricasElegidas(new Set(clasif.metricas))
         setColumnaPeso(clasif.columnaPeso)
         setColumnaCategoria(clasif.columnaCategoria)
+        setColumnaFecha(clasif.columnaFecha)
         setNombreEvaluacion((prev) => prev || file.name.replace(/\.csv$/i, ''))
       },
       error: (err) => {
@@ -110,11 +121,13 @@ export function ImportCsvPanel({
     setMetricasElegidas(new Set())
     setColumnaPeso(null)
     setColumnaCategoria(null)
+    setColumnaFecha(null)
     setNombreEvaluacion('')
   }
 
   const filasValidas = filas?.filter((f) => f.playerName !== '') ?? []
   const filasSinNombre = filas?.filter((f) => f.playerName === '').length ?? 0
+  const filasSinFechaPropia = columnaFecha ? filas?.filter((f) => f.playerName !== '' && f.fecha === null).length ?? 0 : 0
 
   async function handleImportar() {
     if (!seasonId || filasValidas.length === 0 || metricasElegidas.size === 0) return
@@ -136,7 +149,9 @@ export function ImportCsvPanel({
           playerName: f.playerName,
           playerKey: f.playerKey,
           evaluationName: nombreEvaluacion.trim(),
-          fecha,
+          // Fase 42.1 — fecha propia de la fila (CSV longitudinal) si se
+          // pudo interpretar; si no, cae a la fecha manual del panel.
+          fecha: f.fecha ?? fecha,
           metrics,
           bodyWeightKg: f.pesoKg ?? undefined,
         }
@@ -207,7 +222,10 @@ export function ImportCsvPanel({
             placeholder='Ej. "CMJ — Marzo 2026"'
           />
         </Field>
-        <Field label="Fecha de la evaluación" required>
+        <Field
+          label={columnaFecha ? 'Fecha de respaldo (filas sin fecha propia en el CSV)' : 'Fecha de la evaluación'}
+          required={!columnaFecha}
+        >
           <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
       </div>
@@ -247,6 +265,19 @@ export function ImportCsvPanel({
             </>
           ) : (
             <>🗂️ No se detectó columna de categoría en el CSV — se importa como "{SIN_CATEGORIA}".</>
+          )}
+        </p>
+        <p className="mt-1 text-[11px] text-slate-400">
+          {columnaFecha ? (
+            <>
+              📅 Columna de fecha detectada: <span className="font-medium">{columnaFecha}</span> — cada fila usa su
+              propia fecha (CSV longitudinal), no una sola fecha para todo el lote.
+              {filasSinFechaPropia > 0 && (
+                <> {filasSinFechaPropia} fila(s) con fecha no reconocible usan la fecha de respaldo de abajo.</>
+              )}
+            </>
+          ) : (
+            <>📅 No se detectó columna de fecha en el CSV — todas las filas usan la fecha tipeada abajo.</>
           )}
         </p>
       </div>
