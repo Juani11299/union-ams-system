@@ -1,29 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAppStore, useAthletesActivos } from '@/store/useAppStore'
+import { useAppStore } from '@/store/useAppStore'
 import { Card } from '@/components/Card'
 import { inputClass } from '@/components/FormField'
 import { RadarPerfilJugador } from './RadarPerfilJugador'
 import { LineaTiempoIndividual } from './LineaTiempoIndividual'
 import { SmartAnalysisPanel } from './SmartAnalysisPanel'
+import { useAthletesDeCategoria } from './useAthletesDeCategoria'
 import { calcularRadarJugador, generarSmartAnalysis } from './calculations'
+
+interface IndividualTabProps {
+  /** Temporada/categoría del selector LOCAL de `PerformanceEvaluationsView` — a propósito NO son `activeSeasonId`/`activeCategoryId` del store global (Fase 39, panel 100% independiente). */
+  seasonId: string
+  categoryId: string
+}
 
 /**
  * Pestaña "Análisis Individual" (Fase 38) — selector de jugador, Radar +
  * Score Global (todas las métricas que tenga, de cualquier evaluación),
  * línea de tiempo de UNA métrica elegida, y las tarjetas de Smart Analysis.
  */
-export function IndividualTab() {
-  const activeSeasonId = useAppStore((s) => s.activeSeasonId)
-  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+export function IndividualTab({ seasonId, categoryId }: IndividualTabProps) {
   const performanceEvaluations = useAppStore((s) => s.performanceEvaluations)
-  const athletes = useAthletesActivos()
+  const athletes = useAthletesDeCategoria(seasonId, categoryId)
 
   const [athleteId, setAthleteId] = useState('')
   const [metricaElegida, setMetricaElegida] = useState('')
 
   const evaluacionesDeLaCategoria = useMemo(
-    () => performanceEvaluations.filter((e) => e.seasonId === activeSeasonId && e.categoryId === activeCategoryId),
-    [performanceEvaluations, activeSeasonId, activeCategoryId],
+    () => performanceEvaluations.filter((e) => e.seasonId === seasonId && e.categoryId === categoryId),
+    [performanceEvaluations, seasonId, categoryId],
   )
 
   useEffect(() => {
@@ -60,7 +65,7 @@ export function IndividualTab() {
 
   const alertas = useMemo(() => generarSmartAnalysis(evaluacionesDelJugador), [evaluacionesDelJugador])
 
-  if (!activeSeasonId || !activeCategoryId) {
+  if (!seasonId || !categoryId) {
     return (
       <Card className="py-10 text-center text-sm text-slate-500 dark:text-slate-400">
         Elegí una temporada y una categoría arriba para ver evaluaciones de rendimiento.

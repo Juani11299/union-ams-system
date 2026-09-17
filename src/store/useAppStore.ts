@@ -1587,9 +1587,16 @@ export const useAppStore = create<AppState>()(
     exigirSupabase(set)
     if (inputs.length === 0) return 0
 
+    // Fase 39 — upsert por (athlete_id, evaluation_name, fecha), no insert
+    // crudo: si el profe sube el mismo CSV dos veces (o dos CSVs que se
+    // superponen en jugador+evaluación+fecha), la fila existente se
+    // ACTUALIZA en vez de duplicarse (ver
+    // migration_fase39_evaluaciones_dedup_y_categoria_local.sql).
     const { data, error } = await supabase
       .from('performance_evaluations')
-      .insert(inputs.map(performanceEvaluationToInsertRow))
+      .upsert(inputs.map(performanceEvaluationToInsertRow), {
+        onConflict: 'athlete_id,evaluation_name,fecha',
+      })
       .select()
 
     if (error) {
@@ -1597,9 +1604,21 @@ export const useAppStore = create<AppState>()(
       throw error
     }
 
-    const insertadas = ((data ?? []) as PerformanceEvaluationRow[]).map(performanceEvaluationFromRow)
-    set((state) => ({ performanceEvaluations: [...state.performanceEvaluations, ...insertadas] }))
-    return insertadas.length
+    const importadas = ((data ?? []) as PerformanceEvaluationRow[]).map(performanceEvaluationFromRow)
+    // El upsert puede haber ACTUALIZADO filas que ya estaban en el store con
+    // otro `id` local desincronizado — hay que reemplazarlas por su clave de
+    // negocio (jugador+evaluación+fecha), no por `id`, para no terminar con
+    // la fila vieja Y la nueva conviviendo.
+    const clave = (e: { athleteId: string; evaluationName: string; fecha: string }) =>
+      `${e.athleteId}|${e.evaluationName}|${e.fecha}`
+    const clavesImportadas = new Set(importadas.map(clave))
+    set((state) => ({
+      performanceEvaluations: [
+        ...state.performanceEvaluations.filter((e) => !clavesImportadas.has(clave(e))),
+        ...importadas,
+      ],
+    }))
+    return importadas.length
   },
 
   deletePerformanceEvaluation: async (id) => {

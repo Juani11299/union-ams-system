@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import Papa from 'papaparse'
-import { useAppStore, useAthletesActivos } from '@/store/useAppStore'
+import { useAppStore } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
 import { Card } from '@/components/Card'
 import { Field, inputClass } from '@/components/FormField'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
 import { clasificarColumnasEvaluacion, parsearNumeroCsv } from './csvClassifier'
+import { useAthletesDeCategoria } from './useAthletesDeCategoria'
 import type { Athlete } from '@/types'
 import type { NuevaPerformanceEvaluationInput } from '@/utils/supabaseMappers'
 
@@ -26,18 +27,26 @@ interface FilaParseada {
 }
 
 /**
- * Importación de CSV (Fase 38, Paso "Ingesta") — mismo criterio de matching
- * que `CsvImportTab.tsx` (carga externa GPS): el nombre del jugador del CSV
- * se cruza contra el plantel de la categoría/temporada ACTIVA (el selector
- * global del club, arriba de toda la app) — no contra todo el club. Una
- * fila sin match no se importa (no tiene sentido guardar una evaluación sin
- * `athlete_id`, ver migration_fase38).
+ * Importación de CSV (Fase 38, Paso "Ingesta"; Fase 39 — temporada/categoría
+ * pasan a ser props del selector LOCAL del panel, no el selector global) —
+ * mismo criterio de matching que `CsvImportTab.tsx` (carga externa GPS): el
+ * nombre del jugador del CSV se cruza contra el plantel de la temporada/
+ * categoría elegida EN ESTE PANEL — no contra todo el club, ni contra la
+ * categoría activa del resto de la app. Una fila sin match no se importa
+ * (no tiene sentido guardar una evaluación sin `athlete_id`, ver
+ * migration_fase38).
  */
-export function ImportCsvPanel({ onImportado }: { onImportado: () => void }) {
-  const activeSeasonId = useAppStore((s) => s.activeSeasonId)
-  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+export function ImportCsvPanel({
+  seasonId,
+  categoryId,
+  onImportado,
+}: {
+  seasonId: string
+  categoryId: string
+  onImportado: () => void
+}) {
   const importPerformanceEvaluationsBulk = useAppStore((s) => s.importPerformanceEvaluationsBulk)
-  const athletes = useAthletesActivos()
+  const athletes = useAthletesDeCategoria(seasonId, categoryId)
   const showToast = useToastStore((s) => s.showToast)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -111,7 +120,7 @@ export function ImportCsvPanel({ onImportado }: { onImportado: () => void }) {
   const filasSinMatch = filas?.filter((f) => f.atleta === null && f.nombreCsv.trim() !== '') ?? []
 
   async function handleImportar() {
-    if (!activeSeasonId || !activeCategoryId || filasValidas.length === 0 || metricasElegidas.size === 0) return
+    if (!seasonId || !categoryId || filasValidas.length === 0 || metricasElegidas.size === 0) return
     if (!nombreEvaluacion.trim()) {
       showToast('error', 'Ponele un nombre a la evaluación (ej. "CMJ — Marzo 2026").')
       return
@@ -125,8 +134,8 @@ export function ImportCsvPanel({ onImportado }: { onImportado: () => void }) {
           if (f.valores[m] !== undefined) metrics[m] = f.valores[m]
         }
         return {
-          seasonId: activeSeasonId,
-          categoryId: activeCategoryId,
+          seasonId,
+          categoryId,
           athleteId: f.atleta!.id,
           evaluationName: nombreEvaluacion.trim(),
           fecha,
