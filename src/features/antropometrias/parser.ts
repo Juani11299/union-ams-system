@@ -202,7 +202,7 @@ export function aFechaIso(valor: Celda): string | null {
 // -----------------------------------------------------------------------------
 
 /** Rangos fisiológicamente posibles — un valor fuera de acá es un error de carga, no una medición. */
-const RANGOS: Record<'peso' | 'grasa' | 'musculo' | 'pliegues', [number, number]> = {
+export const RANGOS: Record<'peso' | 'grasa' | 'musculo' | 'pliegues', [number, number]> = {
   peso: [25, 200],
   grasa: [2, 60],
   musculo: [15, 80],

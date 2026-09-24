@@ -6,6 +6,8 @@ import { useToastStore } from '@/store/useToastStore'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
 import { getErrorMessage } from '@/utils/errors'
 import { detectarColumnas, leerTabla, construirMediciones, mapeoAlcanza } from './parser'
+import { esFormatoInforme, parsearInforme } from './informeParser'
+import type { ResultadoInforme } from './informeParser'
 import type { Matriz, Celda } from './parser'
 import type { CampoAntropo, MapeoColumnas } from './types'
 
@@ -72,13 +74,18 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
   const [hojas, setHojas] = useState<Record<string, Matriz>>({})
   const [hojaActiva, setHojaActiva] = useState('')
   const [mapeo, setMapeo] = useState<MapeoColumnas | null>(null)
+  // Formato "informe" del nutricionista (una hoja por categoría, ACTUAL/PREVIO): no usa el mapeo de columnas.
+  const [informe, setInforme] = useState<ResultadoInforme | null>(null)
   const [leyendo, setLeyendo] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
   const [arrastrando, setArrastrando] = useState(false)
 
   const tabla = useMemo(() => (hojaActiva && hojas[hojaActiva] ? leerTabla(hojas[hojaActiva]) : null), [hojas, hojaActiva])
   const detectado = useMemo(() => (tabla ? detectarColumnas(tabla.columnas) : null), [tabla])
-  const resultado = useMemo(() => (tabla && mapeo ? construirMediciones(tabla.filas, mapeo) : null), [tabla, mapeo])
+  const resultado = useMemo(
+    () => informe ?? (tabla && mapeo ? construirMediciones(tabla.filas, mapeo) : null),
+    [informe, tabla, mapeo],
+  )
 
   function elegirHoja(nombre: string, todas: Record<string, Matriz>) {
     setHojaActiva(nombre)
@@ -93,6 +100,16 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
       const nombres = Object.keys(todas)
       if (nombres.length === 0) {
         showToast('error', 'El archivo no tiene hojas con datos.')
+        return
+      }
+      if (esFormatoInforme(todas)) {
+        const parseado = parsearInforme(todas)
+        if (parseado.mediciones.length === 0) {
+          showToast('error', 'Se reconoció el formato de informe, pero no se encontraron mediciones.')
+          return
+        }
+        setNombreArchivo(file.name)
+        setInforme(parseado)
         return
       }
       // Arranca en la primera hoja donde se reconozcan las columnas mínimas.
@@ -112,6 +129,7 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
     setHojas({})
     setHojaActiva('')
     setMapeo(null)
+    setInforme(null)
   }
 
   async function handleImportar() {
@@ -130,6 +148,55 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
     } finally {
       setSubiendo(false)
     }
+  }
+
+  if (informe && resultado) {
+    const jugadores = new Set(informe.mediciones.map((m) => m.jugadorKey)).size
+    return (
+      <Card className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Confirmar importación — informe por categoría</h2>
+            <p className="text-xs text-slate-400">📄 {nombreArchivo}</p>
+          </div>
+          <button
+            type="button"
+            onClick={limpiar}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-union-red-400 hover:bg-union-red-50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-union-red-500/10 dark:hover:text-union-red-400"
+          >
+            🗑️ Empezar de nuevo
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+            ✅ {informe.mediciones.length} medición(es) · {jugadores} jugador(es) · {informe.hojas.length} categoría(s)
+          </span>
+          {informe.fechaPrevia && informe.fechaActual && (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              📅 {formatearFecha(informe.fechaPrevia)} (previo) → {formatearFecha(informe.fechaActual)} (actual)
+            </span>
+          )}
+          {informe.hojasOmitidas.length > 0 && <Aviso>Hojas sin datos (se omiten): {informe.hojasOmitidas.join(', ')}</Aviso>}
+          {informe.resumen.sinDatos > 0 && <Aviso>{informe.resumen.sinDatos} jugador(es) sin ninguna medida (se omiten)</Aviso>}
+          {informe.resumen.valoresFueraDeRango > 0 && (
+            <Aviso>{informe.resumen.valoresFueraDeRango} valor(es) fuera de rango fisiológico descartados</Aviso>
+          )}
+        </div>
+        <p className="text-[11px] text-slate-400">
+          ℹ️ El archivo no trae fechas: la medición <strong>actual</strong> se fecha al fin del mes del título y la{' '}
+          <strong>previa</strong> al 31/01 del mismo año. Masa grasa y muscular vienen en kg y se convierten a % del peso
+          del mismo momento.
+        </p>
+        <button
+          type="button"
+          onClick={() => void handleImportar()}
+          disabled={subiendo}
+          className="self-start rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-union-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {subiendo ? 'Guardando…' : `📥 Importar ${informe.mediciones.length} medición(es)`}
+        </button>
+      </Card>
+    )
   }
 
   if (!tabla || !mapeo || !detectado || !resultado) {
