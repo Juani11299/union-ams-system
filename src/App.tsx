@@ -21,6 +21,7 @@ import { Manual7ma6taView } from '@/features/metodologia/ltad/Manual7ma6taView'
 import { Manual5ta4taView } from '@/features/metodologia/ltad/Manual5ta4taView'
 import { MacrocycleView } from '@/features/periodization/MacrocycleView'
 import { VideoAnalysisView } from '@/features/video-analysis/VideoAnalysisView'
+import { AntropometriasView } from '@/features/antropometrias/AntropometriasView'
 
 function App() {
   useEffect(() => {
@@ -41,6 +42,7 @@ function App() {
           <Route path="/carga-externa" element={<ExternalLoadView />} />
           <Route path="/medical" element={<MedicalView />} />
           <Route path="/analisis-video" element={<VideoAnalysisView />} />
+          <Route path="/antropometrias" element={<AntropometriasView />} />
           <Route path="/metodologia" element={<MetodologiaIndexView />} />
           <Route path="/metodologia/isometria" element={<MetodologiaIsometriaView />} />
           <Route path="/metodologia/manual-fuerza" element={<ManualFuerzaView />} />

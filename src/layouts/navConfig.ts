@@ -20,6 +20,7 @@ export const navItems: NavItem[] = [
   { to: '/carga-externa', label: 'Control de Carga Externa', shortLabel: 'Carga Externa', icon: '📡' },
   { to: '/medical', label: 'Área Médica', shortLabel: 'Médica', icon: '🩺' },
   { to: '/analisis-video', label: 'Análisis de Video', shortLabel: 'Video', icon: '🎥' },
+  { to: '/antropometrias', label: 'Antropometrías', shortLabel: 'Antropo', icon: '📏' },
   {
     to: '/metodologia',
     label: 'Biblioteca de Manuales',
