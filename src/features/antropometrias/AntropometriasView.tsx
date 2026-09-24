@@ -4,6 +4,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { inputClass } from '@/components/FormField'
 import { Tabs, type TabItem } from '@/components/Tabs'
 import { useToastStore } from '@/store/useToastStore'
+import { getErrorMessage } from '@/utils/errors'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
 import { categoriasDisponibles } from './calculations'
 import { GrupalAntropoTab } from './GrupalAntropoTab'
@@ -21,28 +22,26 @@ const TABS: TabItem[] = [
  * independiente del resto de la app, mismo criterio que Evaluaciones de
  * Rendimiento: no lee `athletes` ni las categorías reales del club — los
  * jugadores y el filtro "AGRUPAR POR" salen exclusivamente de las columnas
- * Jugador y Categoría/División del archivo importado. Los datos se guardan
- * sólo en el navegador (IndexedDB, `useAntropometriasStore`).
+ * Jugador y Categoría/División del archivo importado. Los datos viven en
+ * Supabase (tabla `antropometrias`, RLS sólo para Staff autenticado).
  */
 export function AntropometriasView() {
   const mediciones = useAntropometriasStore((s) => s.mediciones)
-  const archivos = useAntropometriasStore((s) => s.archivos)
-  const limpiarTodo = useAntropometriasStore((s) => s.limpiarTodo)
+  const cargando = useAntropometriasStore((s) => s.cargando)
+  const error = useAntropometriasStore((s) => s.error)
+  const fetchAntropometrias = useAntropometriasStore((s) => s.fetchAntropometrias)
+  const borrarAntropometrias = useAntropometriasStore((s) => s.borrarAntropometrias)
   const showToast = useToastStore((s) => s.showToast)
 
-  // El store persiste en IndexedDB (asíncrono): hasta que termina de leer, no se
-  // muestra el estado vacío — si no, al abrir la pantalla parpadea "sin datos".
-  const [hidratado, setHidratado] = useState(() => useAntropometriasStore.persist.hasHydrated())
   useEffect(() => {
-    const desuscribir = useAntropometriasStore.persist.onFinishHydration(() => setHidratado(true))
-    if (useAntropometriasStore.persist.hasHydrated()) setHidratado(true)
-    return desuscribir
-  }, [])
+    void fetchAntropometrias()
+  }, [fetchAntropometrias])
 
   const [tabActiva, setTabActiva] = useState('grupal')
   const [categoria, setCategoria] = useState('')
   const [mostrarImport, setMostrarImport] = useState(false)
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
+  const [borrando, setBorrando] = useState(false)
 
   const categorias = useMemo(() => categoriasDisponibles(mediciones), [mediciones])
   // Si la categoría elegida deja de existir (se borraron los datos) cae a "Todas".
@@ -52,8 +51,23 @@ export function AntropometriasView() {
     [mediciones, categoriaActiva],
   )
 
-  if (!hidratado) {
+  if (cargando && mediciones.length === 0) {
     return <p className="py-12 text-center text-sm text-slate-400">Cargando antropometrías…</p>
+  }
+
+  if (error && mediciones.length === 0) {
+    return (
+      <Card className="flex flex-col items-start gap-3">
+        <p className="text-sm font-medium text-rose-700 dark:text-rose-400">⚠️ {error}</p>
+        <button
+          type="button"
+          onClick={() => void fetchAntropometrias()}
+          className="rounded-lg bg-union-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-union-red-700"
+        >
+          Reintentar
+        </button>
+      </Card>
+    )
   }
 
   const sinDatos = mediciones.length === 0
@@ -102,18 +116,9 @@ export function AntropometriasView() {
 
           <Card className="flex flex-col gap-2 text-xs text-slate-500 dark:text-slate-400">
             <p>
-              🔒 {mediciones.length} medición(es) guardadas <strong>sólo en este navegador</strong> (no se suben a la base
-              del club). Importar de nuevo el mismo archivo actualiza las mediciones existentes sin duplicarlas.
+              🔒 {mediciones.length} medición(es) guardadas en la nube, visibles sólo para el Staff con sesión iniciada.
+              Importar de nuevo el mismo archivo actualiza las mediciones existentes sin duplicarlas.
             </p>
-            {archivos.length > 0 && (
-              <p>
-                Últimas importaciones:{' '}
-                {archivos
-                  .slice(0, 3)
-                  .map((a) => `${a.nombre} (${new Date(a.importadoEn).toLocaleDateString('es-AR')})`)
-                  .join(' · ')}
-              </p>
-            )}
             <button
               type="button"
               onClick={() => setConfirmandoBorrado(true)}
@@ -128,12 +133,19 @@ export function AntropometriasView() {
       {confirmandoBorrado && (
         <ConfirmDialog
           titulo="Borrar antropometrías"
-          mensaje="Se borran TODAS las mediciones importadas de este navegador. Tenés que volver a importar el archivo para recuperarlas. ¿Seguro?"
-          confirmando={false}
-          onConfirm={() => {
-            limpiarTodo()
-            setConfirmandoBorrado(false)
-            showToast('success', 'Datos de antropometría borrados.')
+          mensaje="Se borran TODAS las mediciones de antropometría de la base compartida: dejan de verse en todos los dispositivos del Staff. Tenés que volver a importar el archivo para recuperarlas. ¿Seguro?"
+          confirmando={borrando}
+          onConfirm={async () => {
+            setBorrando(true)
+            try {
+              await borrarAntropometrias()
+              showToast('success', 'Datos de antropometría borrados.')
+            } catch (err) {
+              showToast('error', getErrorMessage(err, 'No se pudieron borrar las antropometrías.'))
+            } finally {
+              setBorrando(false)
+              setConfirmandoBorrado(false)
+            }
           }}
           onCancel={() => setConfirmandoBorrado(false)}
         />

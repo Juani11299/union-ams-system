@@ -65,7 +65,7 @@ function formatearFecha(iso: string): string {
  * y lo puede corregir con los selectores antes de importar.
  */
 export function ImportAntropoPanel({ onImportado }: { onImportado: () => void }) {
-  const importar = useAntropometriasStore((s) => s.importar)
+  const importar = useAntropometriasStore((s) => s.importarAntropometrias)
   const showToast = useToastStore((s) => s.showToast)
 
   const [nombreArchivo, setNombreArchivo] = useState<string | null>(null)
@@ -73,6 +73,7 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
   const [hojaActiva, setHojaActiva] = useState('')
   const [mapeo, setMapeo] = useState<MapeoColumnas | null>(null)
   const [leyendo, setLeyendo] = useState(false)
+  const [subiendo, setSubiendo] = useState(false)
   const [arrastrando, setArrastrando] = useState(false)
 
   const tabla = useMemo(() => (hojaActiva && hojas[hojaActiva] ? leerTabla(hojas[hojaActiva]) : null), [hojas, hojaActiva])
@@ -113,15 +114,22 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
     setMapeo(null)
   }
 
-  function handleImportar() {
-    if (!resultado || !nombreArchivo || resultado.mediciones.length === 0) return
-    const { agregadas, actualizadas } = importar(resultado.mediciones, nombreArchivo)
-    showToast(
-      'success',
-      `¡Importadas ${resultado.mediciones.length} mediciones! (${agregadas} nuevas${actualizadas > 0 ? `, ${actualizadas} actualizadas` : ''})`,
-    )
-    limpiar()
-    onImportado()
+  async function handleImportar() {
+    if (!resultado || !nombreArchivo || resultado.mediciones.length === 0 || subiendo) return
+    setSubiendo(true)
+    try {
+      const { agregadas, actualizadas } = await importar(resultado.mediciones)
+      showToast(
+        'success',
+        `¡Importadas ${agregadas + actualizadas} mediciones! (${agregadas} nuevas${actualizadas > 0 ? `, ${actualizadas} actualizadas` : ''})`,
+      )
+      limpiar()
+      onImportado()
+    } catch (err) {
+      showToast('error', getErrorMessage(err, 'No se pudieron guardar las antropometrías.'))
+    } finally {
+      setSubiendo(false)
+    }
   }
 
   if (!tabla || !mapeo || !detectado || !resultado) {
@@ -166,7 +174,7 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
         </label>
         <p className="text-[11px] text-slate-400">
           Se reconocen solas las columnas Jugador, Fecha, Categoría/División, Peso, Masa Adiposa (%), Masa Muscular (%)
-          y Sumatoria de Pliegues. Los datos quedan guardados sólo en este navegador.
+          y Sumatoria de Pliegues. Los datos se guardan en la nube, sólo visibles para el Staff con sesión.
         </p>
       </Card>
     )
@@ -271,11 +279,11 @@ export function ImportAntropoPanel({ onImportado }: { onImportado: () => void })
 
       <button
         type="button"
-        onClick={handleImportar}
-        disabled={!puedeImportar}
+        onClick={() => void handleImportar()}
+        disabled={!puedeImportar || subiendo}
         className="self-start rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-union-red-700 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        📥 Importar {mediciones.length} medición(es)
+        {subiendo ? 'Guardando…' : `📥 Importar ${mediciones.length} medición(es)`}
       </button>
     </Card>
   )
