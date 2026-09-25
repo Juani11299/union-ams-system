@@ -1,0 +1,306 @@
+import { useRef, useState } from 'react'
+import Papa from 'papaparse'
+import { useAppStore } from '@/store/useAppStore'
+import { useToastStore } from '@/store/useToastStore'
+import { Card } from '@/components/Card'
+import { Field, inputClass } from '@/components/FormField'
+import { getErrorMessage } from '@/utils/errors'
+import { fechaHoyLocal } from '@/utils/fecha'
+import { normalizarNombre } from '@/utils/smartEntityMatcher'
+import { clasificarColumnasEvaluacion, parsearFechaCsv, parsearNumeroCsv } from './csvClassifier'
+import type { NuevaPerformanceEvaluationInput } from '@/utils/supabaseMappers'
+
+const SIN_CATEGORIA = 'Sin categoría'
+
+interface FilaParseada {
+  playerName: string
+  playerKey: string
+  categoryLabel: string
+  /** Fase 42.1 — fecha DE ESTA FILA, sacada de la columna Fecha/Date del CSV (`null` si no se detectó esa columna o no se pudo interpretar el valor). Si es `null`, la fila usa la fecha manual del panel como fallback. */
+  fecha: string | null
+  valores: Record<string, number>
+  pesoKg: number | null
+}
+
+/**
+ * Importación de CSV (Fase 38, Paso "Ingesta"; Fase 39 — temporada pasa a
+ * ser prop del selector LOCAL del panel; Fase 40 — el jugador ya NO se
+ * matchea contra el plantel real: se toma el nombre TAL CUAL viene en la
+ * columna "Jugador"/"Nombre" del CSV, y `playerKey` (nombre normalizado) es
+ * su clave de identidad real; Fase 41 — lo mismo para la categoría: se toma
+ * tal cual viene en la columna "Categoria"/"Category"/"Division" del propio
+ * CSV (fila por fila, un mismo archivo puede traer más de una categoría),
+ * sin matchear contra las categorías reales del club. Si el CSV no trae esa
+ * columna, cae en "Sin categoría". Fase 42.1 — lo mismo para la fecha: si
+ * el CSV trae una columna Fecha/Date (exportación LONGITUDINAL, con varias
+ * fechas de test mezcladas), cada fila usa SU PROPIA fecha en vez de la
+ * fecha manual tipeada una sola vez para todo el lote — así los gráficos de
+ * evolución (Tabla Comparativa, Línea de Tiempo) ven todas las fechas
+ * reales, no una sola fecha repetida para todos los tests. Nada de esto
+ * depende del estado global de la app (ni `athletes`, ni
+ * `activeCategoryId`) — el dashboard se arma 100% con lo que vino en el
+ * archivo.
+ */
+export function ImportCsvPanel({
+  seasonId,
+  onImportado,
+}: {
+  seasonId: string
+  onImportado: () => void
+}) {
+  const importPerformanceEvaluationsBulk = useAppStore((s) => s.importPerformanceEvaluationsBulk)
+  const showToast = useToastStore((s) => s.showToast)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const [filas, setFilas] = useState<FilaParseada[] | null>(null)
+  const [metricasDisponibles, setMetricasDisponibles] = useState<string[]>([])
+  const [metricasElegidas, setMetricasElegidas] = useState<Set<string>>(new Set())
+  const [columnaPeso, setColumnaPeso] = useState<string | null>(null)
+  const [columnaCategoria, setColumnaCategoria] = useState<string | null>(null)
+  const [columnaFecha, setColumnaFecha] = useState<string | null>(null)
+  const [nombreEvaluacion, setNombreEvaluacion] = useState('')
+  const [fecha, setFecha] = useState(fechaHoyLocal())
+  const [importando, setImportando] = useState(false)
+
+  function procesarArchivo(file: File) {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (resultado) => {
+        const columnas = resultado.meta.fields ?? []
+        if (columnas.length === 0) {
+          showToast('error', 'El CSV no tiene columnas reconocibles.')
+          return
+        }
+        const clasif = clasificarColumnasEvaluacion(columnas, resultado.data)
+        if (clasif.metricas.length === 0) {
+          showToast('error', 'No se encontró ninguna columna numérica para importar en este CSV.')
+          return
+        }
+
+        const filasParseadas: FilaParseada[] = resultado.data.map((fila) => {
+          const playerName = (fila[clasif.columnaJugador] ?? '').trim()
+          const playerKey = normalizarNombre(playerName)
+          const categoryLabel = clasif.columnaCategoria ? (fila[clasif.columnaCategoria] ?? '').trim() : ''
+          const fechaFila = clasif.columnaFecha ? parsearFechaCsv(fila[clasif.columnaFecha]) : null
+          const valores: Record<string, number> = {}
+          for (const metrica of clasif.metricas) {
+            const num = parsearNumeroCsv(fila[metrica])
+            if (num !== null) valores[metrica] = num
+          }
+          const pesoKg = clasif.columnaPeso ? parsearNumeroCsv(fila[clasif.columnaPeso]) : null
+          return { playerName, playerKey, categoryLabel: categoryLabel || SIN_CATEGORIA, fecha: fechaFila, valores, pesoKg }
+        })
+
+        setFilas(filasParseadas)
+        setMetricasDisponibles(clasif.metricas)
+        setMetricasElegidas(new Set(clasif.metricas))
+        setColumnaPeso(clasif.columnaPeso)
+        setColumnaCategoria(clasif.columnaCategoria)
+        setColumnaFecha(clasif.columnaFecha)
+        setNombreEvaluacion((prev) => prev || file.name.replace(/\.csv$/i, ''))
+      },
+      error: (err) => {
+        showToast('error', getErrorMessage(err, 'No se pudo leer el archivo CSV.'))
+      },
+    })
+  }
+
+  function toggleMetrica(metrica: string) {
+    setMetricasElegidas((prev) => {
+      const next = new Set(prev)
+      if (next.has(metrica)) next.delete(metrica)
+      else next.add(metrica)
+      return next
+    })
+  }
+
+  function limpiar() {
+    setFilas(null)
+    setMetricasDisponibles([])
+    setMetricasElegidas(new Set())
+    setColumnaPeso(null)
+    setColumnaCategoria(null)
+    setColumnaFecha(null)
+    setNombreEvaluacion('')
+  }
+
+  const filasValidas = filas?.filter((f) => f.playerName !== '') ?? []
+  const filasSinNombre = filas?.filter((f) => f.playerName === '').length ?? 0
+  const filasSinFechaPropia = columnaFecha ? filas?.filter((f) => f.playerName !== '' && f.fecha === null).length ?? 0 : 0
+
+  async function handleImportar() {
+    if (!seasonId || filasValidas.length === 0 || metricasElegidas.size === 0) return
+    if (!nombreEvaluacion.trim()) {
+      showToast('error', 'Ponele un nombre a la evaluación (ej. "CMJ — Marzo 2026").')
+      return
+    }
+
+    setImportando(true)
+    try {
+      const inputs: NuevaPerformanceEvaluationInput[] = filasValidas.map((f) => {
+        const metrics: Record<string, number> = {}
+        for (const m of metricasElegidas) {
+          if (f.valores[m] !== undefined) metrics[m] = f.valores[m]
+        }
+        return {
+          seasonId,
+          categoryLabel: f.categoryLabel,
+          playerName: f.playerName,
+          playerKey: f.playerKey,
+          evaluationName: nombreEvaluacion.trim(),
+          // Fase 42.1 — fecha propia de la fila (CSV longitudinal) si se
+          // pudo interpretar; si no, cae a la fecha manual del panel.
+          fecha: f.fecha ?? fecha,
+          metrics,
+          bodyWeightKg: f.pesoKg ?? undefined,
+        }
+      })
+      const cantidad = await importPerformanceEvaluationsBulk(inputs)
+      showToast('success', `¡${cantidad} evaluación(es) importada(s)!`)
+      limpiar()
+      onImportado()
+    } catch (err) {
+      showToast('error', getErrorMessage(err, 'No se pudo importar el CSV.'))
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  if (!filas) {
+    return (
+      <Card className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Importar evaluaciones (CSV)</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Cualquier CSV con una columna de jugador (o nombre) y columnas numéricas de métricas (ej. CMJ_Height,
+          Fuerza_Max_Izq, Asimetria_RSI, Peso). El nombre y la categoría (columna "Categoria"/"Category"/"Division",
+          si la trae) se toman tal cual vienen en el CSV — no hace falta que el jugador ya esté cargado en el
+          sistema ni que la categoría exista en el club. Si subís otro CSV de un test distinto con el mismo nombre,
+          sus evaluaciones se suman a la misma persona.
+        </p>
+        <div
+          onClick={() => inputRef.current?.click()}
+          className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 py-8 text-center transition-colors hover:border-union-red-400 dark:border-slate-700"
+        >
+          <span className="text-2xl">📈</span>
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Hacé clic para elegir un archivo .csv</p>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) procesarArchivo(file)
+              e.target.value = ''
+            }}
+          />
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Confirmar importación</h2>
+        <button
+          type="button"
+          onClick={limpiar}
+          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-union-red-400 hover:bg-union-red-50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-union-red-500/10 dark:hover:text-union-red-400"
+        >
+          🗑️ Empezar de nuevo
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Nombre de la evaluación" required>
+          <input
+            className={inputClass}
+            value={nombreEvaluacion}
+            onChange={(e) => setNombreEvaluacion(e.target.value)}
+            placeholder='Ej. "CMJ — Marzo 2026"'
+          />
+        </Field>
+        <Field
+          label={columnaFecha ? 'Fecha de respaldo (filas sin fecha propia en el CSV)' : 'Fecha de la evaluación'}
+          required={!columnaFecha}
+        >
+          <input type="date" className={inputClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        </Field>
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
+          Métricas a importar y graficar ({metricasElegidas.size}/{metricasDisponibles.length})
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {metricasDisponibles.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => toggleMetrica(m)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                metricasElegidas.has(m)
+                  ? 'border-union-red-500 bg-union-red-50 text-union-red-700 dark:bg-union-red-500/10 dark:text-union-red-400'
+                  : 'border-slate-200 text-slate-400 hover:border-slate-300 dark:border-slate-700'
+              }`}
+            >
+              {metricasElegidas.has(m) ? '✓ ' : ''}
+              {m}
+            </button>
+          ))}
+        </div>
+        {columnaPeso && (
+          <p className="mt-2 text-[11px] text-slate-400">
+            ⚖️ Columna de peso corporal detectada: <span className="font-medium">{columnaPeso}</span> — se guarda
+            aparte, para las métricas relativas al peso.
+          </p>
+        )}
+        <p className="mt-1 text-[11px] text-slate-400">
+          {columnaCategoria ? (
+            <>
+              🗂️ Columna de categoría detectada: <span className="font-medium">{columnaCategoria}</span> — se usa
+              para agrupar en "AGRUPAR POR".
+            </>
+          ) : (
+            <>🗂️ No se detectó columna de categoría en el CSV — se importa como "{SIN_CATEGORIA}".</>
+          )}
+        </p>
+        <p className="mt-1 text-[11px] text-slate-400">
+          {columnaFecha ? (
+            <>
+              📅 Columna de fecha detectada: <span className="font-medium">{columnaFecha}</span> — cada fila usa su
+              propia fecha (CSV longitudinal), no una sola fecha para todo el lote.
+              {filasSinFechaPropia > 0 && (
+                <> {filasSinFechaPropia} fila(s) con fecha no reconocible usan la fecha de respaldo de abajo.</>
+              )}
+            </>
+          ) : (
+            <>📅 No se detectó columna de fecha en el CSV — todas las filas usan la fecha tipeada abajo.</>
+          )}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+          ✅ {filasValidas.length} jugador(es) detectado(s) en el CSV
+        </span>
+        {filasSinNombre > 0 && (
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            ⚠️ {filasSinNombre} fila(s) sin nombre de jugador (no se importan)
+          </span>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleImportar}
+        disabled={importando || filasValidas.length === 0 || metricasElegidas.size === 0}
+        className="self-start rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-union-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {importando ? 'Importando…' : `📥 Importar ${filasValidas.length} evaluación(es)`}
+      </button>
+    </Card>
+  )
+}

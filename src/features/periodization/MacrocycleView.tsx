@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Tabs, type TabItem } from '@/components/Tabs'
 import { PeriodizacionTab } from './PeriodizacionTab'
-import { NordBordDashboard } from '@/features/nordbord/NordBordDashboard'
+import { Navigate } from 'react-router-dom'
 
 const TABS: TabItem[] = [
   { id: 'periodizacion', label: 'Periodización', icon: '🗺️' },
@@ -17,15 +17,15 @@ export function MacrocycleView() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">TORRE DE CONTROL DE TEMPORADA</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Periodización real del macrociclo y dashboard de evaluaciones de rendimiento (NordBord).
+          Periodización real del macrociclo y evaluaciones de rendimiento (Hub de Evaluaciones).
         </p>
       </div>
 
       <Tabs tabs={TABS} activeId={tabActiva} onChange={setTabActiva} />
 
       {tabActiva === 'periodizacion' && <PeriodizacionTab />}
-      {/* Pantalla completa (portal): "⬅ Volver atrás" desmonta el dashboard y vuelve a Periodización. */}
-      {tabActiva === 'evaluaciones' && <NordBordDashboard onBack={() => setTabActiva('periodizacion')} />}
+      {/* Las evaluaciones viven en su propio Hub (/evaluaciones). */}
+      {tabActiva === 'evaluaciones' && <Navigate to="/evaluaciones" replace />}
     </div>
   )
 }

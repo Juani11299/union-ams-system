@@ -21,6 +21,7 @@ export const navItems: NavItem[] = [
   { to: '/medical', label: 'Área Médica', shortLabel: 'Médica', icon: '🩺' },
   { to: '/analisis-video', label: 'Análisis de Video', shortLabel: 'Video', icon: '🎥' },
   { to: '/antropometrias', label: 'Antropometrías', shortLabel: 'Antropo', icon: '📏' },
+  { to: '/evaluaciones', label: 'Evaluaciones de Rendimiento', shortLabel: 'Evaluaciones', icon: '🧪' },
   {
     to: '/metodologia',
     label: 'Biblioteca de Manuales',

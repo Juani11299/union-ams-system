@@ -55,6 +55,8 @@ export function matchRoster(name: string, RN: RosterTok[]): ResultadoCruce {
   const splits: Array<{ first: string; init: boolean; sur: string[] }> = []
   if (t[0].length <= 2) splits.push({ first: t[0], init: true, sur: t.slice(1) })
   else for (let k = 1; k < t.length; k++) splits.push({ first: t.slice(0, k).join(' '), init: false, sur: t.slice(k) })
+  // "Apellido N" (inicial al final — típico de los CSV de ForceDecks): el último token de 1–2 letras es la inicial del nombre.
+  if (t.length >= 2 && t[t.length - 1].length <= 2) splits.push({ first: t[t.length - 1], init: true, sur: t.slice(0, -1) })
   const cands: Array<{ r: RosterTok; sc: number }> = []
   for (const r of RN)
     for (const sp of splits) {

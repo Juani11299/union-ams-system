@@ -64,7 +64,7 @@ const MESES_LARGO = MONTHS
  * `useNordBordStore`); categoría y peso salen de la última antropometría del
  * club (`useAntropometriasStore` → Supabase), ya no de una tabla embebida.
  */
-export function NordBordDashboard({ onBack }: { onBack: () => void }) {
+export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: { onBack: () => void; backLabel?: string }) {
   const csv = useNordBordStore((s) => s.csv)
   const setCsv = useNordBordStore((s) => s.setCsv)
   const showToast = useToastStore((s) => s.showToast)
@@ -334,7 +334,7 @@ export function NordBordDashboard({ onBack }: { onBack: () => void }) {
 
         <header className="topbar nb-topbar no-print">
           <button className="btn nb-back" onClick={onBack}>
-            ⬅ Volver atrás
+            {backLabel}
           </button>
           <Crest />
           <div className="brand">
