@@ -7,6 +7,10 @@
 
 /** Nombre de test reservado para el dashboard de NordBord. */
 export const TEST_NORDBORD = 'NordBord'
+export const TEST_CMJ_BILATERAL = 'CMJ Bilateral'
+export const TEST_CMJ_UNILATERAL = 'CMJ Unilateral'
+/** Tests con tarjeta propia en el Hub (el resto de las tarjetas se crean con "Subir Nuevo Test"). */
+export const TESTS_FIJOS: string[] = [TEST_NORDBORD, TEST_CMJ_BILATERAL, TEST_CMJ_UNILATERAL]
 
 /** Valores que puede traer el JSONB: métricas numéricas y metadatos de texto (claves con "_"). */
 export type ValorMetrica = number | string | null
@@ -23,6 +27,8 @@ export interface ConfigTest {
   /** Filas del archivo descartadas al importar (sin jugador, fecha o valores). */
   descartados?: number
   cargado_en?: string
+  /** Fila que viene de la tabla vieja `performance_evaluations` (sólo lectura, ver `useFilasEvaluaciones`). */
+  desde_legacy?: boolean
 }
 
 export interface FilaEvaluacionDinamica {

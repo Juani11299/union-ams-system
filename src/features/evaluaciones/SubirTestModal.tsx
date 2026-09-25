@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { aFechaIso, aNumero, leerTabla } from '@/features/antropometrias/parser'
 import type { FilaArchivo } from '@/features/antropometrias/parser'
 import { esMetricaAsimetria } from '@/features/periodization/evaluations/calculations'
@@ -13,6 +13,19 @@ import { getErrorMessage } from '@/utils/errors'
 import { leerArchivoTabular } from './leerArchivo'
 
 const ICONOS = ['🧪', '🦵', '⚡', '🏃', '🏋️', '📈', '🎯', '💪']
+
+interface SubirTestModalProps {
+  onClose: () => void
+  onCreado: (id: string) => void
+  /** Nombre del test precargado (al subir un CSV nuevo a un test que ya existe). */
+  nombreInicial?: string
+  /** Con `true` el nombre no se puede cambiar: el CSV se anexa a ese test. */
+  nombreBloqueado?: boolean
+  /** Archivo ya elegido (arrastrado sobre un dashboard): se lee al abrir. */
+  archivoInicial?: File
+  /** Configuración vigente del test (métricas clave / "menos es mejor" / ícono) para no perderla al re-subir. */
+  configBase?: { icono?: string; key_metrics?: string[]; less_is_better?: string[] }
+}
 
 interface Leido {
   archivo: string
@@ -32,7 +45,7 @@ const cel = (v: unknown): string => (v === null || v === undefined ? '' : String
  * fecha y métricas numéricas); el profe puede marcar qué métricas son "clave"
  * (van al Radar Unificado del Perfil 360°) y cuáles son "menos es mejor".
  */
-export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onCreado: (id: string) => void }) {
+export function SubirTestModal({ onClose, onCreado, nombreInicial = '', nombreBloqueado = false, archivoInicial, configBase }: SubirTestModalProps) {
   const guardarTest = useEvaluacionesDinamicasStore((s) => s.guardarTest)
   const testsExistentes = useEvaluacionesDinamicasStore((s) => s.filas)
   const showToast = useToastStore((s) => s.showToast)
@@ -40,8 +53,8 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
   const [leido, setLeido] = useState<Leido | null>(null)
   const [leyendo, setLeyendo] = useState(false)
   const [guardando, setGuardando] = useState(false)
-  const [nombre, setNombre] = useState('')
-  const [icono, setIcono] = useState(ICONOS[0])
+  const [nombre, setNombre] = useState(nombreInicial)
+  const [icono, setIcono] = useState(configBase?.icono ?? ICONOS[0])
   const [fechaManual, setFechaManual] = useState(() => new Date().toISOString().slice(0, 10))
   const [overrides, setOverrides] = useState<Record<string, Partial<Pick<MetricaTestDinamico, 'clave' | 'menosEsMejor'>>>>({})
 
@@ -59,10 +72,10 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
       key,
       label: key,
       unidad: unidadDe(key),
-      menosEsMejor: overrides[key]?.menosEsMejor ?? menosEsMejorPorDefecto(key),
-      clave: overrides[key]?.clave ?? principales.has(key),
+      menosEsMejor: overrides[key]?.menosEsMejor ?? (configBase?.less_is_better ? configBase.less_is_better.includes(key) || menosEsMejorPorDefecto(key) : menosEsMejorPorDefecto(key)),
+      clave: overrides[key]?.clave ?? (configBase?.key_metrics?.length ? configBase.key_metrics.includes(key) : principales.has(key)),
     }))
-  }, [clasif, overrides])
+  }, [clasif, overrides, configBase])
 
   async function elegirArchivo(file: File) {
     setLeyendo(true)
@@ -82,6 +95,11 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
     }
   }
 
+  useEffect(() => {
+    if (archivoInicial) void elegirArchivo(archivoInicial)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sólo al abrir
+  }, [])
+
   async function crear() {
     if (!leido || !clasif || nombre.trim() === '' || guardando) return
     const testName = nombre.trim()
@@ -100,6 +118,9 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
         if (v !== null) metrics[m.key] = v
       }
       if (Object.keys(metrics).length === 0) continue
+      // Peso corporal del archivo (BW [KG]): metadato de la fila para métricas relativas cuando no hay antropometría.
+      const bw = clasif.columnaPeso ? aNumero(f[clasif.columnaPeso]) : null
+      if (bw !== null && bw > 0) metrics._bw = bw
       const categoria = (clasif.columnaCategoria ? cel(f[clasif.columnaCategoria]) : '') || 'Sin categoría'
       filas.push({ test_name: testName, player_name: jugador, player_key: normalizarNombre(jugador), category_label: categoria, fecha, metrics, test_config: {} })
     }
@@ -135,9 +156,11 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
       <div className="my-8 w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">＋ Subir nuevo test</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{nombreBloqueado ? `＋ Subir CSV a "${nombreInicial}"` : '＋ Subir nuevo test'}</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Subí un CSV o Excel, ponele nombre y se guarda en Supabase con una tarjeta nueva en el Hub. Si el nombre ya existe, se actualizan las evaluaciones de esa fecha. También entra al Perfil de Atleta 360°.
+              {nombreBloqueado
+                ? 'Se anexa a este test en Supabase: si un jugador ya tenía evaluación ese día se actualiza, si no se suma. Las métricas clave se mantienen.'
+                : 'Subí un CSV o Excel, ponele nombre y se guarda en Supabase con una tarjeta nueva en el Hub. Si el nombre ya existe, se actualizan las evaluaciones de esa fecha. También entra al Perfil de Atleta 360°.'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cerrar">
@@ -169,7 +192,7 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <label className="flex flex-col gap-1 text-xs">
                   <span className="font-medium text-slate-600 dark:text-slate-300">Nombre del test *</span>
-                  <input className={inputClass} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Sprint 30m — Pretemporada" autoFocus />
+                  <input className={inputClass} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Sprint 30m — Pretemporada" autoFocus={!nombreBloqueado} readOnly={nombreBloqueado} title={nombreBloqueado ? 'El archivo se anexa a este test' : undefined} />
                 </label>
                 <div className="flex flex-col gap-1 text-xs">
                   <span className="font-medium text-slate-600 dark:text-slate-300">Ícono</span>

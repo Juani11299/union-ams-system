@@ -3,7 +3,7 @@ import { esMetricaAsimetria } from '@/features/periodization/evaluations/calcula
 import { poolFor } from '@/features/nordbord/calculations'
 import { matchRoster, tokenizarRoster } from '@/features/nordbord/roster'
 import type { Dataset, RosterEntry } from '@/features/nordbord/types'
-import type { PerformanceEvaluation } from '@/types'
+import { catDeLabel, esAnio } from '../categorias'
 import type { TestDinamico } from '../dinamicas'
 import { normalizarNombre } from '@/utils/smartEntityMatcher'
 
@@ -57,7 +57,6 @@ export interface ModeloPerfil {
 export interface FuentesPerfil {
   roster: RosterEntry[]
   nordbord: Dataset | null
-  cmj: PerformanceEvaluation[]
   antropo: MedicionAntropo[]
   custom: TestDinamico[]
 }
@@ -65,27 +64,8 @@ export interface FuentesPerfil {
 const SIN_CAT = 'Sin categoría'
 
 const cmjUnilateral = (evaluationName: string): boolean => /1\s*pp|slj|unilateral|single|una pierna|1 pierna/i.test(evaluationName)
-/** Evaluaciones de NordBord (curl nórdico) que ya viven en `performance_evaluations` (importadas con el panel viejo). */
-const esEvalNordBord = (ev: PerformanceEvaluation): boolean =>
-  /nord|curl/i.test(ev.evaluationName) || 'L Max Force (N)' in ev.metrics
-
 const esLateral = (key: string): boolean => /\((L|R)\)\s*$/.test(key.trim())
-const unidadDe = (key: string): string => (key.match(/\[([^\]]+)\]/)?.[1] ?? '').trim()
 const limpiarLabel = (key: string): string => key.replace(/\s*\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim()
-
-/** ¿Dato importable como año ("2010") en vez de categoría? Los CSV de ForceDecks traen CAT = año de nacimiento. */
-const esAnio = (c: string): boolean => /^(19|20)\d{2}$/.test(c.trim())
-
-/**
- * Año de nacimiento → categoría del club (temporada 2026, según los títulos del
- * informe del nutricionista: 4ta 2006-07, 5ta 2008, 6ta 2009, 7ma 2010, 8va 2011,
- * 9na 2012, Pre 9na 2013, 10ma 2014). Se usa sólo cuando el jugador no calza con
- * ninguna antropometría. Hay que actualizarlo al cambiar de temporada.
- */
-const CATEGORIA_POR_ANIO: Record<string, string> = {
-  '2005': '4ta', '2006': '4ta', '2007': '4ta', '2008': '5ta', '2009': '6ta', '2010': '7ma', '2011': '8va', '2012': '9na', '2013': 'Pre 9na', '2014': '10ma',
-}
-const catDeLabel = (c: string | null): string | null => (c && esAnio(c) ? (CATEGORIA_POR_ANIO[c.trim()] ?? c) : c)
 
 export function construirModelo(f: FuentesPerfil): ModeloPerfil {
   const RN = tokenizarRoster(f.roster)
@@ -154,54 +134,6 @@ export function construirModelo(f: FuentesPerfil): ModeloPerfil {
     }
   }
 
-  // ── NordBord importado en la base (evaluación "Curl Nórdico"): sólo se usa si NO hay un export cargado en el dashboard
-  //    de NordBord — si lo hay, ese export es la fuente y esto duplicaría los mismos datos.
-  if (!f.nordbord) {
-    const F = 'nordbord'
-    const base = { fuente: F, fuenteLabel: 'NordBord' }
-    for (const ev of f.cmj.filter(esEvalNordBord).sort((x, y) => x.fecha.localeCompare(y.fecha))) {
-      const L = ev.metrics['L Max Force (N)']
-      const R = ev.metrics['R Max Force (N)']
-      if (typeof L !== 'number' || typeof R !== 'number' || L <= 0 || R <= 0) continue
-      definir({ ...base, id: 'nb:forceRel', label: 'Fuerza excéntrica relativa', unidad: 'N/kg', d: 2, masEsMejor: true, radar: true, radarLabel: 'NordBord · Fuerza rel.', rol: 'nb_fuerza' })
-      definir({ ...base, id: 'nb:forceMean', label: 'Fuerza excéntrica pico', unidad: 'N', d: 0, masEsMejor: true, radar: false, radarLabel: 'NordBord · Fuerza pico' })
-      definir({ ...base, id: 'nb:weakF', label: 'Fuerza pico · pierna débil', unidad: 'N', d: 0, masEsMejor: true, radar: false, radarLabel: 'NordBord · Pierna débil' })
-      definir({ ...base, id: 'nb:asym', label: 'Asimetría de isquios', unidad: '%', d: 1, masEsMejor: false, radar: true, radarLabel: 'NordBord · Simetría', rol: 'nb_asim' })
-      const id = resolver(ev.playerName)
-      const a = atleta(id.key, id.nombre, id.cat ?? ev.categoryLabel, id.cat !== null)
-      const media = (L + R) / 2
-      poner(a, 'nb:forceMean', media, ev.fecha)
-      poner(a, 'nb:weakF', Math.min(L, R), ev.fecha)
-      poner(a, 'nb:asym', (Math.abs(R - L) / Math.max(L, R)) * 100, ev.fecha)
-      if (ev.bodyWeightKg && ev.bodyWeightKg > 0) poner(a, 'nb:forceRel', media / ev.bodyWeightKg, ev.fecha)
-    }
-  }
-
-  // ── ForceDecks (CMJ) — último valor de cada métrica
-  for (const ev of [...f.cmj].filter((e) => !esEvalNordBord(e)).sort((x, y) => x.fecha.localeCompare(y.fecha))) {
-    const uni = cmjUnilateral(ev.evaluationName)
-    const F = uni ? 'cmj1pp' : 'cmj'
-    const L = uni ? 'ForceDecks · CMJ 1 pierna' : 'ForceDecks · CMJ'
-    const id = resolver(ev.playerName)
-    const a = atleta(id.key, id.nombre, id.cat ?? ev.categoryLabel, id.cat !== null)
-    for (const [key, valor] of Object.entries(ev.metrics)) {
-      if (typeof valor !== 'number' || esLateral(key)) continue
-      const asim = esMetricaAsimetria(key)
-      const limpio = limpiarLabel(key)
-      let rol: RolMetrica | undefined
-      let radarLabel = ''
-      if (/^jump height/i.test(key) && !asim) [rol, radarLabel] = ['salto', `${uni ? 'CMJ 1P' : 'CMJ'} · Altura`]
-      else if (/^rsi/i.test(key) && !asim) [rol, radarLabel] = ['rsi', `${uni ? 'CMJ 1P' : 'CMJ'} · RSI-mod`]
-      else if (/^concentric peak force/i.test(key) && !asim) [rol, radarLabel] = ['fuerza_conc', `${uni ? 'CMJ 1P' : 'CMJ'} · Fuerza conc.`]
-      else if (/^jump height/i.test(key) && asim) [rol, radarLabel] = ['asim_salto', `${uni ? 'CMJ 1P' : 'CMJ'} · Simetría`]
-      definir({
-        id: `${F}:${key}`, fuente: F, fuenteLabel: L, label: limpio, unidad: unidadDe(key) || (asim ? '%' : ''), d: asim ? 1 : 2,
-        masEsMejor: !asim, radar: rol !== undefined, radarLabel: radarLabel || limpio, rol,
-      })
-      poner(a, `${F}:${key}`, asim ? Math.abs(valor) : valor, ev.fecha)
-    }
-  }
-
   // ── Antropometrías — última medición de cada jugador
   {
     const F = 'antropo'
@@ -225,19 +157,32 @@ export function construirModelo(f: FuentesPerfil): ModeloPerfil {
     }
   }
 
-  // ── Tests dinámicos
+  // ── Tests dinámicos (incluye CMJ Bilateral / Unilateral: sus métricas se leen del JSONB)
   for (const t of f.custom) {
     const F = `custom:${t.id}`
+    const esCmj = /cmj|salto|jump|slj/i.test(t.nombre)
+    const uni = cmjUnilateral(t.nombre)
+    const pre = uni ? 'CMJ 1P' : 'CMJ'
     for (const m of t.metricas) {
+      const asim = esMetricaAsimetria(m.key)
+      // Los CMJ cruzan con NordBord y antropometría: se reconocen las métricas que usan las reglas de Global Smart Insights.
+      let rol: RolMetrica | undefined
+      let radarLabel = `${t.nombre} · ${limpiarLabel(m.label)}`
+      if (esCmj && !esLateral(m.key)) {
+        if (/^jump height/i.test(m.key) && !asim) [rol, radarLabel] = ['salto', `${pre} · Altura`]
+        else if (/^rsi/i.test(m.key) && !asim) [rol, radarLabel] = ['rsi', `${pre} · RSI-mod`]
+        else if (/^concentric peak force/i.test(m.key) && !asim) [rol, radarLabel] = ['fuerza_conc', `${pre} · Fuerza conc.`]
+        else if (/^jump height/i.test(m.key) && asim) [rol, radarLabel] = ['asim_salto', `${pre} · Simetría`]
+      }
       definir({
         id: `${F}:${m.key}`, fuente: F, fuenteLabel: t.nombre, label: limpiarLabel(m.label), unidad: m.unidad, d: 2,
-        masEsMejor: !m.menosEsMejor, radar: m.clave, radarLabel: `${t.nombre} · ${limpiarLabel(m.label)}`,
+        masEsMejor: !m.menosEsMejor && !asim, radar: m.clave || rol !== undefined, radarLabel, rol,
       })
     }
     for (const fila of [...t.filas].sort((x, y) => x.fecha.localeCompare(y.fecha))) {
       const id = resolver(fila.jugador)
       const a = atleta(id.key, id.nombre, id.cat ?? fila.categoria, id.cat !== null)
-      for (const [key, valor] of Object.entries(fila.valores)) poner(a, `${F}:${key}`, valor, fila.fecha)
+      for (const [key, valor] of Object.entries(fila.valores)) poner(a, `${F}:${key}`, esMetricaAsimetria(key) ? Math.abs(valor) : valor, fila.fecha)
     }
   }
 
@@ -290,7 +235,7 @@ export function generarInsightsGlobales(m: ModeloPerfil, a: AtletaModelo): Insig
   const out: InsightGlobal[] = []
   const porRol = (rol: RolMetrica): MetricaDef | undefined => {
     const c = m.catalogo.filter((d) => d.rol === rol && a.valores[d.id] !== undefined)
-    return c.find((d) => d.fuente === 'cmj') ?? c[0] // preferir el CMJ bilateral
+    return c.find((d) => d.fuente === 'cmj' || /bilateral/i.test(d.fuenteLabel)) ?? c[0] // preferir el CMJ bilateral
   }
   const val = (rol: RolMetrica) => {
     const d = porRol(rol)

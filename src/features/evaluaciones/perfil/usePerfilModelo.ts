@@ -1,10 +1,9 @@
 import { useEffect, useMemo } from 'react'
 import { rosterDesdeAntropometrias } from '@/features/nordbord/roster'
 import { datasetDesdeFilas } from '@/features/nordbord/parser'
-import { useAppStore } from '@/store/useAppStore'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
-import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
 import { TEST_NORDBORD, testsDesdeFilas } from '../dinamicas'
+import { useFilasEvaluaciones } from '../useFilasEvaluaciones'
 import { construirModelo } from './datos'
 
 /**
@@ -15,8 +14,7 @@ import { construirModelo } from './datos'
  * (peso/categoría para el cruce de identidades).
  */
 export function usePerfilModelo() {
-  const filas = useEvaluacionesDinamicasStore((s) => s.filas)
-  const cmj = useAppStore((s) => s.performanceEvaluations)
+  const filas = useFilasEvaluaciones()
   const antropo = useAntropometriasStore((s) => s.mediciones)
   const fetchAntropometrias = useAntropometriasStore((s) => s.fetchAntropometrias)
 
@@ -31,5 +29,5 @@ export function usePerfilModelo() {
   }, [filas, roster])
   const custom = useMemo(() => testsDesdeFilas(filas), [filas])
 
-  return useMemo(() => construirModelo({ roster, nordbord, cmj, antropo, custom }), [roster, nordbord, cmj, antropo, custom])
+  return useMemo(() => construirModelo({ roster, nordbord, antropo, custom }), [roster, nordbord, antropo, custom])
 }

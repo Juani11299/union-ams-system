@@ -1,27 +1,28 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
-import { NordBordDashboard } from '@/features/nordbord/NordBordDashboard'
 import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
-import { testsDesdeFilas } from './dinamicas'
-import { CmjDashboard } from './CmjDashboard'
+import { TESTS_FIJOS } from './dinamicas'
 import { EvaluacionesHub } from './EvaluacionesHub'
+import { useFilasEvaluaciones } from './useFilasEvaluaciones'
 import { PerfilAtleta360 } from './perfil/PerfilAtleta360'
-import { TestDinamicoDashboard } from './TestDinamicoDashboard'
+import { UniversalTestDashboard } from './universal/UniversalTestDashboard'
 
-function TestDinamicoRoute({ onBack }: { onBack: () => void }) {
+/** Todas las tarjetas del Hub (NordBord, CMJ, tests propios) abren la MISMA plantilla universal. */
+function TestRoute({ onBack }: { onBack: () => void }) {
   const { id } = useParams()
-  const filas = useEvaluacionesDinamicasStore((s) => s.filas)
+  const filas = useFilasEvaluaciones()
   const cargando = useEvaluacionesDinamicasStore((s) => s.cargando)
-  const test = useMemo(() => testsDesdeFilas(filas).find((t) => t.id === id), [filas, id])
-  // Hasta terminar la primera lectura desde Supabase no se redirige (el test todavía puede estar llegando).
-  if (!test) return cargando ? null : <Navigate to="/evaluaciones" replace />
-  return <TestDinamicoDashboard test={test} onBack={onBack} />
+  const existe = useMemo(() => !!id && (TESTS_FIJOS.includes(id) || filas.some((f) => f.test_name === id)), [filas, id])
+  // Los tests fijos abren aunque estén vacíos (para subir el primer archivo); un test propio inexistente vuelve al Hub
+  // recién cuando termina la primera lectura desde Supabase.
+  if (!id || !existe) return cargando ? null : <Navigate to="/evaluaciones" replace />
+  return <UniversalTestDashboard key={id} nombre={id} onBack={onBack} />
 }
 
 /**
  * `/evaluaciones` — el Hub queda siempre montado de fondo y cada dashboard se
  * abre como pantalla completa (portal) en una ruta hija: /nordbord, /cmj,
- * /perfil y /test/:id. "⬅ Volver al Hub" navega de vuelta a `/evaluaciones`,
+ * /perfil y /test/:id (plantilla universal). "⬅ Volver al Hub" navega de vuelta a `/evaluaciones`,
  * así el botón "atrás" del navegador también funciona.
  */
 export function EvaluacionesRoutes() {
@@ -36,10 +37,11 @@ export function EvaluacionesRoutes() {
     <>
       <EvaluacionesHub />
       <Routes>
-        <Route path="nordbord" element={<NordBordDashboard onBack={volver} backLabel="⬅ Volver al Hub" />} />
-        <Route path="cmj" element={<CmjDashboard onBack={volver} />} />
         <Route path="perfil" element={<PerfilAtleta360 onBack={volver} />} />
-        <Route path="test/:id" element={<TestDinamicoRoute onBack={volver} />} />
+        <Route path="test/:id" element={<TestRoute onBack={volver} />} />
+        {/* Rutas viejas (antes había un dashboard distinto por test) */}
+        <Route path="nordbord" element={<Navigate to="/evaluaciones/test/NordBord" replace />} />
+        <Route path="cmj" element={<Navigate to="/evaluaciones/test/CMJ%20Bilateral" replace />} />
         <Route path="*" element={null} />
       </Routes>
     </>

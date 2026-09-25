@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSoloLectura } from '@/hooks/useSoloLectura'
-import { useAppStore } from '@/store/useAppStore'
 import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
-import { TEST_NORDBORD, testsDesdeFilas } from './dinamicas'
+import { TEST_CMJ_BILATERAL, TEST_CMJ_UNILATERAL, TEST_NORDBORD, TESTS_FIJOS, testsDesdeFilas } from './dinamicas'
+import type { FilaEvaluacionDinamica } from './dinamicas'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { SubirTestModal } from './SubirTestModal'
+import { useFilasEvaluaciones } from './useFilasEvaluaciones'
 
 interface TarjetaProps {
   icono: string
@@ -64,26 +65,27 @@ function Tarjeta({ icono, titulo, descripcion, detalle, onClick, acento, onElimi
 export function EvaluacionesHub() {
   const navigate = useNavigate()
   const soloLectura = useSoloLectura()
-  const filas = useEvaluacionesDinamicasStore((s) => s.filas)
+  const filas = useFilasEvaluaciones()
   const cargando = useEvaluacionesDinamicasStore((s) => s.cargando)
   const error = useEvaluacionesDinamicasStore((s) => s.error)
   const fetchEvaluaciones = useEvaluacionesDinamicasStore((s) => s.fetchEvaluaciones)
   const eliminarTest = useEvaluacionesDinamicasStore((s) => s.eliminarTest)
   const showToast = useToastStore((s) => s.showToast)
-  const cmj = useAppStore((s) => s.performanceEvaluations)
-  const tests = useMemo(() => testsDesdeFilas(filas), [filas])
-  const nordbord = useMemo(() => {
-    const nb = filas.filter((f) => f.test_name === TEST_NORDBORD)
-    return { filas: nb.length, jugadores: new Set(nb.map((f) => f.player_key)).size, ultima: nb.reduce((m, f) => (f.fecha > m ? f.fecha : m), ''), archivo: nb.map((f) => f.test_config.archivo).filter(Boolean).pop() ?? '' }
-  }, [filas])
+  // Tests propios (los creados con "Subir Nuevo Test"): los fijos tienen su tarjeta aparte.
+  const tests = useMemo(() => testsDesdeFilas(filas).filter((t) => !TESTS_FIJOS.includes(t.id)), [filas])
+  const resumen = (nombre: string) => {
+    const r: FilaEvaluacionDinamica[] = filas.filter((f) => f.test_name === nombre)
+    return { filas: r.length, jugadores: new Set(r.map((f) => f.player_key)).size, ultima: r.reduce((m, f) => (f.fecha > m ? f.fecha : m), ''), archivo: r.map((f) => f.test_config.archivo).filter(Boolean).pop() ?? '' }
+  }
+  const detalleFijo = (nombre: string) => {
+    const r = resumen(nombre)
+    return r.filas ? `${r.filas} evaluaciones · ${r.jugadores} jugadores · último test ${r.ultima}${r.archivo ? ` · 📄 ${r.archivo}` : ''}` : cargando ? 'Cargando desde Supabase…' : 'Sin datos todavía — subí el CSV adentro'
+  }
   const [subiendo, setSubiendo] = useState(false)
   const [aBorrar, setABorrar] = useState<string | null>(null)
   const [borrando, setBorrando] = useState(false)
 
-  const cmjJugadores = new Set(cmj.map((e) => e.playerKey)).size
-  const cmjUltima = cmj.reduce((m, e) => (e.fecha > m ? e.fecha : m), '')
-  const cmjTipos = [...new Set(cmj.map((e) => e.evaluationName))]
-  const fuentes = 2 + tests.length
+  const fuentes = 3 + tests.length
 
   return (
     <div className="flex flex-col gap-6">
@@ -143,18 +145,26 @@ export function EvaluacionesHub() {
         <Tarjeta
           icono="🦵"
           titulo="NordBord (Fuerza Isométrica/Excéntrica)"
-          descripcion="Curl nórdico: fuerza excéntrica de isquiotibiales, asimetrías con semáforo, Resumen DT & PF y ficha individual."
-          detalle={nordbord.filas ? `${nordbord.filas} evaluaciones · ${nordbord.jugadores} jugadores · último test ${nordbord.ultima}${nordbord.archivo ? ` · 📄 ${nordbord.archivo}` : ''}` : cargando ? 'Cargando desde Supabase…' : 'Sin export cargado — subí el CSV adentro'}
+          descripcion="Curl nórdico: fuerza excéntrica de isquiotibiales, asimetrías con semáforo, ranking y ficha individual."
+          detalle={detalleFijo(TEST_NORDBORD)}
           acento="bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
-          onClick={() => navigate('/evaluaciones/nordbord')}
+          onClick={() => navigate(`/evaluaciones/test/${encodeURIComponent(TEST_NORDBORD)}`)}
         />
         <Tarjeta
           icono="⚡"
-          titulo="ForceDecks (CMJ)"
-          descripcion="Saltos bilaterales y unilaterales: altura, RSI-modificado, fuerza relativa, asimetrías y Smart Analysis por jugador."
-          detalle={cmj.length ? `${cmj.length} evaluaciones · ${cmjJugadores} jugadores · última ${cmjUltima} · ${cmjTipos.slice(0, 3).join(', ')}${cmjTipos.length > 3 ? '…' : ''}` : 'Sin evaluaciones cargadas todavía'}
+          titulo="ForceDecks (CMJ Bilateral)"
+          descripcion="Salto con contramovimiento sobre dos piernas: altura, RSI-modificado, fuerza relativa y asimetrías de aterrizaje."
+          detalle={detalleFijo(TEST_CMJ_BILATERAL)}
           acento="bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-          onClick={() => navigate('/evaluaciones/cmj')}
+          onClick={() => navigate(`/evaluaciones/test/${encodeURIComponent(TEST_CMJ_BILATERAL)}`)}
+        />
+        <Tarjeta
+          icono="🦿"
+          titulo="ForceDecks (CMJ Unilateral)"
+          descripcion="Salto a una pierna (SLJ / CMJ 1PP): comparación entre lados con semáforo clínico de asimetrías."
+          detalle={detalleFijo(TEST_CMJ_UNILATERAL)}
+          acento="bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
+          onClick={() => navigate(`/evaluaciones/test/${encodeURIComponent(TEST_CMJ_UNILATERAL)}`)}
         />
         {tests.map((t) => (
           <Tarjeta
@@ -165,7 +175,7 @@ export function EvaluacionesHub() {
             detalle={`${t.filas.length} evaluaciones · ${new Set(t.filas.map((f) => f.jugador)).size} jugadores${t.creadoEn ? ` · cargado ${new Date(t.creadoEn).toLocaleDateString('es-AR')}` : ''}`}
             acento="bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300"
             onClick={() => navigate(`/evaluaciones/test/${encodeURIComponent(t.id)}`)}
-            onEliminar={soloLectura ? undefined : () => setABorrar(t.id)}
+            onEliminar={soloLectura || filas.filter((f) => f.test_name === t.id).every((f) => f.test_config.desde_legacy) ? undefined : () => setABorrar(t.id)}
           />
         ))}
         {!soloLectura && (
