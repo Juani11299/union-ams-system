@@ -5,6 +5,7 @@ import { inputClass } from '@/components/FormField'
 import { Tabs, type TabItem } from '@/components/Tabs'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
+import { useSoloLectura } from '@/hooks/useSoloLectura'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
 import { categoriasDisponibles } from './calculations'
 import { GrupalAntropoTab } from './GrupalAntropoTab'
@@ -32,6 +33,8 @@ export function AntropometriasView() {
   const fetchAntropometrias = useAntropometriasStore((s) => s.fetchAntropometrias)
   const borrarAntropometrias = useAntropometriasStore((s) => s.borrarAntropometrias)
   const showToast = useToastStore((s) => s.showToast)
+  // Link de sólo lectura / sin sesión: se ve todo, pero no se importa ni se borra (la base también lo impide).
+  const soloLectura = useSoloLectura()
 
   useEffect(() => {
     void fetchAntropometrias()
@@ -81,7 +84,15 @@ export function AntropometriasView() {
         </p>
       </div>
 
-      {(sinDatos || mostrarImport) && <ImportAntropoPanel onImportado={() => setMostrarImport(false)} />}
+      {sinDatos && soloLectura && (
+        <Card className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+          Todavía no hay antropometrías cargadas.
+        </Card>
+      )}
+
+      {!soloLectura && (sinDatos || mostrarImport) && (
+        <ImportAntropoPanel onImportado={() => setMostrarImport(false)} />
+      )}
 
       {!sinDatos && (
         <>
@@ -101,13 +112,15 @@ export function AntropometriasView() {
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              onClick={() => setMostrarImport((v) => !v)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:border-union-red-400 hover:bg-union-red-50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-union-red-500/10 dark:hover:text-union-red-400"
-            >
-              {mostrarImport ? '✕ Cerrar importación' : '＋ Importar más datos'}
-            </button>
+            {!soloLectura && (
+              <button
+                type="button"
+                onClick={() => setMostrarImport((v) => !v)}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:border-union-red-400 hover:bg-union-red-50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-union-red-500/10 dark:hover:text-union-red-400"
+              >
+                {mostrarImport ? '✕ Cerrar importación' : '＋ Importar más datos'}
+              </button>
+            )}
           </div>
 
           <Tabs tabs={TABS} activeId={tabActiva} onChange={setTabActiva} />
@@ -116,16 +129,20 @@ export function AntropometriasView() {
 
           <Card className="flex flex-col gap-2 text-xs text-slate-500 dark:text-slate-400">
             <p>
-              🔒 {mediciones.length} medición(es) guardadas en la nube, visibles sólo para el Staff con sesión iniciada.
-              Importar de nuevo el mismo archivo actualiza las mediciones existentes sin duplicarlas.
+              🔒 {mediciones.length} medición(es) guardadas en la nube
+              {soloLectura
+                ? ' (vista de sólo lectura).'
+                : '. Importar de nuevo el mismo archivo actualiza las mediciones existentes sin duplicarlas.'}
             </p>
-            <button
-              type="button"
-              onClick={() => setConfirmandoBorrado(true)}
-              className="self-start font-medium text-union-red-600 hover:underline dark:text-union-red-400"
-            >
-              🗑️ Borrar todos los datos de antropometría
-            </button>
+            {!soloLectura && (
+              <button
+                type="button"
+                onClick={() => setConfirmandoBorrado(true)}
+                className="self-start font-medium text-union-red-600 hover:underline dark:text-union-red-400"
+              >
+                🗑️ Borrar todos los datos de antropometría
+              </button>
+            )}
           </Card>
         </>
       )}
