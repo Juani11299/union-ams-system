@@ -5,7 +5,7 @@ import { inputClass } from '@/components/FormField'
 import { Tabs, type TabItem } from '@/components/Tabs'
 import { pctOf, stats, zOf } from '@/features/nordbord/calculations'
 import { zColor } from '@/features/nordbord/format'
-import type { FilaTestDinamico, MetricaTestDinamico, TestDinamico } from '@/stores/useTestsDinamicosStore'
+import type { FilaTestDinamico, MetricaTestDinamico, TestDinamico } from './dinamicas'
 import { normalizarNombre } from '@/utils/smartEntityMatcher'
 import { PantallaCompleta } from './PantallaCompleta'
 

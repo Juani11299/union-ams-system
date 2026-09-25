@@ -4,8 +4,10 @@ import type { FilaArchivo } from '@/features/antropometrias/parser'
 import { esMetricaAsimetria } from '@/features/periodization/evaluations/calculations'
 import { clasificarColumnasEvaluacion } from '@/features/periodization/evaluations/csvClassifier'
 import { inputClass } from '@/components/FormField'
-import { useTestsDinamicosStore } from '@/stores/useTestsDinamicosStore'
-import type { FilaTestDinamico, MetricaTestDinamico } from '@/stores/useTestsDinamicosStore'
+import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
+import { normalizarNombre } from '@/utils/smartEntityMatcher'
+import { TEST_NORDBORD, unidadDe } from './dinamicas'
+import type { FilaEvaluacionDinamica, MetricaTestDinamico } from './dinamicas'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
 import { leerArchivoTabular } from './leerArchivo'
@@ -16,12 +18,6 @@ interface Leido {
   archivo: string
   columnas: string[]
   filas: FilaArchivo[]
-}
-
-/** "Jump Height (Imp-Mom) [cm]" → unidad "cm". */
-function unidadDe(key: string): string {
-  const m = key.match(/\[([^\]]+)\]/) ?? key.match(/\(([^)]{1,8})\)\s*$/)
-  return m ? m[1].trim() : ''
 }
 
 /** Tiempos (sprints, cambios de dirección) y asimetrías: menos es mejor. */
@@ -37,11 +33,13 @@ const cel = (v: unknown): string => (v === null || v === undefined ? '' : String
  * (van al Radar Unificado del Perfil 360°) y cuáles son "menos es mejor".
  */
 export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onCreado: (id: string) => void }) {
-  const agregar = useTestsDinamicosStore((s) => s.agregar)
+  const guardarTest = useEvaluacionesDinamicasStore((s) => s.guardarTest)
+  const testsExistentes = useEvaluacionesDinamicasStore((s) => s.filas)
   const showToast = useToastStore((s) => s.showToast)
 
   const [leido, setLeido] = useState<Leido | null>(null)
   const [leyendo, setLeyendo] = useState(false)
+  const [guardando, setGuardando] = useState(false)
   const [nombre, setNombre] = useState('')
   const [icono, setIcono] = useState(ICONOS[0])
   const [fechaManual, setFechaManual] = useState(() => new Date().toISOString().slice(0, 10))
@@ -84,30 +82,52 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
     }
   }
 
-  function crear() {
-    if (!leido || !clasif || nombre.trim() === '') return
-    const filas: FilaTestDinamico[] = []
+  async function crear() {
+    if (!leido || !clasif || nombre.trim() === '' || guardando) return
+    const testName = nombre.trim()
+    if (testName.toLowerCase() === TEST_NORDBORD.toLowerCase()) {
+      showToast('error', `"${TEST_NORDBORD}" es el nombre del dashboard de NordBord: elegí otro nombre para este test.`)
+      return
+    }
+    const filas: FilaEvaluacionDinamica[] = []
     for (const f of leido.filas) {
       const jugador = cel(f[clasif.columnaJugador])
       if (!jugador) continue
       const fecha = (clasif.columnaFecha ? aFechaIso(f[clasif.columnaFecha]) : null) ?? fechaManual
-      const valores: Record<string, number> = {}
+      const metrics: Record<string, number> = {}
       for (const m of metricas) {
         const v = aNumero(f[m.key])
-        if (v !== null) valores[m.key] = v
+        if (v !== null) metrics[m.key] = v
       }
-      if (Object.keys(valores).length === 0) continue
+      if (Object.keys(metrics).length === 0) continue
       const categoria = (clasif.columnaCategoria ? cel(f[clasif.columnaCategoria]) : '') || 'Sin categoría'
-      filas.push({ jugador, categoria, fecha, valores })
+      filas.push({ test_name: testName, player_name: jugador, player_key: normalizarNombre(jugador), category_label: categoria, fecha, metrics, test_config: {} })
     }
     if (filas.length === 0) {
       showToast('error', 'No se encontraron filas con jugador y valores numéricos.')
       return
     }
-    const usadas = new Set(filas.flatMap((f) => Object.keys(f.valores)))
-    const id = agregar({ nombre: nombre.trim(), icono, archivo: leido.archivo, metricas: metricas.filter((m) => usadas.has(m.key)), filas })
-    showToast('success', `Test "${nombre.trim()}" creado con ${filas.length} evaluaciones.`)
-    onCreado(id)
+    const usadas = new Set(filas.flatMap((f) => Object.keys(f.metrics)))
+    const usadasMetricas = metricas.filter((m) => usadas.has(m.key))
+    setGuardando(true)
+    try {
+      const existia = testsExistentes.some((f) => f.test_name === testName)
+      const { guardadas } = await guardarTest(testName, filas, {
+        icono,
+        archivo: leido.archivo,
+        key_metrics: usadasMetricas.filter((m) => m.clave).map((m) => m.key),
+        less_is_better: usadasMetricas.filter((m) => m.menosEsMejor).map((m) => m.key),
+        unidades: Object.fromEntries(usadasMetricas.filter((m) => m.unidad).map((m) => [m.key, m.unidad])),
+        descartados: leido.filas.length - filas.length,
+        cargado_en: new Date().toISOString(),
+      })
+      showToast('success', `${existia ? 'Test actualizado' : 'Test creado'}: "${testName}" · ${guardadas} evaluaciones guardadas en Supabase.`)
+      onCreado(testName)
+    } catch (err) {
+      showToast('error', getErrorMessage(err, 'No se pudo guardar el test.'))
+    } finally {
+      setGuardando(false)
+    }
   }
 
   return (
@@ -117,7 +137,7 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">＋ Subir nuevo test</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Subí un CSV o Excel, ponele nombre y se crea una tarjeta nueva en el Hub. También entra al Perfil de Atleta 360°.
+              Subí un CSV o Excel, ponele nombre y se guarda en Supabase con una tarjeta nueva en el Hub. Si el nombre ya existe, se actualizan las evaluaciones de esa fecha. También entra al Perfil de Atleta 360°.
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Cerrar">
@@ -222,11 +242,11 @@ export function SubirTestModal({ onClose, onCreado }: { onClose: () => void; onC
                 </button>
                 <button
                   type="button"
-                  disabled={nombre.trim() === '' || metricas.length === 0}
-                  onClick={crear}
+                  disabled={nombre.trim() === '' || metricas.length === 0 || guardando}
+                  onClick={() => void crear()}
                   className="rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-union-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Crear test y tarjeta
+                  {guardando ? 'Guardando en Supabase…' : 'Crear test y tarjeta'}
                 </button>
               </div>
             </div>

@@ -1,7 +1,8 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import { NordBordDashboard } from '@/features/nordbord/NordBordDashboard'
-import { useTestsDinamicosStore } from '@/stores/useTestsDinamicosStore'
+import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
+import { testsDesdeFilas } from './dinamicas'
 import { CmjDashboard } from './CmjDashboard'
 import { EvaluacionesHub } from './EvaluacionesHub'
 import { PerfilAtleta360 } from './perfil/PerfilAtleta360'
@@ -9,10 +10,11 @@ import { TestDinamicoDashboard } from './TestDinamicoDashboard'
 
 function TestDinamicoRoute({ onBack }: { onBack: () => void }) {
   const { id } = useParams()
-  const test = useTestsDinamicosStore((s) => s.tests.find((t) => t.id === id))
-  const hidratado = useTestsDinamicosStore.persist.hasHydrated()
-  // El store persiste en IndexedDB (asíncrono): hasta hidratar, no se redirige.
-  if (!test) return hidratado ? <Navigate to="/evaluaciones" replace /> : null
+  const filas = useEvaluacionesDinamicasStore((s) => s.filas)
+  const cargando = useEvaluacionesDinamicasStore((s) => s.cargando)
+  const test = useMemo(() => testsDesdeFilas(filas).find((t) => t.id === id), [filas, id])
+  // Hasta terminar la primera lectura desde Supabase no se redirige (el test todavía puede estar llegando).
+  if (!test) return cargando ? null : <Navigate to="/evaluaciones" replace />
   return <TestDinamicoDashboard test={test} onBack={onBack} />
 }
 
@@ -25,6 +27,11 @@ function TestDinamicoRoute({ onBack }: { onBack: () => void }) {
 export function EvaluacionesRoutes() {
   const navigate = useNavigate()
   const volver = useCallback(() => navigate('/evaluaciones'), [navigate])
+  const fetchEvaluaciones = useEvaluacionesDinamicasStore((s) => s.fetchEvaluaciones)
+  // NordBord y los tests dinámicos viven en Supabase: se leen al entrar al Hub (y cubre también las rutas hijas, Perfil 360° incluido).
+  useEffect(() => {
+    void fetchEvaluaciones()
+  }, [fetchEvaluaciones])
   return (
     <>
       <EvaluacionesHub />

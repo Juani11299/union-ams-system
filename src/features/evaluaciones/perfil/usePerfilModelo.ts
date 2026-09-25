@@ -1,23 +1,24 @@
 import { useEffect, useMemo } from 'react'
 import { rosterDesdeAntropometrias } from '@/features/nordbord/roster'
-import { ingest } from '@/features/nordbord/parser'
+import { datasetDesdeFilas } from '@/features/nordbord/parser'
 import { useAppStore } from '@/store/useAppStore'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
-import { useNordBordStore } from '@/stores/useNordBordStore'
-import { useTestsDinamicosStore } from '@/stores/useTestsDinamicosStore'
+import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
+import { TEST_NORDBORD, testsDesdeFilas } from '../dinamicas'
 import { construirModelo } from './datos'
 
 /**
  * Junta todas las fuentes del Perfil de Atleta 360° (NordBord, ForceDecks/CMJ,
- * Antropometrías y tests dinámicos) en un `ModeloPerfil`. Dispara la carga de
- * antropometrías (peso/categoría para el cruce de identidades).
+ * Antropometrías y tests dinámicos) en un `ModeloPerfil`. NordBord y los tests
+ * dinámicos vienen de `dynamic_evaluations` (Supabase): la carga la dispara
+ * `EvaluacionesRoutes` al entrar al Hub. Acá se dispara la de antropometrías
+ * (peso/categoría para el cruce de identidades).
  */
 export function usePerfilModelo() {
-  const csv = useNordBordStore((s) => s.csv)
+  const filas = useEvaluacionesDinamicasStore((s) => s.filas)
   const cmj = useAppStore((s) => s.performanceEvaluations)
   const antropo = useAntropometriasStore((s) => s.mediciones)
   const fetchAntropometrias = useAntropometriasStore((s) => s.fetchAntropometrias)
-  const custom = useTestsDinamicosStore((s) => s.tests)
 
   useEffect(() => {
     void fetchAntropometrias()
@@ -25,10 +26,10 @@ export function usePerfilModelo() {
 
   const roster = useMemo(() => rosterDesdeAntropometrias(antropo), [antropo])
   const nordbord = useMemo(() => {
-    if (!csv) return null
-    const r = ingest(csv.texto, csv.nombre, roster)
-    return r.ok ? r.data : null
-  }, [csv, roster])
+    const nb = filas.filter((f) => f.test_name === TEST_NORDBORD)
+    return nb.length ? datasetDesdeFilas(nb, roster) : null
+  }, [filas, roster])
+  const custom = useMemo(() => testsDesdeFilas(filas), [filas])
 
   return useMemo(() => construirModelo({ roster, nordbord, cmj, antropo, custom }), [roster, nordbord, cmj, antropo, custom])
 }

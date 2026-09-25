@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
-import { useNordBordStore } from '@/stores/useNordBordStore'
+import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
+import { useSoloLectura } from '@/hooks/useSoloLectura'
+import { TEST_NORDBORD } from '@/features/evaluaciones/dinamicas'
 import { useToastStore } from '@/store/useToastStore'
 import { METRICS } from './constants'
 import { buildCatRef, catOrder, fdate, fmt, MONTHS, monthKey, ok, poolFor } from './calculations'
-import { ingest } from './parser'
+import { datasetDesdeFilas, filasNordBordDesdeCsv } from './parser'
 import { rosterDesdeAntropometrias } from './roster'
 import { DatosTab } from './DatosTab'
 import { GrupalTab } from './GrupalTab'
@@ -60,19 +62,24 @@ const MESES_LARGO = MONTHS
  * de asimetrías 10/20 %, comparativa vs. test anterior), ahora con estado de
  * React (`useState`/`useMemo`) y gráficos Recharts.
  *
- * Datos: el CSV de NordBord se sube acá (se guarda crudo en IndexedDB,
- * `useNordBordStore`); categoría y peso salen de la última antropometría del
- * club (`useAntropometriasStore` → Supabase), ya no de una tabla embebida.
+ * Datos: el CSV de NordBord se sube acá y se guarda en Supabase (tabla
+ * `dynamic_evaluations`, test 'NordBord', métricas en JSONB — ver
+ * `useEvaluacionesDinamicasStore`); el dashboard lee de ahí, así que lo ve todo
+ * el Staff desde cualquier dispositivo. Categoría y peso salen de la última
+ * antropometría del club (`useAntropometriasStore` → Supabase).
  */
 export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: { onBack: () => void; backLabel?: string }) {
-  const csv = useNordBordStore((s) => s.csv)
-  const setCsv = useNordBordStore((s) => s.setCsv)
+  const filasDb = useEvaluacionesDinamicasStore((s) => s.filas)
+  const cargandoDb = useEvaluacionesDinamicasStore((s) => s.cargando)
+  const errorDb = useEvaluacionesDinamicasStore((s) => s.error)
+  const guardarTest = useEvaluacionesDinamicasStore((s) => s.guardarTest)
+  const soloLectura = useSoloLectura()
   const showToast = useToastStore((s) => s.showToast)
   const mediciones = useAntropometriasStore((s) => s.mediciones)
   const fetchAntropometrias = useAntropometriasStore((s) => s.fetchAntropometrias)
 
   const rootRef = useRef<HTMLDivElement>(null)
-  const [hidratado, setHidratado] = useState(() => useNordBordStore.persist.hasHydrated())
+  const [guardando, setGuardando] = useState(false)
   const [vista, setVista] = useState<Vista>('dt')
   const [winSel, setWinSel] = useState<string | null>(null)
   const [catSel, setCatSel] = useState('all')
@@ -81,13 +88,6 @@ export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: {
   const [sel, setSel] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const [arrastrando, setArrastrando] = useState(false)
-
-  // El CSV vive en IndexedDB (asíncrono): no se muestra el estado vacío hasta terminar de leerlo.
-  useEffect(() => {
-    const off = useNordBordStore.persist.onFinishHydration(() => setHidratado(true))
-    if (useNordBordStore.persist.hasHydrated()) setHidratado(true)
-    return off
-  }, [])
 
   // Trae las antropometrías (peso + categoría) para el cruce; sin sesión/datos, el dashboard igual funciona.
   useEffect(() => {
@@ -121,8 +121,9 @@ export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: {
   }, [])
 
   const roster = useMemo(() => rosterDesdeAntropometrias(mediciones), [mediciones])
-  const resultado = useMemo(() => (csv ? ingest(csv.texto, csv.nombre, roster) : null), [csv, roster])
-  const data = resultado?.ok ? resultado.data : null
+  const filasNb = useMemo(() => filasDb.filter((f) => f.test_name === TEST_NORDBORD), [filasDb])
+  const data = useMemo(() => (filasNb.length ? datasetDesdeFilas(filasNb, roster) : null), [filasNb, roster])
+  const hidratado = !cargandoDb || filasDb.length > 0
 
   // ── ventanas de evaluación
   const ventanas = useMemo(() => {
@@ -173,20 +174,30 @@ export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: {
   }
 
   async function cargarArchivo(f: File) {
+    if (soloLectura || guardando) return
+    setGuardando(true)
     try {
-      const texto = await f.text()
-      const r = ingest(texto, f.name, roster)
+      const r = filasNordBordDesdeCsv(await f.text())
       if (!r.ok) {
         showToast('error', r.error)
         return
       }
-      setCsv(f.name, texto)
+      if (r.filas.length === 0) {
+        showToast('error', 'El archivo no tiene tests válidos (fuerza izquierda y derecha > 0 y fecha).')
+        return
+      }
+      // Categoría de cada fila: la que resulta del cruce con la última antropometría (o "Sin categoría").
+      const previo = datasetDesdeFilas(r.filas.map((x) => ({ ...x, category_label: 'Sin categoría', test_config: {} })), roster)
+      const filas = r.filas.map((x) => ({ ...x, category_label: previo.athletes[x.player_key]?.cat ?? 'Sin categoría', test_config: {} }))
+      const { guardadas } = await guardarTest(TEST_NORDBORD, filas, { archivo: f.name, descartados: r.descartados, cargado_en: new Date().toISOString() })
       setWinSel(null)
       setSel(null)
       setMetSel(null)
-      showToast('success', `${f.name}: ${r.data.tests.length} tests de ${Object.keys(r.data.athletes).length} atletas.`)
-    } catch {
-      showToast('error', 'No se pudo leer el archivo.')
+      showToast('success', `${f.name}: ${guardadas} evaluaciones guardadas en Supabase (${Object.keys(previo.athletes).length} atletas).`)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'No se pudo guardar el archivo.')
+    } finally {
+      setGuardando(false)
     }
   }
 
@@ -217,29 +228,33 @@ export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: {
   )
 
   const selectorArchivo = (
-    <label className="btn no-print" title="Cargar otro export de NordBord (.csv)">
+    <label className="btn no-print" title="Cargar otro export de NordBord (.csv)" style={guardando ? { opacity: 0.6, pointerEvents: 'none' } : undefined}>
       <Svg>
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
       </Svg>
-      Cargar CSV
+      {guardando ? 'Guardando…' : 'Cargar CSV'}
       <input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void cargarArchivo(f); e.target.value = '' }} />
     </label>
   )
 
   const cuerpo = !hidratado ? (
     <div className="empty">Cargando…</div>
-  ) : !csv || !data ? (
+  ) : !data ? (
     <div className="card mt" style={{ maxWidth: 720, margin: '40px auto' }}>
       <h3>Dashboard NordBord</h3>
-      {resultado && !resultado.ok ? (
-        <p className="hint" style={{ color: 'var(--r-tx)' }}>{resultado.error}</p>
+      {errorDb ? (
+        <p className="hint" style={{ color: 'var(--r-tx)' }}>
+          ⚠️ {errorDb} Los tests de NordBord viven en Supabase y sólo los ve el Staff con sesión iniciada.
+        </p>
       ) : (
-        <p className="hint">Todavía no hay ningún export cargado. Subí el CSV de NordBord para armar el tablero.</p>
+        <p className="hint">Todavía no hay ningún export cargado. {soloLectura ? '' : 'Subí el CSV de NordBord para armar el tablero.'}</p>
       )}
-      <label className={`drop ${arrastrando ? 'over' : ''}`} style={{ display: 'block', cursor: 'pointer' }}>
-        Arrastrá acá el export de NordBord (.csv, separador , o ;) o tocá para elegirlo.
-        <input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void cargarArchivo(f); e.target.value = '' }} />
-      </label>
+      {!soloLectura && (
+        <label className={`drop ${arrastrando ? 'over' : ''}`} style={{ display: 'block', cursor: 'pointer' }}>
+          Arrastrá acá el export de NordBord (.csv, separador , o ;) o tocá para elegirlo. Se guarda en Supabase.
+          <input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void cargarArchivo(f); e.target.value = '' }} />
+        </label>
+      )}
       <p className="note">
         Se reconocen solas las columnas de fuerza, torque e impulso izquierda/derecha. Categoría y peso corporal se toman de la última antropometría cargada en el club.
       </p>
@@ -299,7 +314,7 @@ export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: {
       )}
       {vista === 'group' && <GrupalTab data={data} win={win} cat={cat} pos={pos} met={met} winLabel={winLabel} printing={printing} openAthlete={openAthlete} />}
       {vista === 'ind' && <IndividualTab data={data} win={win} cat={cat} pos={pos} catRef={catRef} sel={sel} onSel={setSel} printing={printing} />}
-      {vista === 'data' && <DatosTab data={data} win={win} cat={cat} pos={pos} met={met} catRef={catRef} onFile={(f) => void cargarArchivo(f)} arrastrando={arrastrando} />}
+      {vista === 'data' && <DatosTab data={data} win={win} cat={cat} pos={pos} met={met} catRef={catRef} onFile={(f) => void cargarArchivo(f)} arrastrando={arrastrando} puedeCargar={!soloLectura} />}
     </>
   )
 
@@ -349,7 +364,7 @@ export function NordBordDashboard({ onBack, backLabel = '⬅ Volver atrás' }: {
               Último test {fdate(ultimo)}
             </div>
           )}
-          {selectorArchivo}
+          {!soloLectura && selectorArchivo}
           {data && vista !== 'dt' && botonImprimir}
         </header>
 

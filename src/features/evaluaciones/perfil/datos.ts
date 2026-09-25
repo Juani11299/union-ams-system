@@ -4,7 +4,7 @@ import { poolFor } from '@/features/nordbord/calculations'
 import { matchRoster, tokenizarRoster } from '@/features/nordbord/roster'
 import type { Dataset, RosterEntry } from '@/features/nordbord/types'
 import type { PerformanceEvaluation } from '@/types'
-import type { TestDinamico } from '@/stores/useTestsDinamicosStore'
+import type { TestDinamico } from '../dinamicas'
 import { normalizarNombre } from '@/utils/smartEntityMatcher'
 
 /**

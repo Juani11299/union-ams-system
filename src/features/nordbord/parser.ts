@@ -1,12 +1,24 @@
 import { MANUAL_MATCH, POSITIONS } from './constants'
-import { norm, symScore } from './calculations'
+import { symScore } from './calculations'
 import { matchRoster, tokenizarRoster } from './roster'
-import type { Dataset, InfoColumnas, NbAthlete, NbTest, RosterEntry } from './types'
+import { TEST_NORDBORD } from '@/features/evaluaciones/dinamicas'
+import type { FilaEvaluacionDinamica, ValorMetrica } from '@/features/evaluaciones/dinamicas'
+import { normalizarNombre } from '@/utils/smartEntityMatcher'
+import type { Dataset, NbAthlete, NbTest, RosterEntry } from './types'
 
 /**
- * Smart Parsing del export de NordBord (portado del HTML). Reconoce columnas por
- * nombre, separador `,` o `;`, fecha MM/DD/YYYY, y cruza cada atleta con el roster
- * (ficha antropométrica) para obtener categoría y peso corporal.
+ * Smart Parsing del export de NordBord (portado del HTML) en dos etapas:
+ *
+ * 1. `filasNordBordDesdeCsv` — CSV → filas de `dynamic_evaluations` (un jugador
+ *    por fecha, TODAS las columnas numéricas en crudo dentro de `metrics`).
+ *    Reconoce columnas por nombre, separador `,` o `;` y fecha MM/DD/YYYY.
+ * 2. `datasetDesdeFilas` — filas (leídas de Supabase) → `Dataset` del dashboard:
+ *    cruza cada atleta con el roster (ficha antropométrica) para obtener categoría
+ *    y peso corporal y calcula las métricas derivadas.
+ *
+ * Como la tabla tiene UNIQUE (test_name, player_key, fecha), si un jugador tiene
+ * varios intentos el mismo día se guarda el MEJOR (mayor fuerza media) — es el
+ * mismo intento que el dashboard ya tomaba para ese día.
  */
 
 interface CsvParseado {
@@ -54,7 +66,7 @@ export function parseCSV(textoOriginal: string): CsvParseado {
 const IGNORE_RE = /^(dni|at_id|test_id|externalid|tags|fec nac|notes|device|test|time utc|l reps|r reps)$/i
 
 /** Fecha del CSV. NordBord exporta MM/DD/YYYY; si el primer número > 12 se interpreta DD/MM. */
-function pDate(ds: string, ts: string): Date | null {
+export function pDate(ds: string, ts: string): Date | null {
   const m = ds.match(/(\d{1,4})[/\-.](\d{1,2})[/\-.](\d{2,4})/)
   if (!m) return null
   const a = +m[1]
@@ -89,14 +101,107 @@ function pDate(ds: string, ts: string): Date | null {
   return new Date(y, mo - 1, da, h, mi)
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1) CSV → filas de dynamic_evaluations
+// ─────────────────────────────────────────────────────────────────────────────
+
+const isoDeFecha = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** Fila lista para guardar; la categoría la completa el dashboard con el cruce contra las antropometrías. */
+export type FilaNordBordNueva = Omit<FilaEvaluacionDinamica, 'test_config' | 'category_label' | 'id'>
+
+export type ResultadoCsvNordBord =
+  | { ok: true; filas: FilaNordBordNueva[]; descartados: number; nRows: number }
+  | { ok: false; error: string }
+
+export function filasNordBordDesdeCsv(text: string): ResultadoCsvNordBord {
+  const P = parseCSV(text)
+  const H = P.header
+  const fi = (re: RegExp) => H.findIndex((h) => re.test(h))
+  const col = {
+    name: fi(/^(name|jugador|nombre|athlete)$/i),
+    date: fi(/^(date utc|fecha|date)$/i),
+    time: fi(/^time/i),
+    device: fi(/^device$/i),
+    cat: fi(/^(cat|categor[ií]a|a[ñn]o|divisi[oó]n)$/i),
+    pos: fi(/^(pos|posici[oó]n|position)$/i),
+    bw: fi(/^(bw( \[kg\])?|peso|body ?weight|body ?mass)/i),
+    LF: fi(/^L Max Force \(N\)$/i),
+    RF: fi(/^R Max Force \(N\)$/i),
+  }
+  if (col.name < 0 || col.LF < 0 || col.RF < 0) {
+    return {
+      ok: false,
+      error: 'Formato no reconocido: se esperaba un export de NordBord con columnas "Name", "L Max Force (N)" y "R Max Force (N)".',
+    }
+  }
+  const num = (r: string[], i: number): number | null => {
+    if (i < 0) return null
+    let s = (r[i] ?? '').trim()
+    if (!s) return null
+    if (P.sep === ';') s = s.replace(/\./g, '').replace(',', '.')
+    const v = parseFloat(s)
+    return Number.isFinite(v) ? v : null
+  }
+  const str = (r: string[], i: number): string => (i < 0 ? '' : (r[i] ?? '').trim())
+
+  // Columnas de métricas: todas las numéricas que no son metadatos ni identificadores.
+  const metaIdx = new Set([col.name, col.date, col.time, col.cat, col.pos, col.bw, col.device].filter((i) => i >= 0))
+  const metricasIdx = H.map((h, i) => ({ h, i })).filter(({ h, i }) => !metaIdx.has(i) && !IGNORE_RE.test(h) && P.rows.some((r) => num(r, i) != null))
+
+  const mejorPorClave = new Map<string, FilaNordBordNueva & { _fuerza: number }>()
+  let descartados = 0
+  for (const r of P.rows) {
+    const name = str(r, col.name).replace(/\s+/g, ' ')
+    const L = num(r, col.LF)
+    const R = num(r, col.RF)
+    const date = pDate(str(r, col.date), str(r, col.time))
+    if (!name || !((L ?? 0) > 0) || !((R ?? 0) > 0) || !date) {
+      descartados++
+      continue
+    }
+    const metrics: Record<string, ValorMetrica> = {}
+    for (const { h, i } of metricasIdx) {
+      const v = num(r, i)
+      if (v !== null) metrics[h] = v
+    }
+    const dev = str(r, col.device)
+    const time = str(r, col.time)
+    const cat = str(r, col.cat)
+    const pos = str(r, col.pos)
+    const bw = num(r, col.bw)
+    if (dev) metrics._device = dev
+    if (time) metrics._time = time
+    if (cat) metrics._cat = cat
+    if (pos) metrics._pos = pos
+    if (bw !== null) metrics._bw = bw
+
+    const player_key = normalizarNombre(name)
+    const fecha = isoDeFecha(date)
+    const clave = `${player_key}|${fecha}`
+    const fuerza = ((L as number) + (R as number)) / 2
+    const previa = mejorPorClave.get(clave)
+    if (previa) descartados++ // intento repetido del mismo día: queda el mejor
+    if (!previa || fuerza > previa._fuerza) mejorPorClave.set(clave, { test_name: TEST_NORDBORD, player_name: name, player_key, fecha, metrics, _fuerza: fuerza })
+  }
+  const filas = [...mejorPorClave.values()].map(({ _fuerza: _f, ...f }) => f)
+  return { ok: true, filas, descartados, nRows: P.rows.length }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2) filas de dynamic_evaluations → Dataset del dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+
 type Cruda = Omit<
   NbTest,
   | 'forceMean' | 'weakF' | 'strongF' | 'asym' | 'asymAbs' | 'weakSide' | 'torque' | 'avgForce' | 'impulse' | 'impAsymAbs'
   | 'forceRel' | 'torqueRel' | 'sym' | 'bw' | 'ath'
->
+> & { catRespaldo: string }
 
 /** Métricas derivadas de un test según el peso corporal del atleta. */
 function derive(c: Cruda, a: NbAthlete): NbTest {
+  const { catRespaldo: _r, ...base } = c
   const bw = a.bw || null
   const forceMean = (c.L + c.R) / 2
   const asymAbs = Math.abs(c.imb)
@@ -104,7 +209,7 @@ function derive(c: Cruda, a: NbAthlete): NbTest {
   const avgForce = c.LA != null && c.RA != null ? (c.LA + c.RA) / 2 : null
   const impulse = c.LI != null && c.RI != null ? (c.LI + c.RI) / 2 : null
   return {
-    ...c,
+    ...base,
     forceMean,
     weakF: Math.min(c.L, c.R),
     strongF: Math.max(c.L, c.R),
@@ -123,85 +228,37 @@ function derive(c: Cruda, a: NbAthlete): NbTest {
   }
 }
 
-export type ResultadoIngest = { ok: true; data: Dataset } | { ok: false; error: string }
+/** Valor numérico de la primera clave de `metrics` que calce con el patrón. */
+function metrica(m: Record<string, ValorMetrica>, re: RegExp): number | null {
+  const k = Object.keys(m).find((x) => re.test(x))
+  const v = k ? m[k] : null
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
+}
+const texto = (v: ValorMetrica | undefined): string => (typeof v === 'string' ? v : '')
 
-export function ingest(text: string, fileName: string, roster: RosterEntry[]): ResultadoIngest {
-  const P = parseCSV(text)
-  const H = P.header
-  const fi = (re: RegExp) => H.findIndex((h) => re.test(h))
-  const col = {
-    name: fi(/^(name|jugador|nombre|athlete)$/i),
-    date: fi(/^(date utc|fecha|date)$/i),
-    time: fi(/^time/i),
-    device: fi(/^device$/i),
-    cat: fi(/^(cat|categor[ií]a|a[ñn]o|divisi[oó]n)$/i),
-    pos: fi(/^(pos|posici[oó]n|position)$/i),
-    bw: fi(/^(bw( \[kg\])?|peso|body ?weight|body ?mass)/i),
-    LF: fi(/^L Max Force \(N\)$/i),
-    RF: fi(/^R Max Force \(N\)$/i),
-    imb: fi(/^Max Imbalance/i),
-    LT: fi(/^L Max Torque \(Nm\)$/i),
-    RT: fi(/^R Max Torque \(Nm\)$/i),
-    LA: fi(/^L Avg Force \(N\)$/i),
-    RA: fi(/^R Avg Force \(N\)$/i),
-    LI: fi(/^L Max Impulse \(Ns\)$/i),
-    RI: fi(/^R Max Impulse \(Ns\)$/i),
-    iimb: fi(/^Impulse Imbalance/i),
-    Lkg: fi(/^L Max Force Per Kg/i),
-    Rkg: fi(/^R Max Force Per Kg/i),
-  }
-  if (col.name < 0 || col.LF < 0 || col.RF < 0) {
-    return {
-      ok: false,
-      error: 'Formato no reconocido: se esperaba un export de NordBord con columnas "Name", "L Max Force (N)" y "R Max Force (N)".',
-    }
-  }
-  const num = (r: string[], i: number): number | null => {
-    if (i < 0) return null
-    let s = (r[i] ?? '').trim()
-    if (!s) return null
-    if (P.sep === ';') s = s.replace(/\./g, '').replace(',', '.')
-    const v = parseFloat(s)
-    return Number.isFinite(v) ? v : null
-  }
-  const str = (r: string[], i: number): string => (i < 0 ? '' : (r[i] ?? '').trim())
-
-  // clasificación de columnas
-  const colInfo: InfoColumnas = { meta: [], ignored: [], metrics: [], empty: [] }
-  const metaIdx = new Set([col.name, col.date, col.time, col.cat, col.pos, col.bw].filter((i) => i >= 0))
-  H.forEach((h, i) => {
-    if (metaIdx.has(i)) colInfo.meta.push(h)
-    else if (IGNORE_RE.test(h)) colInfo.ignored.push(h)
-    else {
-      const filled = P.rows.filter((r) => num(r, i) != null).length
-      ;(filled ? colInfo.metrics : colInfo.empty).push(h)
-    }
-  })
-
+/** Reconstruye el `Dataset` del dashboard a partir de las filas del test 'NordBord' (JSONB). */
+export function datasetDesdeFilas(filas: FilaEvaluacionDinamica[], roster: RosterEntry[]): Dataset {
   const crudos: Cruda[] = []
-  const invalid: Dataset['invalid'] = []
-  P.rows.forEach((r, ri) => {
-    const name = str(r, col.name).replace(/\s+/g, ' ')
-    const L = num(r, col.LF)
-    const R = num(r, col.RF)
-    const date = pDate(str(r, col.date), str(r, col.time))
-    if (!name || !((L ?? 0) > 0) || !((R ?? 0) > 0) || !date) {
-      invalid.push({ name: name || '(sin nombre)', date, why: !((L ?? 0) > 0 && (R ?? 0) > 0) ? 'Fuerza = 0 (test no válido)' : 'Fecha inválida' })
-      return
-    }
-    const l = L as number
-    const rr = R as number
-    let imb = num(r, col.imb)
-    if (imb == null) imb = ((rr - l) / Math.max(l, rr)) * 100
-    const LI = num(r, col.LI)
-    const RI = num(r, col.RI)
-    let iimb = num(r, col.iimb)
+  filas.forEach((f, id) => {
+    const m = f.metrics
+    const L = metrica(m, /^L Max Force \(N\)$/i)
+    const R = metrica(m, /^R Max Force \(N\)$/i)
+    if (L === null || R === null || L <= 0 || R <= 0) return
+    const [y, mo, d] = f.fecha.split('-').map(Number)
+    let imb = metrica(m, /^Max Imbalance/i)
+    if (imb == null) imb = ((R - L) / Math.max(L, R)) * 100
+    const LI = metrica(m, /^L Max Impulse \(Ns\)$/i)
+    const RI = metrica(m, /^R Max Impulse \(Ns\)$/i)
+    let iimb = metrica(m, /^Impulse Imbalance/i)
     if (iimb == null && LI && RI) iimb = ((RI - LI) / Math.max(LI, RI)) * 100
+    const bw = m._bw
     crudos.push({
-      id: ri, name, key: norm(name), date, device: str(r, col.device),
-      csvCat: str(r, col.cat), csvPos: str(r, col.pos), csvBw: num(r, col.bw),
-      L: l, R: rr, LT: num(r, col.LT), RT: num(r, col.RT), LA: num(r, col.LA), RA: num(r, col.RA), LI, RI,
-      imb, iimb, Lkg: num(r, col.Lkg), Rkg: num(r, col.Rkg),
+      id, name: f.player_name, key: f.player_key, date: new Date(y, mo - 1, d), device: texto(m._device),
+      csvCat: texto(m._cat), csvPos: texto(m._pos), csvBw: typeof bw === 'number' ? bw : null,
+      L, R, LT: metrica(m, /^L Max Torque \(Nm\)$/i), RT: metrica(m, /^R Max Torque \(Nm\)$/i),
+      LA: metrica(m, /^L Avg Force \(N\)$/i), RA: metrica(m, /^R Avg Force \(N\)$/i), LI, RI,
+      imb, iimb, Lkg: metrica(m, /^L Max Force Per Kg/i), Rkg: metrica(m, /^R Max Force Per Kg/i),
+      catRespaldo: f.category_label,
     })
   })
 
@@ -248,7 +305,9 @@ export function ingest(text: string, fileName: string, roster: RosterEntry[]): R
         match.none.push(a.name)
       }
     }
-    a.cat = a.cat || 'Sin categoría'
+    // Sin cruce con la ficha antropométrica: cae a la categoría que quedó guardada en la fila.
+    const respaldo = ordenados[ordenados.length - 1].catRespaldo
+    a.cat = a.cat || (respaldo && respaldo !== 'Sin categoría' ? respaldo : '') || 'Sin categoría'
     a.pos = POSITIONS[a.name] || ordenados.map((t) => t.csvPos).filter(Boolean).pop() || null
     for (const c of ordenados) {
       const t = derive(c, a)
@@ -257,14 +316,28 @@ export function ingest(text: string, fileName: string, roster: RosterEntry[]): R
     }
     athletes[key] = a
   }
-  // `tests` conserva el orden del archivo, igual que el HTML original.
   for (const c of crudos) {
     const t = porId.get(c.id)
     if (t) tests.push(t)
   }
 
+  const claves = [...new Set(filas.flatMap((f) => Object.keys(f.metrics)))]
+  const archivo = filas.map((f) => f.test_config.archivo).filter(Boolean).pop() ?? ''
   return {
-    ok: true,
-    data: { tests, athletes, colInfo, invalid, match, sep: P.sep, nRows: P.rows.length, nCols: H.length, fileName, rosterSize: roster.length },
+    tests,
+    athletes,
+    colInfo: {
+      meta: ['Name', 'Date UTC', 'Device', ...claves.filter((k) => k.startsWith('_')).map((k) => k.slice(1))],
+      ignored: [],
+      metrics: claves.filter((k) => !k.startsWith('_')),
+      empty: [],
+    },
+    invalid: [],
+    match,
+    origen: archivo ? `Supabase · ${archivo}` : 'Supabase · dynamic_evaluations',
+    descartados: filas.reduce((mx, f) => Math.max(mx, f.test_config.descartados ?? 0), 0),
+    nRows: filas.length,
+    nCols: claves.filter((k) => !k.startsWith('_')).length,
+    rosterSize: roster.length,
   }
 }

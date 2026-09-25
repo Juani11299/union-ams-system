@@ -13,6 +13,7 @@ interface Props {
   catRef: CatRef
   onFile: (f: File) => void
   arrastrando: boolean
+  puedeCargar: boolean
 }
 
 type ColKey = 'name' | 'cat' | 'pos' | 'date' | 'bw' | 'L' | 'R' | 'asymAbs' | 'weakSide' | 'forceMean' | 'forceRel' | 'torqueRel' | '_z' | '_p'
@@ -33,7 +34,7 @@ const valDe = (t: NbRow, k: ColKey): string | number | Date | null =>
   k === 'cat' ? t.ath.cat : k === 'pos' ? t.ath.pos : k === 'bw' ? t.bw : (t[k as keyof NbRow] as string | number | Date | null)
 
 /** Datos & Calidad — smart parsing del archivo, cruce con la ficha antropométrica y base procesada. */
-export function DatosTab({ data: D, win, cat, pos, met, catRef, onFile, arrastrando }: Props) {
+export function DatosTab({ data: D, win, cat, pos, met, catRef, onFile, arrastrando, puedeCargar }: Props) {
   const [sort, setSort] = useState<{ k: ColKey; dir: 1 | -1 }>({ k: 'forceMean', dir: -1 })
   const ci = D.colInfo
   const mt = D.match
@@ -71,17 +72,13 @@ export function DatosTab({ data: D, win, cat, pos, met, catRef, onFile, arrastra
         <div className="card">
           <h3>Smart Parsing del archivo</h3>
           <p className="hint">
-            Archivo <b>{D.fileName}</b> · separador <b>"{D.sep}"</b> · UTF-8 · {D.nRows} filas × {D.nCols} columnas · <b>{D.tests.length}</b> tests válidos de <b>{n}</b> atletas · {D.invalid.length} descartados.
+            Origen <b>{D.origen}</b> · {D.nRows} registros × {D.nCols} métricas · <b>{D.tests.length}</b> tests válidos de <b>{n}</b> atletas · {D.descartados} fila(s) del archivo descartadas al importar (sin datos válidos o intentos repetidos del mismo día: se guarda el mejor).
           </p>
           <p className="note" style={{ margin: '0 0 6px' }}><b>Metadatos detectados</b></p>
           <Chips items={ci.meta} />
           <p className="note" style={{ margin: '12px 0 6px' }}><b>Métricas de rendimiento con datos</b> ({ci.metrics.length})</p>
           <Chips items={ci.metrics} cls="m" />
-          <p className="note" style={{ margin: '12px 0 6px' }}><b>Ignoradas en selectores</b> (IDs / administrativas)</p>
-          <Chips items={ci.ignored} cls="x" />
-          <p className="note" style={{ margin: '12px 0 6px' }}><b>Columnas vacías en este export</b> ({ci.empty.length}) — p. ej. RFD y "Per Kg" requieren peso cargado en la plataforma</p>
-          <Chips items={ci.empty.slice(0, 12).concat(ci.empty.length > 12 ? [`+${ci.empty.length - 12} más`] : [])} cls="x" />
-          {D.invalid.length > 0 && (
+                    {D.invalid.length > 0 && (
             <>
               <p className="note" style={{ margin: '12px 0 6px' }}><b>Tests descartados</b></p>
               <Chips items={D.invalid.map((i) => `${i.name} · ${fdate(i.date)} · ${i.why}`)} />
@@ -113,10 +110,12 @@ export function DatosTab({ data: D, win, cat, pos, met, catRef, onFile, arrastra
           )}
           <p className="note" style={{ margin: '12px 0 6px' }}><b>Sin ficha antropométrica</b> ({mt.none.length}) → "Sin categoría", sin métricas relativas</p>
           <Chips items={mt.none} />
-          <label className={`drop mt no-print ${arrastrando ? 'over' : ''}`} style={{ display: 'block', cursor: 'pointer' }}>
-            Arrastrá acá un nuevo export de NordBord (.csv, separador , o ;) o tocá para elegirlo, y se recalcula todo el tablero.
-            <input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }} />
-          </label>
+          {puedeCargar ? (
+            <label className={`drop mt no-print ${arrastrando ? 'over' : ''}`} style={{ display: 'block', cursor: 'pointer' }}>
+              Arrastrá acá un nuevo export de NordBord (.csv, separador , o ;) o tocá para elegirlo: se guarda en Supabase y se recalcula el tablero. Si un jugador ya tenía ese día, se actualiza.
+              <input type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }} />
+            </label>
+          ) : null}
         </div>
       </div>
 

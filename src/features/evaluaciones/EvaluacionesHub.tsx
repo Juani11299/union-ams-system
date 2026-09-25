@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSoloLectura } from '@/hooks/useSoloLectura'
 import { useAppStore } from '@/store/useAppStore'
-import { useNordBordStore } from '@/stores/useNordBordStore'
-import { useTestsDinamicosStore } from '@/stores/useTestsDinamicosStore'
+import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
+import { useToastStore } from '@/store/useToastStore'
+import { getErrorMessage } from '@/utils/errors'
+import { TEST_NORDBORD, testsDesdeFilas } from './dinamicas'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { SubirTestModal } from './SubirTestModal'
 
@@ -62,12 +64,21 @@ function Tarjeta({ icono, titulo, descripcion, detalle, onClick, acento, onElimi
 export function EvaluacionesHub() {
   const navigate = useNavigate()
   const soloLectura = useSoloLectura()
-  const csv = useNordBordStore((s) => s.csv)
+  const filas = useEvaluacionesDinamicasStore((s) => s.filas)
+  const cargando = useEvaluacionesDinamicasStore((s) => s.cargando)
+  const error = useEvaluacionesDinamicasStore((s) => s.error)
+  const fetchEvaluaciones = useEvaluacionesDinamicasStore((s) => s.fetchEvaluaciones)
+  const eliminarTest = useEvaluacionesDinamicasStore((s) => s.eliminarTest)
+  const showToast = useToastStore((s) => s.showToast)
   const cmj = useAppStore((s) => s.performanceEvaluations)
-  const tests = useTestsDinamicosStore((s) => s.tests)
-  const eliminar = useTestsDinamicosStore((s) => s.eliminar)
+  const tests = useMemo(() => testsDesdeFilas(filas), [filas])
+  const nordbord = useMemo(() => {
+    const nb = filas.filter((f) => f.test_name === TEST_NORDBORD)
+    return { filas: nb.length, jugadores: new Set(nb.map((f) => f.player_key)).size, ultima: nb.reduce((m, f) => (f.fecha > m ? f.fecha : m), ''), archivo: nb.map((f) => f.test_config.archivo).filter(Boolean).pop() ?? '' }
+  }, [filas])
   const [subiendo, setSubiendo] = useState(false)
   const [aBorrar, setABorrar] = useState<string | null>(null)
+  const [borrando, setBorrando] = useState(false)
 
   const cmjJugadores = new Set(cmj.map((e) => e.playerKey)).size
   const cmjUltima = cmj.reduce((m, e) => (e.fecha > m ? e.fecha : m), '')
@@ -91,6 +102,17 @@ export function EvaluacionesHub() {
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+          <span>
+            ⚠️ {error} NordBord y los tests propios se guardan en Supabase y sólo los ve el Staff con sesión iniciada.
+          </span>
+          <button type="button" onClick={() => void fetchEvaluaciones()} className="rounded-lg bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700">
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* Tarjeta maestra */}
       <button
@@ -122,7 +144,7 @@ export function EvaluacionesHub() {
           icono="🦵"
           titulo="NordBord (Fuerza Isométrica/Excéntrica)"
           descripcion="Curl nórdico: fuerza excéntrica de isquiotibiales, asimetrías con semáforo, Resumen DT & PF y ficha individual."
-          detalle={csv ? `📄 ${csv.nombre} · cargado ${new Date(csv.cargadoEn).toLocaleDateString('es-AR')}` : 'Sin export cargado — subí el CSV adentro'}
+          detalle={nordbord.filas ? `${nordbord.filas} evaluaciones · ${nordbord.jugadores} jugadores · último test ${nordbord.ultima}${nordbord.archivo ? ` · 📄 ${nordbord.archivo}` : ''}` : cargando ? 'Cargando desde Supabase…' : 'Sin export cargado — subí el CSV adentro'}
           acento="bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
           onClick={() => navigate('/evaluaciones/nordbord')}
         />
@@ -140,9 +162,9 @@ export function EvaluacionesHub() {
             icono={t.icono}
             titulo={t.nombre}
             descripcion={`Test propio · ${t.metricas.length} métricas detectadas en ${t.archivo}.`}
-            detalle={`${t.filas.length} evaluaciones · ${new Set(t.filas.map((f) => f.jugador)).size} jugadores · creado ${new Date(t.creadoEn).toLocaleDateString('es-AR')}`}
+            detalle={`${t.filas.length} evaluaciones · ${new Set(t.filas.map((f) => f.jugador)).size} jugadores${t.creadoEn ? ` · cargado ${new Date(t.creadoEn).toLocaleDateString('es-AR')}` : ''}`}
             acento="bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300"
-            onClick={() => navigate(`/evaluaciones/test/${t.id}`)}
+            onClick={() => navigate(`/evaluaciones/test/${encodeURIComponent(t.id)}`)}
             onEliminar={soloLectura ? undefined : () => setABorrar(t.id)}
           />
         ))}
@@ -166,18 +188,26 @@ export function EvaluacionesHub() {
           onClose={() => setSubiendo(false)}
           onCreado={(id) => {
             setSubiendo(false)
-            navigate(`/evaluaciones/test/${id}`)
+            navigate(`/evaluaciones/test/${encodeURIComponent(id)}`)
           }}
         />
       )}
       {aBorrar && (
         <ConfirmDialog
           titulo="Eliminar test"
-          mensaje="Se borra el test y su tarjeta de este navegador (también deja de aparecer en el Perfil 360°). El archivo original no se toca. ¿Seguro?"
-          confirmando={false}
-          onConfirm={() => {
-            eliminar(aBorrar)
-            setABorrar(null)
+          mensaje="Se borran TODAS las evaluaciones de este test de Supabase: desaparece para todo el Staff y del Perfil 360°. El archivo original no se toca. ¿Seguro?"
+          confirmando={borrando}
+          onConfirm={async () => {
+            setBorrando(true)
+            try {
+              await eliminarTest(aBorrar)
+              showToast('success', 'Test eliminado.')
+            } catch (err) {
+              showToast('error', getErrorMessage(err, 'No se pudo eliminar el test.'))
+            } finally {
+              setBorrando(false)
+              setABorrar(null)
+            }
           }}
           onCancel={() => setABorrar(null)}
         />

@@ -90,10 +90,12 @@ export interface Dataset {
   colInfo: InfoColumnas
   invalid: Array<{ name: string; date: Date | null; why: string }>
   match: { exact: string[]; fuzzy: string[]; amb: string[]; none: string[]; csv: string[] }
-  sep: string
+  /** De dónde salen los datos (ej. "Supabase · export.csv"). */
+  origen: string
+  /** Filas del archivo descartadas al importar (sin datos válidos o intentos repetidos del día). */
+  descartados: number
   nRows: number
   nCols: number
-  fileName: string
   rosterSize: number
 }
 
