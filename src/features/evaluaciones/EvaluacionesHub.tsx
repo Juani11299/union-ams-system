@@ -71,7 +71,7 @@ export function EvaluacionesHub() {
   const fetchEvaluaciones = useEvaluacionesDinamicasStore((s) => s.fetchEvaluaciones)
   const eliminarTest = useEvaluacionesDinamicasStore((s) => s.eliminarTest)
   const showToast = useToastStore((s) => s.showToast)
-  // Tests propios (los creados con "Subir Nuevo Test"): los fijos tienen su tarjeta aparte.
+  // Tests propios (los creados con "Crear Nuevo Test"): los fijos tienen su tarjeta aparte.
   const tests = useMemo(() => testsDesdeFilas(filas).filter((t) => !TESTS_FIJOS.includes(t.id)), [filas])
   const resumen = (nombre: string) => {
     const r: FilaEvaluacionDinamica[] = filas.filter((f) => f.test_name === nombre)
@@ -93,24 +93,6 @@ export function EvaluacionesHub() {
         <div>
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">EVALUACIONES DE RENDIMIENTO</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Centro de comando: cada prueba tiene su dashboard, y el Perfil 360° las cruza todas.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate('/evaluaciones/limpieza')}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:border-union-red-400 hover:text-union-red-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            🧹 Limpieza de Datos (Data Wrangler)
-          </button>
-          {!soloLectura && (
-            <button
-              type="button"
-              onClick={() => setSubiendo(true)}
-              className="rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
-            >
-              ＋ Subir Nuevo Test
-            </button>
-          )}
         </div>
       </div>
 
@@ -199,13 +181,10 @@ export function EvaluacionesHub() {
           <button
             type="button"
             onClick={() => setSubiendo(true)}
-            className="flex min-h-[190px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-5 text-center text-slate-500 transition-colors hover:border-union-red-400 hover:bg-union-red-50/50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-union-red-500/5"
+            className="flex min-h-[140px] flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-300 p-4 text-center text-slate-400 transition-colors hover:border-union-red-400 hover:bg-union-red-50/50 hover:text-union-red-700 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-union-red-500/5"
           >
-            <span className="text-3xl" aria-hidden>
-              ＋
-            </span>
-            <span className="text-sm font-semibold">Subir Nuevo Test</span>
-            <span className="text-xs">Cargá un CSV/Excel, nombralo y se crea su tarjeta acá</span>
+            <span className="text-sm font-semibold">＋ Crear Nuevo Test</span>
+            <span className="text-xs">Para un protocolo que nunca se evaluó antes</span>
           </button>
         )}
       </div>

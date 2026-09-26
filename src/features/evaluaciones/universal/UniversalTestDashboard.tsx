@@ -229,7 +229,8 @@ export function UniversalTestDashboard({ nombre, onBack, backLabel = '⬅ Volver
 
   const zonaCarga = (
     <label className={`drop ${arrastrando ? 'over' : ''}`} style={{ display: 'block', cursor: 'pointer' }}>
-      Arrastrá acá el CSV/Excel de {nombre} o tocá para elegirlo. Se guarda en Supabase.
+      <b style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Subir nueva sesión (CSV/Excel) para {nombre}</b>
+      Arrastrá el archivo acá o tocá para elegirlo. Se asigna automáticamente a este test.
       <input type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void cargarArchivo(f); e.target.value = '' }} />
     </label>
   )

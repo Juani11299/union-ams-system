@@ -89,8 +89,8 @@ export function DatosTab({ ds, win, cat, catRef, onFile, arrastrando, puedeCarga
             <label className={`drop mt no-print ${arrastrando ? 'over' : ''}`} style={{ display: 'block', cursor: 'pointer', opacity: guardando ? 0.6 : 1 }}>
               {guardando ? 'Guardando en Supabase…' : (
                 <>
-                  <b style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Añadir Nueva Sesión de Evaluación</b>
-                  Arrastrá acá el CSV/Excel de {ds.config.nombre} o tocá para elegirlo. Cada fecha nueva se SUMA al historial de cada jugador; sólo se actualiza un registro si ya existía ese jugador en esa misma fecha.
+                  <b style={{ display: 'block', fontSize: 14, marginBottom: 4 }}>Subir nueva sesión (CSV/Excel) para {ds.config.nombre}</b>
+                  Arrastrá el archivo acá o tocá para elegirlo. Se asigna automáticamente a este test. Cada fecha nueva se SUMA al historial de cada jugador; sólo se actualiza un registro si ya existía ese jugador en esa misma fecha.
                 </>
               )}
               <input type="file" accept=".csv,.xlsx,.xls,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }} />
