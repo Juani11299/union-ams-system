@@ -94,15 +94,24 @@ export function EvaluacionesHub() {
           <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">EVALUACIONES DE RENDIMIENTO</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">Centro de comando: cada prueba tiene su dashboard, y el Perfil 360° las cruza todas.</p>
         </div>
-        {!soloLectura && (
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setSubiendo(true)}
-            className="rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
+            onClick={() => navigate('/evaluaciones/limpieza')}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:border-union-red-400 hover:text-union-red-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
-            ＋ Subir Nuevo Test
+            🧹 Limpieza de Datos (Data Wrangler)
           </button>
-        )}
+          {!soloLectura && (
+            <button
+              type="button"
+              onClick={() => setSubiendo(true)}
+              className="rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700"
+            >
+              ＋ Subir Nuevo Test
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -165,6 +174,14 @@ export function EvaluacionesHub() {
           detalle={detalleFijo(TEST_CMJ_UNILATERAL)}
           acento="bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
           onClick={() => navigate(`/evaluaciones/test/${encodeURIComponent(TEST_CMJ_UNILATERAL)}`)}
+        />
+        <Tarjeta
+          icono="🧹"
+          titulo="🧹 Limpieza de Datos (Data Wrangler)"
+          descripcion="Subí el Excel/CSV de cualquier test, auditá celdas sospechosas (nulos, ceros, ±3 DE), eliminá intentos fallidos, corregí tipeos y descargá un CSV limpio."
+          detalle="Herramienta de pre-procesamiento · todo en tu navegador"
+          acento="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+          onClick={() => navigate('/evaluaciones/limpieza')}
         />
         {tests.map((t) => (
           <Tarjeta

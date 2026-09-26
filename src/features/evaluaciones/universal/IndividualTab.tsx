@@ -168,7 +168,9 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
             )}
           </div>
 
-          <div className="grid g-2 mt">
+          {/* Dos columnas: izquierda Radar + Evolución histórica (debajo del radar); derecha Z-scores + Diagnóstico */}
+          <div className="grid g-2 mt" style={{ alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div>
@@ -241,7 +243,37 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
                 )
               })()}
             </div>
-
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div>
+                  <h3>Gráfico evolutivo · historial del jugador</h3>
+                  <p className="hint">
+                    Curva de rendimiento a lo largo de las {a.tests.length} sesión{a.tests.length > 1 ? 'es' : ''} de {ds.config.nombre} de este jugador (eje X: fecha de cada evaluación). Línea punteada: media del grupo de comparación.
+                    {a.tests.length < 2 ? ' Con una sola sesión no hay curva todavía: sumá una sesión nueva desde Datos & Calidad.' : ''}
+                  </p>
+                </div>
+                <select className="no-print" value={evoMet?.key ?? ''} onChange={(e) => setEvoKey(e.target.value)} style={{ padding: '6px 10px' }}>
+                  {ds.visibles.map((m) => <option key={m.key} value={m.key}>{m.label}{m.unidad ? ` (${m.unidad})` : ''}</option>)}
+                </select>
+              </div>
+              <div style={{ position: 'relative', height: 250 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={serie} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="f" tick={{ fontSize: 11, fill: '#475569' }} padding={{ left: 16, right: 16 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#475569' }} width={52} tickFormatter={(v: number) => fmt(v, evoMet?.d ?? 1)} />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (!active || !payload?.length || !evoMet) return null
+                      return <TipBox title={String(label)} lines={[`${evoMet.label}: ${fmtV(payload[0].payload.v as number, evoMet)}`]} />
+                    }} />
+                    {Number.isFinite(mediaGrupo) && <ReferenceLine y={mediaGrupo} stroke="#94a3b8" strokeDasharray="5 4" label={{ value: 'Media del grupo', position: 'insideTopLeft', fill: '#64748b', fontSize: 10 }} />}
+                    <Line type="monotone" dataKey="v" name={evoMet?.label} stroke="#dc2626" strokeWidth={2.5} dot={{ r: 4.5, fill: '#dc2626', stroke: '#fff', strokeWidth: 1.5 }} isAnimationActive={!printing} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <div className="card">
               <h3>Tabla de Z-Scores</h3>
               <p className="hint">Valor del atleta contra {compLbl}. Z: desvíos estándar respecto de la media (ajustado por el sentido de la métrica).{ds.asimetrias.length > 0 ? ` Las asimetrías llevan el semáforo clínico: < ${ASIM_VERDE} % verde, ${ASIM_VERDE}–${ASIM_ROJO} % amarillo, > ${ASIM_ROJO} % rojo.` : ''}</p>
@@ -274,35 +306,6 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
                 </table>
               </div>
             </div>
-          </div>
-
-          <div className="grid g-2 mt">
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                <div>
-                  <h3>Evolución longitudinal</h3>
-                  <p className="hint">{a.tests.length} test{a.tests.length > 1 ? 's' : ''} registrados. Línea punteada: media del grupo de comparación.</p>
-                </div>
-                <select className="no-print" value={evoMet?.key ?? ''} onChange={(e) => setEvoKey(e.target.value)} style={{ padding: '6px 10px' }}>
-                  {ds.visibles.map((m) => <option key={m.key} value={m.key}>{m.label}{m.unidad ? ` (${m.unidad})` : ''}</option>)}
-                </select>
-              </div>
-              <div style={{ position: 'relative', height: 250 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={serie} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="f" tick={{ fontSize: 11, fill: '#475569' }} padding={{ left: 16, right: 16 }} />
-                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#475569' }} width={52} tickFormatter={(v: number) => fmt(v, evoMet?.d ?? 1)} />
-                    <Tooltip content={({ active, payload, label }) => {
-                      if (!active || !payload?.length || !evoMet) return null
-                      return <TipBox title={String(label)} lines={[`${evoMet.label}: ${fmtV(payload[0].payload.v as number, evoMet)}`]} />
-                    }} />
-                    {Number.isFinite(mediaGrupo) && <ReferenceLine y={mediaGrupo} stroke="#94a3b8" strokeDasharray="5 4" label={{ value: 'Media del grupo', position: 'insideTopLeft', fill: '#64748b', fontSize: 10 }} />}
-                    <Line type="monotone" dataKey="v" name={evoMet?.label} stroke="#dc2626" strokeWidth={2.5} dot={{ r: 4.5, fill: '#dc2626', stroke: '#fff', strokeWidth: 1.5 }} isAnimationActive={!printing} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
             <div className="card">
               <h3>Diagnóstico & Plan de acción individual</h3>
               <p className="hint">Lectura automática a partir de Z-score, asimetrías y tendencia. Validar con el cuerpo técnico.</p>
@@ -332,6 +335,7 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
                   </ul>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { TESTS_FIJOS } from './dinamicas'
 import { EvaluacionesHub } from './EvaluacionesHub'
 import { useFilasEvaluaciones } from './useFilasEvaluaciones'
 import { PerfilAtleta360 } from './perfil/PerfilAtleta360'
+import { DataWrangler } from './wrangler/DataWrangler'
 import { UniversalTestDashboard } from './universal/UniversalTestDashboard'
 
 /** Todas las tarjetas del Hub (NordBord, CMJ, tests propios) abren la MISMA plantilla universal. */
@@ -38,6 +39,7 @@ export function EvaluacionesRoutes() {
       <EvaluacionesHub />
       <Routes>
         <Route path="perfil" element={<PerfilAtleta360 onBack={volver} />} />
+        <Route path="limpieza" element={<DataWrangler onBack={volver} />} />
         <Route path="test/:id" element={<TestRoute onBack={volver} />} />
         {/* Rutas viejas (antes había un dashboard distinto por test) */}
         <Route path="nordbord" element={<Navigate to="/evaluaciones/test/NordBord" replace />} />

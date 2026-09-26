@@ -16,9 +16,12 @@ interface EvaluacionesDinamicasState {
   error: string | null
   fetchEvaluaciones: () => Promise<void>
   /**
-   * Upsertea las filas de UN test sobre (test_name, player_key, fecha): volver a
-   * subir el Excel corregido pisa, no duplica. Después unifica `test_config` en
-   * todas las filas del test (una re-subida puede cambiar el ícono o las claves).
+   * Upsertea las filas de UN test sobre (test_name, player_key, fecha). Es
+   * ACUMULATIVO: una fecha nueva crea filas nuevas y el historial anterior del
+   * jugador no se toca; sólo se pisa la fila que coincide en test + jugador +
+   * fecha (volver a subir el Excel corregido de una sesión). Después unifica
+   * `test_config` en todas las filas del test (una re-subida puede cambiar el
+   * ícono o las claves).
    */
   guardarTest: (testName: string, filas: FilaEvaluacionDinamica[], config: ConfigTest) => Promise<{ guardadas: number }>
   /** Borra todas las filas de un test (NordBord incluido). */
@@ -65,6 +68,9 @@ export const useEvaluacionesDinamicasStore = create<EvaluacionesDinamicasState>(
   guardarTest: async (testName, filas, config) => {
     exigirSupabase()
     // Una misma clave repetida dentro del lote haría fallar el upsert ("cannot affect row a second time"): queda la última.
+    for (const f of filas) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f.fecha)) throw new Error(`Fecha inválida ("${f.fecha}") para ${f.player_name}: se esperaba AAAA-MM-DD.`)
+    }
     const porClave = new Map<string, FilaEvaluacionDinamica>()
     for (const f of filas) porClave.set(`${f.player_key}|${f.fecha}`, { ...f, test_name: testName, test_config: config })
     const lote = Array.from(porClave.values())
