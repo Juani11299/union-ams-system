@@ -5,6 +5,7 @@ import { zColor } from '@/features/nordbord/format'
 import { Pill, TipBox } from '@/features/nordbord/ui'
 import { ASIM_COLOR, ASIM_ROJO, ASIM_TXT, ASIM_VERDE, asymLvlGenerico } from './semaforo'
 import { estadoU, fmt, fmtV, LVL_COLOR_U, ok, pctOf, poolU, prevU, stats, zOf } from './calculos'
+import { CurveAnalysisModal } from '../curve/CurveAnalysisModal'
 import type { CatRefU, DatasetU, MetricaU, Ventana } from './tipos'
 
 interface Props {
@@ -35,6 +36,7 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
   const [q, setQ] = useState('')
   const [modoSel, setModoSel] = useState<Modo>('cat')
   const [evoKey, setEvoKey] = useState('')
+  const [curvaAbierta, setCurvaAbierta] = useState(false)
 
   const pool = useMemo(() => poolU(ds, win, cat), [ds, win, cat])
   const all = useMemo(() => poolU(ds, win, 'all'), [ds, win])
@@ -142,6 +144,9 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
                 <div className="sv"><Pill lvl={E.lvl}>{E.lvl === 'g' ? '●' : E.lvl === 'a' ? '▲' : '■'} {stTxt}</Pill></div>
                 <ul>{(E.motivos.length ? E.motivos : ['Todas las métricas clave y las asimetrías dentro de rangos aceptables']).map((w, i) => <li key={i}>{w}</li>)}</ul>
               </div>
+              <button type="button" className="btn no-print" style={{ marginTop: 12, width: '100%', justifyContent: 'center' }} onClick={() => setCurvaAbierta(true)}>
+                🔬 Ver curva Fuerza-Tiempo
+              </button>
             </div>
           </div>
         </div>
@@ -340,6 +345,7 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
           </div>
         </div>
       </div>
+      {curvaAbierta && <CurveAnalysisModal ds={ds} registro={t} onClose={() => setCurvaAbierta(false)} />}
     </section>
   )
 }
