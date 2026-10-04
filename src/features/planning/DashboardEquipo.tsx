@@ -17,17 +17,16 @@ import {
   calcularSRpeSemana,
   calcularSerieUltimos7Dias,
   calcularCargaEjecutadaReal,
-  calcularMonotonia,
   clasificarMonotonia,
   calcularStrain,
   compararConObjetivo,
   calcularCargaEsperadaDia,
   defaultsSesionParaFecha,
   UMBRAL_MONOTONIA_ALTA,
-  UMBRAL_DIAS_CALIBRACION,
   type NivelRiesgoAcwr,
   type NivelMonotonia,
 } from '@/features/workload/calculations'
+import { desgloseEjecucion } from '@/features/workload/cargaInterna'
 import { calcularReadiness, clasificarReadiness, obtenerWellnessDelDia, type NivelReadiness } from '@/features/wellness/calculations'
 import { IngresoModal } from '@/features/wellness/IngresoModal'
 import { useSoloLectura } from '@/hooks/useSoloLectura'
@@ -174,11 +173,13 @@ export function DashboardEquipo() {
     // render) porque `evaluarRiesgoAtleta` la necesita para la Alerta
     // General — el render de la tarjeta reusa este mismo valor.
     const serie = calcularSerieUltimos7Dias(sessionExecutions, sessionPlans, athlete.id)
-    const monotonia = calcularMonotonia(serie)
+    // Monotonía de Foster sobre la serie imputada del motor (un día planificado sin RPE no cuenta como un 0 falso).
+    const monotonia = acwr.monotonia
     const evaluacionRiesgo = evaluarRiesgoAtleta({ wellnessHoy, ejecucionesHoyAtleta, acwr, monotonia })
     return { athlete, acwr, wellnessHoy, evaluacionRiesgo, serie, monotonia }
   })
-  const alertasAltoRiesgo = acwrPorAtleta.filter((a) => a.acwr.riesgo === 'alto').length
+  // Sólo cuentan los ACWR con dato confiable (≥ 70 % de las sesiones con RPE); los provisorios se muestran aparte.
+  const alertasAltoRiesgo = acwrPorAtleta.filter((a) => a.acwr.riesgo === 'alto' && !a.acwr.enPeriodoGracia).length
   const alertasFatiga = acwrPorAtleta.filter((a) => a.evaluacionRiesgo.alertaFatiga).length
 
   const evaluaciones = new Map(acwrPorAtleta.map((a) => [a.athlete.id, a.evaluacionRiesgo]))
@@ -339,7 +340,7 @@ export function DashboardEquipo() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {acwrFiltrado.map(({ athlete, acwr, wellnessHoy, evaluacionRiesgo, serie, monotonia }) => {
           const sRpeSemana = calcularSRpeSemana(sessionExecutions, sessionPlans, athlete.id)
-          const strain = calcularStrain(sRpeSemana, monotonia)
+          const strain = acwr.strain ?? calcularStrain(sRpeSemana, monotonia)
           const monotoniaAlta = monotonia !== null && monotonia >= UMBRAL_MONOTONIA_ALTA
           const nivelMonotonia = monotonia !== null ? clasificarMonotonia(monotonia) : null
           const readiness = wellnessHoy ? calcularReadiness(wellnessHoy) : null
@@ -349,6 +350,7 @@ export function DashboardEquipo() {
 
           let comparacionHoy: ReturnType<typeof compararConObjetivo> | null = null
           let faltaTiempoHoy = false
+          let desgloseHoy: ReturnType<typeof desgloseEjecucion> = null
           if (hayPlanHoy) {
             const ejecucionesHoyAtleta = sessionExecutions.filter(
               (e) => e.athleteId === athlete.id && e.fecha === hoy,
@@ -358,6 +360,7 @@ export function DashboardEquipo() {
             const hayCargaCalculable = cargasHoy.some((c) => c !== null)
             faltaTiempoHoy = huboRegistro && !hayCargaCalculable
             const ejecutadoHoy = cargasHoy.reduce((sum: number, c) => sum + (c ?? 0), 0)
+            desgloseHoy = ejecucionesHoyAtleta.length > 0 ? desgloseEjecucion(ejecucionesHoyAtleta[0], sesionesHoy) : null
             comparacionHoy = compararConObjetivo(
               huboRegistro && hayCargaCalculable ? ejecutadoHoy : null,
               cargaObjetivoHoy,
@@ -449,7 +452,7 @@ export function DashboardEquipo() {
                         cita="Foster, C. (1998). Monitoring training in athletes with reference to overtraining syndrome. Medicine & Science in Sports & Exercise, 30(7), 1164-1168."
                       />
                     </span>
-                    <span>Strain {strain !== null ? strain.toLocaleString('es-AR') : '—'}</span>
+                    <span title={acwr.diasImputados > 0 ? `Calculado sobre la serie semanal con ${acwr.diasImputados} día(s) imputados con la media propia (por eso puede no coincidir con el sRPE semana de arriba).` : 'Carga semanal × Monotonía'}>Strain {strain !== null ? strain.toLocaleString('es-AR') : '—'}</span>
                   </div>
                 </div>
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
@@ -461,28 +464,25 @@ export function DashboardEquipo() {
                       cita="Gabbett, T.J. (2016). The training-injury prevention paradox: should athletes be training smarter and harder? British Journal of Sports Medicine. (Basado en deportes de equipo)."
                     />
                   </p>
-                  {acwr.enPeriodoGracia ? (
+                  {acwr.estadoDato === 'sin-datos' ? (
                     <>
-                      <p className="text-sm font-normal text-slate-400">
-                        {acwr.acwr !== null ? acwr.acwr.toFixed(2) : '—'}
-                      </p>
+                      <p className="text-sm font-normal text-slate-400">—</p>
                       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                        <div
-                          className="h-full rounded-full bg-slate-400 dark:bg-slate-500"
-                          style={{ width: `${Math.min((acwr.diasConDatos / UMBRAL_DIAS_CALIBRACION) * 100, 100)}%` }}
-                        />
+                        <div className="h-full rounded-full bg-slate-400 dark:bg-slate-500" style={{ width: `${Math.min((acwr.diasConDatos / 4) * 100, 100)}%` }} />
                       </div>
-                      <Badge tone="gray" className="mt-2 whitespace-nowrap">
-                        🔧 Calibrando (Día {acwr.diasConDatos}/{UMBRAL_DIAS_CALIBRACION})
+                      <Badge tone="gray" className="mt-2 whitespace-nowrap" >
+                        Sin datos ({acwr.diasConDatos}/4 sesiones con RPE)
                       </Badge>
                     </>
                   ) : (
                     <>
-                      <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                        {acwr.acwr !== null ? (
-                          acwr.acwr.toFixed(2)
-                        ) : (
-                          <span className="text-sm font-normal text-slate-400">Recopilando datos…</span>
+                      <p className={`text-lg font-semibold ${acwr.enPeriodoGracia ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                        {acwr.acwr !== null ? acwr.acwr.toFixed(2) : '—'}
+                        {acwr.enPeriodoGracia && <span title={acwr.motivoEstado}>*</span>}
+                        {acwr.acwrEwma !== null && (
+                          <span className="ml-2 text-[11px] font-normal text-slate-400" title="ACWR por EWMA (promedio móvil exponencial)">
+                            EWMA {acwr.acwrEwma.toFixed(2)}
+                          </span>
                         )}
                       </p>
                       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
@@ -493,9 +493,21 @@ export function DashboardEquipo() {
                           }}
                         />
                       </div>
-                      <Badge tone={RIESGO_TONE[acwr.riesgo]} className="mt-2">
-                        {RIESGO_LABEL[acwr.riesgo]}
-                      </Badge>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <Badge tone={RIESGO_TONE[acwr.riesgo]}>{RIESGO_LABEL[acwr.riesgo]}</Badge>
+                        {acwr.enPeriodoGracia && (
+                          <span title={acwr.motivoEstado}>
+                            <Badge tone="yellow" className="whitespace-nowrap">
+                              Provisorio · {acwr.cobertura !== null ? Math.round(acwr.cobertura * 100) : 0}% datos
+                            </Badge>
+                          </span>
+                        )}
+                        {acwr.spikeSemanal === 'alto' && acwr.variacionSemanal !== null && (
+                          <Badge tone="red" className="whitespace-nowrap">
+                            Spike semanal +{Math.round(acwr.variacionSemanal * 100)}%
+                          </Badge>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
@@ -549,6 +561,11 @@ export function DashboardEquipo() {
                       }}
                     />
                   </div>
+                  {desgloseHoy && desgloseHoy.gimnasio > 0 && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Campo {Math.round(desgloseHoy.campo + desgloseHoy.partido)} + Gimnasio {Math.round(desgloseHoy.gimnasio)} = {Math.round(desgloseHoy.total)} AU
+                    </p>
+                  )}
                   <div className="mt-1.5 flex items-center justify-between text-xs">
                     <span className="text-slate-500 dark:text-slate-400">
                       {comparacionHoy.ejecutado !== null

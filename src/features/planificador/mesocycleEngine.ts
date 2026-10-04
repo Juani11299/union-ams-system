@@ -1,4 +1,4 @@
-import { parsearFechaLocal, fechaHoyLocal } from '@/utils/fecha'
+import { sumarDiasFecha } from '@/utils/fecha'
 import type { GymSheetData, GymSheetEjercicio } from '@/types'
 
 /**
@@ -32,9 +32,7 @@ export function parsearEsquema(input: string): EsquemaMesociclo | null {
 
 /** Lunes de la semana `i` del mesociclo — misma aritmética nativa de `Date.setDate` que ya usa `inicioDeSemana`/`diasDeLaSemanaActual` en toda la app: segura contra fin de mes y años bisiestos, sin dependencias nuevas. */
 function sumarDias(fecha: string, dias: number): string {
-  const d = parsearFechaLocal(fecha)
-  d.setDate(d.getDate() + dias)
-  return fechaHoyLocal(d)
+  return sumarDiasFecha(fecha, dias)
 }
 
 function nuevoId(): string {

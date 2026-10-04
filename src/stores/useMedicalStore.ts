@@ -1,3 +1,4 @@
+import { fechaHoyLocal } from '@/utils/fecha'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { idbStorage } from '@/utils/idbStorage'
@@ -99,7 +100,7 @@ export const useMedicalStore = create<MedicalState>()(
 
         set((state) => ({
           protocolos: state.protocolos.map((p) =>
-            p.id === id ? { ...p, estado: 'alta', fechaAlta: new Date().toISOString().slice(0, 10) } : p,
+            p.id === id ? { ...p, estado: 'alta', fechaAlta: fechaHoyLocal() } : p,
           ),
         }))
         return true

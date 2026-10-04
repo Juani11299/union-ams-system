@@ -12,7 +12,7 @@ import {
 import { useAppStore, useAthletesActivos, useSessionExecutionsActivas } from '@/store/useAppStore'
 import { Card } from '@/components/Card'
 import { Field, inputClass } from '@/components/FormField'
-import { parsearFechaLocal, inicioDeSemana, fechaHoyLocal } from '@/utils/fecha'
+import { parsearFechaLocal, inicioSemanaFecha, sumarDiasFecha, fechaHoyLocal } from '@/utils/fecha'
 import type { Athlete, GymExternalLoad } from '@/types'
 
 const UNION_ROJO = '#ed1c24'
@@ -111,10 +111,8 @@ export function ExternalLoadDashboardTab() {
       return max ? loadsEjercicio.filter((l) => l.fecha === max) : []
     }
     const cfg = RANGOS.find((r) => r.id === rango)!
-    const limite = new Date()
-    limite.setHours(0, 0, 0, 0)
-    limite.setDate(limite.getDate() - cfg.dias!)
-    return loadsEjercicio.filter((l) => parsearFechaLocal(l.fecha) >= limite)
+    const limite = sumarDiasFecha(fechaHoyLocal(), -cfg.dias!)
+    return loadsEjercicio.filter((l) => l.fecha >= limite)
   }, [loadsEjercicio, rango])
 
   // Fecha más reciente con datos dentro del filtro — la "matriz del día".
@@ -183,7 +181,7 @@ export function ExternalLoadDashboardTab() {
     const porSemana = new Map<string, { suma: number; n: number; atleta: number | null }>()
     for (const l of loadsDivision) {
       if (l.load.exerciseName !== ejercicio) continue
-      const claveSemana = fechaHoyLocal(inicioDeSemana(parsearFechaLocal(l.fecha)))
+      const claveSemana = inicioSemanaFecha(l.fecha)
       const acc = porSemana.get(claveSemana) ?? { suma: 0, n: 0, atleta: null }
       acc.suma += l.topSet
       acc.n += 1

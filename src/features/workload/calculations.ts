@@ -1,6 +1,8 @@
 import type { SessionExecution, SessionPlan, TipoSesion, WellnessEntry } from '@/types'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
-import { fechaHoyLocal, parsearFechaLocal, inicioDeSemana } from '@/utils/fecha'
+import { fechaHoyLocal, diaSemanaFecha, diferenciaDias as diferenciaDiasLocal, inicioSemanaFecha, sumarDiasFecha } from '@/utils/fecha'
+import { calcularCargaEjecutadaReal } from './cargaEjecutada'
+import { construirContexto, resumenCarga, type EstadoDato } from './cargaInterna'
 
 export function calcularCargaInterna(rpe: number, duracionMin: number): number {
   return rpe * duracionMin
@@ -49,7 +51,7 @@ export interface DefaultsSesionDia {
  * ajusta como cualquier otro día.
  */
 export function defaultsSesionParaFecha(fecha: string): DefaultsSesionDia {
-  const diaSemana = parsearFechaLocal(fecha).getDay()
+  const diaSemana = diaSemanaFecha(fecha)
   const rpeCampo = RPE_CAMPO_POR_DIA[diaSemana]
   if (rpeCampo === undefined) {
     return { tipo: 'Campo', duracionEstimadaMin: 60, rpeEsperado: 5, esBaseDelClub: false }
@@ -109,52 +111,8 @@ export function calcularCargaEsperadaDia(sesiones: SessionPlan[]): number {
   return minutosTotales * rpePredominante
 }
 
-/**
- * Carga interna real ejecutada por un jugador — Fase 9.2: el jugador sólo
- * manda su RPE, la duración ("Tiempo Total de Trabajo") la carga el profe en
- * el plan de ese día (`SessionPlan.duracionRealMin`). Cruza ambos dinámicamente
- * en vez de confiar en un valor guardado en el momento del envío.
- *
- * Fase 13 ("Doble Turno"): un día puede tener MÁS DE UN `SessionPlan` (ej.
- * Campo + Gimnasio) — el sRPE del día es la sumatoria del sRPE de cada sesión
- * de ese día que ya tenga `duracionRealMin` cargado (una sesión sin duración
- * todavía simplemente no suma, no bloquea a las demás). El jugador sigue
- * mandando UN solo RPE por día (no se le pide discriminar por sesión), así
- * que ese mismo RPE se aplica contra la duración de cada sesión del día.
- *
- * Excepción — sesiones `Partido` (Fase 11, "Día de Partido"): ahí la duración
- * NO es compartida por todo el equipo (cada jugador juega minutos distintos),
- * así que se usa directo `ejecucion.duracionMin` (real, por atleta, cargado
- * desde el Registro de Minutos) en vez de `plan.duracionRealMin` — un partido
- * nunca comparte día con otra sesión en la práctica, pero si lo hiciera, la
- * regla de Partido tiene prioridad y el resto de las sesiones de ese día se
- * ignoran (evita mezclar "minutos jugados" con "duración de equipo").
- *
- * Devuelve `null` ("Falta tiempo") si ninguna sesión del día tiene todavía la
- * duración real cargada.
- */
-export function calcularCargaEjecutadaReal(
-  ejecucion: SessionExecution,
-  sessionPlans: SessionPlan[],
-): number | null {
-  const planesDelDia = sessionPlans.filter(
-    (p) =>
-      p.fecha === ejecucion.fecha &&
-      p.season_id === ejecucion.season_id &&
-      p.category_id === ejecucion.category_id,
-  )
-  if (planesDelDia.length === 0) return null
-
-  const partido = planesDelDia.find((p) => p.tipo === 'Partido')
-  if (partido) {
-    if (ejecucion.duracionMin === 0) return null
-    return ejecucion.rpe * ejecucion.duracionMin
-  }
-
-  const sesionesConDuracion = planesDelDia.filter((p) => p.duracionRealMin !== undefined)
-  if (sesionesConDuracion.length === 0) return null
-  return sesionesConDuracion.reduce((sum, p) => sum + ejecucion.rpe * (p.duracionRealMin ?? 0), 0)
-}
+// `calcularCargaEjecutadaReal` vive en `cargaEjecutada.ts` (evita un import circular con el motor de `cargaInterna.ts`).
+export { calcularCargaEjecutadaReal }
 
 /** Color del semáforo de RPE (0-10), de verde a rojo. */
 export function colorRpe(rpe: number): string {
@@ -172,94 +130,82 @@ export interface AcwrResult {
   cargaCronica: number
   acwr: number | null
   riesgo: NivelRiesgoAcwr
-  /** Días distintos con carga registrada dentro de la ventana crónica (28 días) — Fase 33, período de calibración. */
+  /** Días con dato real de RPE dentro de la ventana crónica (28 días). */
   diasConDatos: number
-  /** `diasConDatos < UMBRAL_DIAS_CALIBRACION` (Fase 33) — con menos de 21 días de historial el denominador crónico está incompleto y el ACWR queda artificialmente inflado; no debe disparar alertas todavía (ver `calcularAlertaGeneralRiesgo`). */
+  /**
+   * `true` mientras el dato NO es confiable (cobertura < 70 % de las sesiones
+   * planificadas, o menos de 4 sesiones con RPE): el ACWR se muestra igual —con
+   * imputación conservadora de los faltantes— pero no dispara alertas (ver
+   * `calcularAlertaGeneralRiesgo`). Ya NO es un bloqueo: antes exigía 21 días
+   * distintos de reporte y casi nadie lo alcanzaba.
+   */
   enPeriodoGracia: boolean
-}
-
-const DIA_MS = 24 * 60 * 60 * 1000
-
-function dentroDeVentana(fecha: string, referencia: Date, dias: number): boolean {
-  const diff = referencia.getTime() - new Date(fecha).getTime()
-  return diff >= 0 && diff < dias * DIA_MS
+  // ── Fase 48 (motor de `cargaInterna.ts`) ──
+  estadoDato: EstadoDato
+  /** Sesiones planificadas con RPE real / planificadas en 28 días (0–1). */
+  cobertura: number | null
+  diasImputados: number
+  motivoEstado: string
+  /** ACWR por EWMA (λ = 2/(N+1)), más estable que el de promedios móviles ante baches de datos. */
+  acwrEwma: number | null
+  riesgoEwma: NivelRiesgoAcwr
+  /** Carga de los últimos 7 días vs los 7 anteriores (0.12 = +12 %). */
+  variacionSemanal: number | null
+  spikeSemanal: 'alto' | 'medio' | 'ok' | null
+  monotonia: number | null
+  strain: number | null
 }
 
 /**
- * Fase 26 — "Cold start": con menos de 3 sesiones en la ventana crónica (28
- * días), el promedio crónico es tan chico (o cero) que cualquier carga
- * aguda normal dispara un ratio disparatado — ej. una sola sesión vieja de
- * bajo volumen puede hacer que una semana normal de hoy dé ACWR > 20, una
- * falsa alarma de "riesgo alto" que no tiene nada que ver con sobrecarga
- * real, sólo con falta de historial. El período de gracia no es sólo
- * "cargaCronica === 0": con 1-2 sesiones sueltas la suma ya no es cero pero
- * sigue sin ser una línea de base confiable.
- */
-const MINIMO_SESIONES_CRONICAS = 3
-
-/**
- * Período de calibración (Fase 33, "Cold Start Problem") — con menos de 21
- * días DISTINTOS de datos reales en la ventana crónica de 28 días, el
- * denominador del ACWR está calculado sobre una base incompleta: un jugador
- * nuevo con, por ejemplo, 10 días de historial ya no cae en el guard de
- * `MINIMO_SESIONES_CRONICAS` (puede tener varias sesiones esos 10 días),
- * pero su carga crónica sigue sin ser representativa de un mes real —
- * cualquier semana aguda normal dispara un ACWR artificialmente alto. Con
- * menos de 21 días el ACWR no debe disparar ninguna alerta; el riesgo a
- * corto plazo se apoya en Wellness y Monotonía de Foster (ver
- * `calcularAlertaGeneralRiesgo`).
+ * Período de calibración legado (Fase 33). Se conserva la constante porque el
+ * Dashboard la importa, pero el ACWR ya no se bloquea por ella: ver
+ * `COBERTURA_MINIMA` en `cargaInterna.ts`.
  */
 export const UMBRAL_DIAS_CALIBRACION = 21
 
+/**
+ * ACWR de un atleta al cierre de `fechaReferencia` (día civil del club). Fase 48:
+ * delega en el motor de `cargaInterna.ts` — serie diaria continua en fechas
+ * YYYY-MM-DD (sin `Date` + horas, así no depende de la hora del día ni de la
+ * zona del dispositivo), imputación conservadora de los días planificados sin
+ * RPE, y ACWR tanto por promedios móviles como por EWMA.
+ */
 export function calcularAcwr(
   ejecuciones: SessionExecution[],
   sessionPlans: SessionPlan[],
   athleteId: string,
   fechaReferencia: Date = new Date(),
 ): AcwrResult {
-  const propias = ejecuciones.filter((e) => e.athleteId === athleteId)
-
-  const agudas = propias.filter((e) => dentroDeVentana(e.fecha, fechaReferencia, 7))
-  const cronicas = propias.filter((e) => dentroDeVentana(e.fecha, fechaReferencia, 28))
-
-  const cargaAguda = agudas.reduce((sum, e) => sum + (calcularCargaEjecutadaReal(e, sessionPlans) ?? 0), 0)
-  const cargaCronicaTotal = cronicas.reduce(
-    (sum, e) => sum + (calcularCargaEjecutadaReal(e, sessionPlans) ?? 0),
-    0,
-  )
-  const cargaCronica = cargaCronicaTotal / 4
-
-  const diasConDatos = new Set(cronicas.map((e) => e.fecha)).size
-  const enPeriodoGracia = diasConDatos < UMBRAL_DIAS_CALIBRACION
-
-  if (cronicas.length < MINIMO_SESIONES_CRONICAS || cargaCronica === 0) {
-    // Período de gracia: `acwr: null` + `riesgo: 'sin-datos'` es una señal
-    // explícita ("todavía recopilando historial"), no un número inventado —
-    // ver el badge gris "Sin datos" y "Recopilando datos…" en el Dashboard,
-    // y cómo `riskAssessment.ts` ignora este estado al armar el semáforo.
-    return { cargaAguda, cargaCronica, acwr: null, riesgo: 'sin-datos', diasConDatos, enPeriodoGracia }
+  const r = resumenCarga(construirContexto(ejecuciones, sessionPlans), athleteId, fechaHoyLocal(fechaReferencia))
+  const sinDatos = r.estado === 'sin-datos'
+  return {
+    cargaAguda: r.aguda,
+    cargaCronica: r.cronica,
+    acwr: sinDatos ? null : r.acwr,
+    riesgo: sinDatos ? 'sin-datos' : r.riesgo,
+    diasConDatos: r.diasReales,
+    enPeriodoGracia: r.estado !== 'confiable',
+    estadoDato: r.estado,
+    cobertura: r.cobertura,
+    diasImputados: r.diasImputados,
+    motivoEstado: r.motivoEstado,
+    acwrEwma: sinDatos ? null : r.acwrEwma,
+    riesgoEwma: sinDatos ? 'sin-datos' : r.riesgoEwma,
+    variacionSemanal: r.variacionSemanal,
+    spikeSemanal: r.spikeSemanal,
+    monotonia: r.monotonia,
+    strain: r.strain,
   }
-
-  const acwr = cargaAguda / cargaCronica
-
-  let riesgo: NivelRiesgoAcwr
-  if (acwr < 0.8) riesgo = 'bajo'
-  else if (acwr <= 1.3) riesgo = 'optimo'
-  else if (acwr <= 1.5) riesgo = 'precaucion'
-  else riesgo = 'alto'
-
-  return { cargaAguda, cargaCronica, acwr, riesgo, diasConDatos, enPeriodoGracia }
 }
 
+/** sRPE real de los últimos 7 días (hoy incluido), sin imputar faltantes. Fechas civiles del club. */
 export function calcularSRpeSemana(
   ejecuciones: SessionExecution[],
   sessionPlans: SessionPlan[],
   athleteId: string,
   fechaReferencia: Date = new Date(),
 ): number {
-  return ejecuciones
-    .filter((e) => e.athleteId === athleteId && dentroDeVentana(e.fecha, fechaReferencia, 7))
-    .reduce((sum, e) => sum + (calcularCargaEjecutadaReal(e, sessionPlans) ?? 0), 0)
+  return calcularSerieUltimos7Dias(ejecuciones, sessionPlans, athleteId, fechaReferencia).reduce((s, v) => s + v, 0)
 }
 
 export type ToneComparacion = 'green' | 'yellow' | 'red' | 'gray'
@@ -302,19 +248,14 @@ export function calcularSerieUltimos7Dias(
   athleteId: string,
   fechaReferencia: Date = new Date(),
 ): number[] {
+  const hoy = fechaHoyLocal(fechaReferencia)
   const dias: number[] = new Array(7).fill(0)
-  const propias = ejecuciones.filter((e) => e.athleteId === athleteId)
-
-  for (const ejecucion of propias) {
-    const diff = fechaReferencia.getTime() - new Date(ejecucion.fecha).getTime()
-    if (diff < 0 || diff >= 7 * DIA_MS) continue
-    const indiceDesdeHoy = Math.floor(diff / DIA_MS)
-    const indice = 6 - indiceDesdeHoy
-    if (indice >= 0 && indice < 7) {
-      dias[indice] += calcularCargaEjecutadaReal(ejecucion, sessionPlans) ?? 0
-    }
+  for (const ejecucion of ejecuciones) {
+    if (ejecucion.athleteId !== athleteId) continue
+    const atras = diferenciaDiasLocal(hoy, ejecucion.fecha)
+    if (atras < 0 || atras > 6) continue
+    dias[6 - atras] += calcularCargaEjecutadaReal(ejecucion, sessionPlans) ?? 0
   }
-
   return dias
 }
 
@@ -423,10 +364,9 @@ export function calcularSerieDiasAtleta(
   const propias = ejecuciones.filter((e) => e.athleteId === athleteId)
   const resultado: PuntoSerieDiaria[] = []
 
+  const hoy = fechaHoyLocal(fechaReferencia)
   for (let i = dias - 1; i >= 0; i--) {
-    const d = new Date(fechaReferencia)
-    d.setDate(d.getDate() - i)
-    const fecha = fechaHoyLocal(d)
+    const fecha = sumarDiasFecha(hoy, -i)
     const ejecucionDelDia = propias.find((e) => e.fecha === fecha)
 
     if (!ejecucionDelDia) {
@@ -466,10 +406,9 @@ export function calcularTendenciaEquipo(
   const idsSet = new Set(athleteIds)
   const resultado: PuntoTendenciaEquipo[] = []
 
+  const hoy = fechaHoyLocal(fechaReferencia)
   for (let i = dias - 1; i >= 0; i--) {
-    const d = new Date(fechaReferencia)
-    d.setDate(d.getDate() - i)
-    const fecha = fechaHoyLocal(d)
+    const fecha = sumarDiasFecha(hoy, -i)
 
     const cargasDelDia: number[] = []
     for (const athleteId of athleteIds) {
@@ -520,14 +459,14 @@ export function calcularVolumenIntensidadPorSemana(
 
   for (const plan of sessionPlans) {
     if (plan.duracionRealMin === undefined) continue
-    const clave = fechaHoyLocal(inicioDeSemana(parsearFechaLocal(plan.fecha)))
+    const clave = inicioSemanaFecha(plan.fecha)
     const entry = semanas.get(clave) ?? { volumenMin: 0, rpes: [] }
     entry.volumenMin += plan.duracionRealMin
     semanas.set(clave, entry)
   }
 
   for (const ejecucion of sessionExecutions) {
-    const clave = fechaHoyLocal(inicioDeSemana(parsearFechaLocal(ejecucion.fecha)))
+    const clave = inicioSemanaFecha(ejecucion.fecha)
     const entry = semanas.get(clave) ?? { volumenMin: 0, rpes: [] }
     entry.rpes.push(ejecucion.rpe)
     semanas.set(clave, entry)

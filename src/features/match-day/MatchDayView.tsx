@@ -12,7 +12,7 @@ import { Badge } from '@/components/Badge'
 import { Tabs } from '@/components/Tabs'
 import { inputClass } from '@/components/FormField'
 import { getErrorMessage } from '@/utils/errors'
-import { formatFechaCorta, fechaHoyLocal } from '@/utils/fecha'
+import { diferenciaDias, formatFechaCorta, fechaHoyLocal } from '@/utils/fecha'
 import type { ResultadoPartidoInput } from '@/utils/supabaseMappers'
 
 /**
@@ -31,13 +31,12 @@ export function MatchDayView() {
   const submitMatchDayResultsBulk = useAppStore((s) => s.submitMatchDayResultsBulk)
   const showToast = useToastStore((s) => s.showToast)
 
-  const partidos = useMemo(
-    () =>
-      sessionPlans
+  const partidos = useMemo(() => {
+    const hoyClub = fechaHoyLocal()
+    return sessionPlans
         .filter((p) => p.tipo === 'Partido')
-        .sort((a, b) => Math.abs(new Date(a.fecha).getTime() - Date.now()) - Math.abs(new Date(b.fecha).getTime() - Date.now())),
-    [sessionPlans],
-  )
+        .sort((a, b) => Math.abs(diferenciaDias(a.fecha, hoyClub)) - Math.abs(diferenciaDias(b.fecha, hoyClub)))
+  }, [sessionPlans])
 
   const [partidoId, setPartidoId] = useState<string | null>(partidos[0]?.id ?? null)
   const partido = partidos.find((p) => p.id === partidoId) ?? partidos[0] ?? null

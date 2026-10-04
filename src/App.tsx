@@ -4,7 +4,7 @@ import { MainLayout } from '@/layouts/MainLayout'
 import { LoginView } from '@/features/auth/LoginView'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { useAuthStore } from '@/store/useAuthStore'
-import { DashboardEquipo } from '@/features/planning/DashboardEquipo'
+import { CargaInternaView } from '@/features/planning/carga/CargaInternaView'
 import { PlanificadorView } from '@/features/planificador/PlanificadorView'
 import { MagicLinkView } from '@/features/wellness/MagicLinkView'
 import { AdminView } from '@/features/admin/AdminView'
@@ -37,7 +37,7 @@ function App() {
       <Route path="/login" element={<LoginView />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
-          <Route path="/" element={<DashboardEquipo />} />
+          <Route path="/" element={<CargaInternaView />} />
           <Route path="/planificador" element={<PlanificadorView />} />
           <Route path="/match-day" element={<MatchDayView />} />
           <Route path="/carga-externa" element={<ExternalLoadView />} />

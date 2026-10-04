@@ -1,4 +1,4 @@
-import { fechaHoyLocal } from '@/utils/fecha'
+import { fechaHoyLocal, sumarDiasFecha } from '@/utils/fecha'
 import type { WellnessEntry } from '@/types'
 
 type WellnessInput = Pick<WellnessEntry, 'sueno' | 'dolorMuscular' | 'estres' | 'fatiga'>
@@ -73,10 +73,9 @@ export function calcularSerieWellnessAtleta(
   const propias = entries.filter((e) => e.athleteId === athleteId)
   const resultado: PuntoSerieWellness[] = []
 
+  const hoy = fechaHoyLocal(fechaReferencia)
   for (let i = dias - 1; i >= 0; i--) {
-    const d = new Date(fechaReferencia)
-    d.setDate(d.getDate() - i)
-    const fecha = fechaHoyLocal(d)
+    const fecha = sumarDiasFecha(hoy, -i)
     const entry = propias.find((e) => e.fecha === fecha)
     resultado.push({ fecha, score: entry ? calcularWellnessScore20(entry) : null })
   }

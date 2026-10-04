@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAppStore } from '@/store/useAppStore'
 import { useToastStore } from '@/store/useToastStore'
 import { getErrorMessage } from '@/utils/errors'
-import { formatFechaCorta, parsearFechaLocal, fechaHoyLocal } from '@/utils/fecha'
+import { formatFechaCorta, sumarDiasFecha } from '@/utils/fecha'
 import { generarMesociclo, parsearEsquema, type TipoProgresionMesociclo } from './mesocycleEngine'
 import type { SessionPlan, GymSheetData } from '@/types'
 
@@ -185,7 +185,5 @@ export function MesocycleProgressionModal({
 
 /** Sólo para el texto de preview del rango de fechas — misma cuenta de días que hace el motor. */
 function sumarSemanaPreview(fecha: string, semanas: number): string {
-  const d = parsearFechaLocal(fecha)
-  d.setDate(d.getDate() + semanas * 7)
-  return fechaHoyLocal(d)
+  return sumarDiasFecha(fecha, semanas * 7)
 }

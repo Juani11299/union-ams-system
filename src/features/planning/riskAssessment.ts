@@ -135,7 +135,7 @@ export function calcularAlertaGeneralRiesgo(
   return {
     nivel: 'bajo',
     motivo: acwr.enPeriodoGracia
-      ? 'Wellness y Monotonía dentro de rango seguro (ACWR en calibración).'
+      ? 'Wellness y Monotonía dentro de rango seguro (ACWR provisorio: faltan datos de RPE).'
       : 'ACWR, Wellness y Monotonía dentro de rango seguro.',
   }
 }

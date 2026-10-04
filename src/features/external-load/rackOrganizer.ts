@@ -1,3 +1,4 @@
+import { diferenciaDias, fechaHoyLocal } from '@/utils/fecha'
 import type { Athlete, GymExternalLoad, SessionPlan } from '@/types'
 
 export type ClaveGrupoRack = 'fuerte' | 'en-desarrollo' | 'sin-cargas'
@@ -14,7 +15,6 @@ export interface GrupoRack {
   atletas: AtletaConTopSet[]
 }
 
-const DIA_MS = 24 * 60 * 60 * 1000
 
 /**
  * Reparte `n` elementos en `grupos` partes lo más parejo posible, sin
@@ -64,8 +64,7 @@ export function organizarRacks(
   fechaReferencia: Date = new Date(),
 ): GrupoRack[] {
   const ejercicioNormalizado = ejercicio.trim().toLowerCase()
-  const limiteMs = diasVentana * DIA_MS
-  const ahora = fechaReferencia.getTime()
+  const hoy = fechaHoyLocal(fechaReferencia)
 
   const conTopSet: AtletaConTopSet[] = []
   const sinCargas: AtletaConTopSet[] = []
@@ -76,8 +75,8 @@ export function organizarRacks(
       if (g.exerciseName.trim().toLowerCase() !== ejercicioNormalizado) return false
       const sesion = sessionPlans.find((p) => p.id === g.sessionId)
       if (!sesion) return false
-      const diff = ahora - new Date(sesion.fecha).getTime()
-      return diff >= 0 && diff <= limiteMs
+      const diff = diferenciaDias(hoy, sesion.fecha)
+      return diff >= 0 && diff <= diasVentana
     })
 
     if (registros.length === 0) {

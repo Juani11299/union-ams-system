@@ -347,9 +347,17 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
   const submitSessionLoad = useAppStore((s) => s.submitSessionLoad)
   const submitGymExternalLoad = useAppStore((s) => s.submitGymExternalLoad)
   const sessionPlans = useAppStore((s) => s.sessionPlans)
+  const sessionExecutions = useAppStore((s) => s.sessionExecutions)
   const seasonId = searchParams.get('season')
   const categoryId = searchParams.get('category')
   const titulo = tituloModulo('rpe', categoriaNombre)
+
+  // El estado "ya envió su RPE hoy" sale de la BASE (session_executions del día civil del club,
+  // hora de Buenos Aires), no de la memoria del formulario: si el jugador recarga la página, cierra
+  // y vuelve a abrir el link o lo abre desde otro celular a la tarde/noche, ve que ya cumplió en vez
+  // de un formulario en blanco que parece "reseteado". Hay un solo registro por (jugador, día).
+  const registroHoy = sessionExecutions.find((e) => e.athleteId === athleteId && e.fecha === fechaHoyLocal()) ?? null
+  const [corrigiendo, setCorrigiendo] = useState(false)
 
   const [rpe, setRpe] = useState(5)
   const [enviando, setEnviando] = useState(false)
@@ -446,6 +454,30 @@ function FormularioRpe({ athleteId, nombre, categoriaNombre, onCambiarJugador }:
     } finally {
       setEnviando(false)
     }
+  }
+
+  if (registroHoy && !enviado && !corrigiendo) {
+    return (
+      <Pantalla titulo={titulo}>
+        <Card className="flex flex-col items-center gap-2 py-12 text-center">
+          <span className="text-4xl">✅</span>
+          <p className="text-base font-semibold text-slate-800 dark:text-slate-200">
+            ¡Listo, {nombre.split(' ')[0]}! Ya registraste tu RPE de hoy
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Tu RPE de hoy: {registroHoy.rpe} / 10.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setRpe(registroHoy.rpe)
+              setCorrigiendo(true)
+            }}
+            className="mt-3 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300"
+          >
+            Corregir mi RPE
+          </button>
+        </Card>
+      </Pantalla>
+    )
   }
 
   if (enviado) {
