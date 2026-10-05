@@ -3,9 +3,10 @@ import { Badge } from '@/components/Badge'
 import { Card } from '@/components/Card'
 import { inputClass } from '@/components/FormField'
 import { InfoTooltip } from '@/components/InfoTooltip'
-import { serieDiariaAtleta, zContraGrupo, type ResumenCarga } from '@/features/workload/cargaInterna'
+import { serieDiariaAtleta, zContraGrupo, type RangoHistorial, type ResumenCarga } from '@/features/workload/cargaInterna'
 import { formatFechaCorta } from '@/utils/fecha'
 import { ACWR_LABEL, ACWR_TONE, ESTADO_BADGE, fmtNum, fmtPct } from './etiquetas'
+import { AthleteWorkloadInsightsPanel } from './AthleteWorkloadInsightsPanel'
 import { HistorialCarga } from './HistorialCarga'
 import { useCargaInterna } from './useCargaInterna'
 
@@ -27,6 +28,7 @@ const ORIGEN: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' 
 export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; onElegir: (id: string) => void }) {
   const { athletes, ctx, hoy, resumenes } = useCargaInterna()
   const [verTodos, setVerTodos] = useState(false)
+  const [rango, setRango] = useState<RangoHistorial>('4s')
   const ordenados = useMemo(() => [...athletes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')), [athletes])
   const id = atletaId && athletes.some((a) => a.id === atletaId) ? atletaId : (ordenados[0]?.id ?? '')
   const atleta = athletes.find((a) => a.id === id)
@@ -141,7 +143,7 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
         </div>
       </Card>
 
-      <HistorialCarga key={id} atletaInicial={id} />
+      <HistorialCarga key={id} atletaInicial={id} conInsights={false} rango={rango} onRango={setRango} />
 
       <Card className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -189,6 +191,8 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
           </table>
         </div>
       </Card>
+
+      <AthleteWorkloadInsightsPanel ctx={ctx} hasta={hoy} rango={rango} athleteId={id} nombre={atleta.nombre} r={r} grupo={[...resumenes.values()]} />
     </div>
   )
 }

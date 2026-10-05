@@ -208,8 +208,10 @@ export function serieDiariaAtleta(ctx: ContextoCarga, athleteId: string, hasta: 
 export type NivelAcwr = 'bajo' | 'optimo' | 'precaucion' | 'alto' | 'sin-datos'
 
 /** Cortes de Gabbett (2016): < 0.8 subentrenamiento · 0.8–1.3 zona óptima · 1.3–1.5 precaución · > 1.5 zona de riesgo (spike). */
-export function clasificarAcwr(acwr: number | null): NivelAcwr {
-  if (acwr === null) return 'sin-datos'
+export function clasificarAcwr(valor: number | null): NivelAcwr {
+  if (valor === null) return 'sin-datos'
+  // Se clasifica el valor que se MUESTRA (2 decimales): 0,797 se ve "0,80" y no debe figurar como subentrenamiento.
+  const acwr = Math.round(valor * 100) / 100
   if (acwr < 0.8) return 'bajo'
   if (acwr <= 1.3) return 'optimo'
   if (acwr <= 1.5) return 'precaucion'
@@ -377,19 +379,12 @@ interface DiaEquipo {
 }
 
 /**
- * Serie histórica de un jugador o del promedio del grupo. Las curvas aguda y
- * crónica se calculan SIEMPRE día a día sobre la serie imputada; el rango
- * decide sólo cómo se agrupan las barras (por día hasta 4 semanas, por semana
- * en la temporada completa). Con `athleteIds` de varios jugadores la carga es
- * la MEDIA del grupo (UA por jugador), no la suma.
+ * Serie diaria del grupo (media por jugador) de `total` días que termina en
+ * `hasta`, con la carga aguda (suma 7d) y crónica (promedio semanal 28d)
+ * calculadas día a día. Las primeras 27 posiciones son "calentamiento": su
+ * crónica usa una ventana incompleta.
  */
-export function historialCarga(ctx: ContextoCarga, athleteIds: string[], hasta: string, rango: RangoHistorial): PuntoHistorial[] {
-  const primera = ctx.primeraFecha ?? hasta
-  const diasTemporada = Math.max(VENTANA_CRONICA, diferenciaDias(hasta, primera) + 1)
-  const dias = rango === '7d' ? 7 : rango === '4s' ? 28 : Math.min(diasTemporada, 365)
-  const visibles = dias
-  const total = visibles + VENTANA_CRONICA // calentamiento para que el primer punto ya tenga su ventana crónica
-
+function serieEquipoDiaria(ctx: ContextoCarga, athleteIds: string[], hasta: string, total: number): DiaEquipo[] {
   const porAtleta = athleteIds.map((id) => serieDiariaAtleta(ctx, id, hasta, total))
   const dEq: DiaEquipo[] = []
   for (let i = 0; i < total; i++) {
@@ -409,14 +404,30 @@ export function historialCarga(ctx: ContextoCarga, athleteIds: string[], hasta: 
       }
     }
     const k = Math.max(athleteIds.length, 1)
-    dEq.push({ fecha: porAtleta[0]?.[i].fecha ?? sumarDiasFecha(hasta, i - total + 1), carga: carga / k, campo: campo / k, gimnasio: gimnasio / k, partido: partido / k, aguda: 0, cronica: 0, n })
+    dEq.push({ fecha: sumarDiasFecha(hasta, i - total + 1), carga: carga / k, campo: campo / k, gimnasio: gimnasio / k, partido: partido / k, aguda: 0, cronica: 0, n })
   }
   for (let i = 0; i < total; i++) {
-    const a = dEq.slice(Math.max(0, i - VENTANA_AGUDA + 1), i + 1).reduce((s, d) => s + d.carga, 0)
-    const c = dEq.slice(Math.max(0, i - VENTANA_CRONICA + 1), i + 1).reduce((s, d) => s + d.carga, 0) / 4
-    dEq[i].aguda = a
-    dEq[i].cronica = c
+    dEq[i].aguda = dEq.slice(Math.max(0, i - VENTANA_AGUDA + 1), i + 1).reduce((s, d) => s + d.carga, 0)
+    dEq[i].cronica = dEq.slice(Math.max(0, i - VENTANA_CRONICA + 1), i + 1).reduce((s, d) => s + d.carga, 0) / 4
   }
+  return dEq
+}
+
+/**
+ * Serie histórica de un jugador o del promedio del grupo. Las curvas aguda y
+ * crónica se calculan SIEMPRE día a día sobre la serie imputada; el rango
+ * decide sólo cómo se agrupan las barras (por día hasta 4 semanas, por semana
+ * en la temporada completa). Con `athleteIds` de varios jugadores la carga es
+ * la MEDIA del grupo (UA por jugador), no la suma.
+ */
+export function historialCarga(ctx: ContextoCarga, athleteIds: string[], hasta: string, rango: RangoHistorial): PuntoHistorial[] {
+  const primera = ctx.primeraFecha ?? hasta
+  const diasTemporada = Math.max(VENTANA_CRONICA, diferenciaDias(hasta, primera) + 1)
+  const dias = rango === '7d' ? 7 : rango === '4s' ? 28 : Math.min(diasTemporada, 365)
+  const visibles = dias
+  const total = visibles + VENTANA_CRONICA // calentamiento para que el primer punto ya tenga su ventana crónica
+
+  const dEq = serieEquipoDiaria(ctx, athleteIds, hasta, total)
   const vis = dEq.slice(VENTANA_CRONICA)
 
   const etiquetaDia = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}`
@@ -558,4 +569,167 @@ export function adhesionDia(ctx: ContextoCarga, athleteIds: string[], fecha: str
     cargaMedia: desgloses.length ? media('total') : null,
     desglose: desgloses.length ? { campo: media('campo'), gimnasio: media('gimnasio'), partido: media('partido'), otros: media('otros'), total: media('total') } : null,
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Datos del período (alimentan los paneles de Insights: colectivo e individual)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Bloque de 7 días corridos que termina en `hasta` (el bloque 0 es la "semana actual"). */
+export interface SemanaCarga {
+  desde: string
+  hasta: string
+  /** Carga del bloque: suma de las 7 cargas diarias (UA; media por jugador en un grupo). */
+  carga: number
+  /** Monotonía de Foster del bloque (media / desvío de los 7 días) y Tensión = carga × monotonía. */
+  monotonia: number | null
+  strain: number | null
+  /** Carga crónica (promedio semanal de 28 días) al cierre del bloque. */
+  cronica: number
+}
+
+export interface DatosPeriodo {
+  rango: RangoHistorial
+  hasta: string
+  jugadores: number
+  /** Días que cubre el período seleccionado. */
+  dias: number
+  cargaTotal: number
+  cargaMediaDiaria: number
+  /** Bloques de 7 días, de la semana actual hacia atrás; incluye UN bloque extra anterior al período para poder comparar. */
+  semanas: SemanaCarga[]
+  aguda: number
+  cronica: number
+  acwr: number | null
+  /** Carga de la semana actual vs. la anterior (0.12 = +12 %); null si la anterior es 0. */
+  variacionSemanal: number | null
+  /** Mayor salto semanal dentro del período y en qué semana cerró. */
+  mayorSalto: { valor: number; hasta: string } | null
+  /** Cambio relativo de la carga crónica entre el inicio y el fin del período (0.1 = +10 %). */
+  pendienteCronica: number | null
+  /** Reparto de la carga del período (0–1). */
+  composicion: { campo: number; gimnasio: number; partido: number }
+  /** Adhesión media (reportaron / jugadores) en los días con sesión planificada del período. */
+  adhesionMedia: number | null
+  diasConSesion: number
+}
+
+function monotoniaStrain(cargas: number[]): { monotonia: number | null; strain: number | null } {
+  const carga = cargas.reduce((s, v) => s + v, 0)
+  const mono = monotoniaDe(cargas)
+  return { monotonia: mono, strain: mono === null ? null : Math.round(carga * mono) }
+}
+
+/**
+ * Resume el período activo (7 días / 4 semanas / temporada) de un jugador o del
+ * grupo: semanas rodantes con su monotonía y strain, ACWR, salto semanal,
+ * pendiente de la crónica y composición de la carga. Función pura sobre el
+ * contexto indexado; no hay fechas "hardcodeadas".
+ */
+export function datosPeriodo(ctx: ContextoCarga, athleteIds: string[], hasta: string, rango: RangoHistorial): DatosPeriodo {
+  const primera = ctx.primeraFecha ?? hasta
+  const diasTemporada = Math.max(VENTANA_CRONICA, diferenciaDias(hasta, primera) + 1)
+  const dias = rango === '7d' ? 7 : rango === '4s' ? 28 : Math.min(diasTemporada, 365)
+  const bloquesPeriodo = Math.max(1, Math.ceil(dias / 7))
+  const bloques = bloquesPeriodo + 1 // + el anterior, para comparar
+  const total = bloques * 7 + VENTANA_CRONICA
+  const dEq = serieEquipoDiaria(ctx, athleteIds, hasta, total)
+
+  const semanas: SemanaCarga[] = []
+  for (let j = 0; j < bloques; j++) {
+    const fin = total - 1 - j * 7
+    const ds = dEq.slice(fin - 6, fin + 1)
+    const cargas = ds.map((d) => d.carga)
+    const { monotonia, strain } = monotoniaStrain(cargas)
+    semanas.push({ desde: ds[0].fecha, hasta: ds[ds.length - 1].fecha, carga: cargas.reduce((s, v) => s + v, 0), monotonia, strain, cronica: dEq[fin].cronica })
+  }
+
+  const actual = semanas[0]
+  const anterior = semanas[1]
+  const variacionSemanal = anterior && anterior.carga > 0 ? actual.carga / anterior.carga - 1 : null
+  let mayorSalto: DatosPeriodo['mayorSalto'] = null
+  for (let j = 0; j < bloquesPeriodo; j++) {
+    const prev = semanas[j + 1]
+    if (prev && prev.carga > 0) {
+      const v = semanas[j].carga / prev.carga - 1
+      if (mayorSalto === null || v > mayorSalto.valor) mayorSalto = { valor: v, hasta: semanas[j].hasta }
+    }
+  }
+  const cronicaInicio = semanas[bloquesPeriodo]?.cronica ?? 0
+  const pendienteCronica = cronicaInicio > 0 ? actual.cronica / cronicaInicio - 1 : null
+
+  const enPeriodo = dEq.slice(total - dias)
+  const sum = (k: 'carga' | 'campo' | 'gimnasio' | 'partido') => enPeriodo.reduce((s, d) => s + d[k], 0)
+  const partes = sum('campo') + sum('gimnasio') + sum('partido')
+  const composicion = partes > 0 ? { campo: sum('campo') / partes, gimnasio: sum('gimnasio') / partes, partido: sum('partido') / partes } : { campo: 0, gimnasio: 0, partido: 0 }
+
+  const fechasSesion = enPeriodo.map((d) => d.fecha).filter((f) => (ctx.planesPorFecha.get(f)?.length ?? 0) > 0)
+  const adh = fechasSesion.map((f) => adhesionDia(ctx, athleteIds, f).adhesion).filter((v): v is number => v !== null)
+
+  return {
+    rango, hasta, jugadores: athleteIds.length, dias,
+    cargaTotal: sum('carga'), cargaMediaDiaria: sum('carga') / Math.max(dias, 1),
+    semanas, aguda: actual.carga, cronica: actual.cronica, acwr: actual.cronica > 0 ? actual.carga / actual.cronica : null,
+    variacionSemanal, mayorSalto, pendienteCronica, composicion,
+    adhesionMedia: adh.length ? adh.reduce((s, v) => s + v, 0) / adh.length : null,
+    diasConSesion: fechasSesion.length,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Individual: percepción vs. plan y correlación planificado / reportado
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DesvioRpe {
+  /** Sesiones comparables (con RPE del jugador y RPE esperado en el plan). */
+  n: number
+  /** Media de (RPE reportado − RPE esperado) en puntos; null si n = 0. */
+  media: number | null
+}
+
+/** RPE esperado de un día: el más alto de sus sesiones (RPE predominante, igual que `calcularCargaEsperadaDia`). */
+function rpeEsperadoDia(planes: SessionPlan[]): number | null {
+  const v = planes.map((p) => p.rpeEsperado).filter((x): x is number => typeof x === 'number' && x > 0)
+  return v.length ? Math.max(...v) : null
+}
+
+/** ¿El jugador percibe las sesiones más duras o más livianas de lo que planificó el profe? Últimos `dias` días. */
+export function desvioRpe(ctx: ContextoCarga, athleteId: string, hasta: string, dias = VENTANA_CRONICA): DesvioRpe {
+  const dif: number[] = []
+  for (let i = 0; i < dias; i++) {
+    const f = sumarDiasFecha(hasta, -i)
+    const esperado = rpeEsperadoDia(ctx.planesPorFecha.get(f) ?? [])
+    const ejec = ctx.ejecucionesPorAtleta.get(athleteId)?.get(f)
+    if (esperado === null || !ejec?.length) continue
+    dif.push(ejec[ejec.length - 1].rpe - esperado)
+  }
+  return { n: dif.length, media: dif.length ? dif.reduce((s, v) => s + v, 0) / dif.length : null }
+}
+
+export interface CorrelacionPlan {
+  n: number
+  /** Pearson entre la carga planificada (`cargaObjetivo`) y la ejecutada (UA reales) de los mismos días; null con menos de 5 pares o sin variación. */
+  r: number | null
+}
+
+export function correlacionPlanificado(ctx: ContextoCarga, athleteId: string, hasta: string, dias = 56): CorrelacionPlan {
+  const xs: number[] = []
+  const ys: number[] = []
+  for (const d of serieDiariaAtleta(ctx, athleteId, hasta, dias)) {
+    if (d.origen !== 'real' || !d.planificado) continue
+    const planes = ctx.planesPorFecha.get(d.fecha) ?? []
+    const objetivo = planes.reduce((s, p) => s + p.cargaObjetivo, 0)
+    if (objetivo > 0) {
+      xs.push(objetivo)
+      ys.push(d.carga)
+    }
+  }
+  const n = xs.length
+  if (n < 5) return { n, r: null }
+  const mx = xs.reduce((s, v) => s + v, 0) / n
+  const my = ys.reduce((s, v) => s + v, 0) / n
+  const sxy = xs.reduce((s, v, i) => s + (v - mx) * (ys[i] - my), 0)
+  const sxx = xs.reduce((s, v) => s + (v - mx) ** 2, 0)
+  const syy = ys.reduce((s, v) => s + (v - my) ** 2, 0)
+  return { n, r: sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null }
 }

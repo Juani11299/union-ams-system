@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Card } from '@/components/Card'
 import { inputClass } from '@/components/FormField'
+import { useAppStore } from '@/store/useAppStore'
 import { historialCarga, type RangoHistorial } from '@/features/workload/cargaInterna'
 import { GraficoHistorial } from './GraficoHistorial'
 import { fmtNum } from './etiquetas'
+import { MicrocicloInsightsPanel } from './MicrocicloInsightsPanel'
 import { useCargaInterna } from './useCargaInterna'
 
 export const RANGOS: Array<{ id: RangoHistorial; label: string; desc: string }> = [
@@ -17,9 +19,25 @@ export const RANGOS: Array<{ id: RangoHistorial; label: string; desc: string }> 
  * sesión) superpuestas con las curvas de carga aguda (7 d) y crónica (28 d).
  * Se puede mirar el plantel completo (carga media por jugador) o a un jugador.
  */
-export function HistorialCarga({ atletaInicial = '' }: { atletaInicial?: string }) {
+export function HistorialCarga({
+  atletaInicial = '',
+  conInsights = true,
+  rango: rangoControlado,
+  onRango,
+}: {
+  atletaInicial?: string
+  /** Muestra el panel de Insights del microciclo debajo del gráfico (el Perfil del atleta tiene el suyo). */
+  conInsights?: boolean
+  /** Rango controlado desde afuera (el Perfil del atleta lo comparte con su panel de insights). */
+  rango?: RangoHistorial
+  onRango?: (r: RangoHistorial) => void
+}) {
   const { athletes, ctx, hoy, resumenes } = useCargaInterna()
-  const [rango, setRango] = useState<RangoHistorial>('4s')
+  const categories = useAppStore((s) => s.categories)
+  const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+  const [rangoLocal, setRangoLocal] = useState<RangoHistorial>('4s')
+  const rango = rangoControlado ?? rangoLocal
+  const setRango = (r: RangoHistorial) => (onRango ? onRango(r) : setRangoLocal(r))
   const [atletaId, setAtletaId] = useState(atletaInicial)
 
   const ids = useMemo(() => (atletaId ? [atletaId] : athletes.map((a) => a.id)), [atletaId, athletes])
@@ -88,6 +106,18 @@ export function HistorialCarga({ atletaInicial = '' }: { atletaInicial?: string 
           Las barras (eje izquierdo) son la carga {semanal ? 'de cada semana' : 'de cada día'} apilada por tipo de sesión; las líneas (eje derecho) son la carga aguda —suma de los últimos 7 días— y la crónica —promedio semanal de los últimos 28 días—, ambas en UA por semana. Cuando la aguda se separa por encima de la crónica sube el ACWR.
         </p>
       </Card>
+
+      {conInsights && (
+        <MicrocicloInsightsPanel
+          ctx={ctx}
+          hasta={hoy}
+          rango={rango}
+          ids={ids}
+          resumenes={ids.map((id) => resumenes.get(id)).filter((x): x is NonNullable<typeof x> => !!x)}
+          alcance={atletaId ? (ordenados.find((a) => a.id === atletaId)?.nombre ?? 'el jugador') : 'el plantel'}
+          nombreDivision={categories.find((c) => c.id === activeCategoryId)?.nombre}
+        />
+      )}
     </div>
   )
 }
