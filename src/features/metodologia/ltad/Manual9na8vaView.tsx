@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 
 /**
  * Manual Metodológico — El Estirón (9na y 8va división). Versión maquetada
@@ -10,6 +11,7 @@ import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
  * la arquitectura de impresión A4 de `ManualFuerzaView.tsx`.
  */
 export function Manual9na8vaView() {
+  const linkBloqueado = useLinkBloqueado()
   function handleDescargarPdf() {
     window.print()
   }
@@ -23,13 +25,15 @@ export function Manual9na8vaView() {
           </Link>
           <span className="text-sm font-medium">📗 El Estirón — 9na y 8va División</span>
         </div>
-        <button
-          type="button"
-          onClick={handleDescargarPdf}
-          className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
-        >
-          🖨️ Exportar a PDF
-        </button>
+        {!linkBloqueado && (
+          <button
+            type="button"
+            onClick={handleDescargarPdf}
+            className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
+          >
+            🖨️ Exportar a PDF
+          </button>
+        )}
       </div>
 
       <div className="print-area flex flex-col items-center gap-8">

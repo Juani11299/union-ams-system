@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 
 /**
  * Manual de Isometría Avanzada — Escuela de Movimiento e Isometría. Libro de
@@ -14,6 +15,7 @@ import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
  * arquitectura de impresión A4 del resto de los manuales del club.
  */
 export function MetodologiaIsometriaView() {
+  const linkBloqueado = useLinkBloqueado()
   function handleDescargarPdf() {
     window.print()
   }
@@ -27,13 +29,15 @@ export function MetodologiaIsometriaView() {
           </Link>
           <span className="text-sm font-medium">📘 Isometría Avanzada — Escuela de Movimiento</span>
         </div>
-        <button
-          type="button"
-          onClick={handleDescargarPdf}
-          className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
-        >
-          🖨️ Exportar a PDF
-        </button>
+        {!linkBloqueado && (
+          <button
+            type="button"
+            onClick={handleDescargarPdf}
+            className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
+          >
+            🖨️ Exportar a PDF
+          </button>
+        )}
       </div>
 
       <div className="print-area flex flex-col items-center gap-8">

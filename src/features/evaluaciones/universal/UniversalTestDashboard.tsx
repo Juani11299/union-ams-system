@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useSoloLectura } from '@/hooks/useSoloLectura'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 import { useToastStore } from '@/store/useToastStore'
 import { useAntropometriasStore } from '@/stores/useAntropometriasStore'
 import { useEvaluacionesDinamicasStore } from '@/stores/useEvaluacionesDinamicasStore'
@@ -88,6 +89,7 @@ export function UniversalTestDashboard({ nombre, onBack, backLabel = '⬅ Volver
   const fetchAntropometrias = useAntropometriasStore((s) => s.fetchAntropometrias)
   const showToast = useToastStore((s) => s.showToast)
   const soloLectura = useSoloLectura()
+  const linkBloqueado = useLinkBloqueado()
 
   const rootRef = useRef<HTMLDivElement>(null)
   const [vista, setVista] = useState<Vista>('dt')
@@ -338,7 +340,7 @@ export function UniversalTestDashboard({ nombre, onBack, backLabel = '⬅ Volver
               Último test {fdate(ultimo)}
             </div>
           )}
-          {ds && (
+          {ds && !linkBloqueado && (
             <button className="btn primary no-print" onClick={imprimir}>
               <Svg>
                 <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />

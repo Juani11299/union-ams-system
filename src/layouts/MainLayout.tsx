@@ -8,6 +8,7 @@ import { ToastContainer } from '@/components/ToastContainer'
 import { LockedModuleView } from '@/components/LockedModuleView'
 import { useScopedCategoryFromUrl } from '@/hooks/useScopedCategoryFromUrl'
 import { rutaBloqueadaParaVisitante } from '@/utils/staffAccess'
+import { AntiLeakWrapper } from '@/components/AntiLeakWrapper'
 
 function EstadoCarga() {
   return (
@@ -71,6 +72,7 @@ export function MainLayout() {
   }, [error])
 
   return (
+    <AntiLeakWrapper>
     <div className="flex min-h-svh bg-slate-50 dark:bg-slate-950">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
@@ -95,5 +97,6 @@ export function MainLayout() {
         />
       )}
     </div>
+    </AntiLeakWrapper>
   )
 }

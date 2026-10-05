@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 
 /**
  * Manual Metodológico — Transferencia y Rendimiento (5ta y 4ta división).
@@ -11,6 +12,7 @@ import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
  * `ManualFuerzaView.tsx`.
  */
 export function Manual5ta4taView() {
+  const linkBloqueado = useLinkBloqueado()
   function handleDescargarPdf() {
     window.print()
   }
@@ -24,13 +26,15 @@ export function Manual5ta4taView() {
           </Link>
           <span className="text-sm font-medium">📗 Transferencia y Rendimiento — 5ta y 4ta División</span>
         </div>
-        <button
-          type="button"
-          onClick={handleDescargarPdf}
-          className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
-        >
-          🖨️ Exportar a PDF
-        </button>
+        {!linkBloqueado && (
+          <button
+            type="button"
+            onClick={handleDescargarPdf}
+            className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
+          >
+            🖨️ Exportar a PDF
+          </button>
+        )}
       </div>
 
       <div className="print-area flex flex-col items-center gap-8">

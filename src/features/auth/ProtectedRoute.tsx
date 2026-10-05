@@ -3,6 +3,20 @@ import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
 
 /**
+ * Rutas que acepta el link ESCOPEADO sin sesión (`?category=X&locked=true`):
+ * Dashboard (`/`), Planificador y, desde la Fase 49, Evaluaciones de Rendimiento
+ * y todo el árbol de Estructura de Trabajo (`/metodologia/*`). Debe coincidir
+ * con `PREFIJOS_PERMITIDOS_STAFF` de `staffAccess.ts`. Prefijo con límite de
+ * segmento: `/evaluaciones` y `/evaluaciones/test/X` sí; `/evaluacionesX` no.
+ */
+const PREFIJOS_LINK_ESCOPADO = ['/planificador', '/evaluaciones', '/metodologia']
+
+function rutaPermitidaParaLinkEscopado(pathname: string): boolean {
+  if (pathname === '/') return true
+  return PREFIJOS_LINK_ESCOPADO.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}
+
+/**
  * Guardia de rutas administrativas (Fase 18) — envuelve sólo el grupo de
  * rutas de `MainLayout` en `App.tsx` (Dashboard, Planificador, Admin,
  * Metodología, etc). Las rutas públicas de jugador/kiosco (`/ingreso-rapido`,
@@ -23,8 +37,8 @@ import { useAppStore } from '@/store/useAppStore'
  *    por link, el store todavía no procesó la URL — sin este chequeo
  *    directo quedaría en un bucle: no se puede entrar a `MainLayout` para
  *    fijar el flag, porque hace falta el flag para entrar a `MainLayout`.
- *    El link ESCOPEADO (`?category=X&locked=true`) sólo vale para `/` o
- *    `/planificador` — el link GLOBAL (`?locked=true` sin `category`) vale
+ *    El link ESCOPEADO (`?category=X&locked=true`) sólo vale para `/`,
+ *    `/planificador`, `/evaluaciones` y `/metodologia` (Fase 49) — el link GLOBAL (`?locked=true` sin `category`) vale
  *    para cualquier ruta, porque su propósito es justo "entrar a todos
  *    lados" (MainLayout igual sigue decidiendo qué bloquea, ver abajo).
  * 2. `categoryLocked`/`soloLecturaGlobal` (store, no persistidos): una vez
@@ -51,8 +65,7 @@ export function ProtectedRoute() {
   const categoryEnUrl = params.get('category')
 
   const esEntradaPublicaPorUrl =
-    lockedEnUrl &&
-    (categoryEnUrl ? location.pathname === '/' || location.pathname.startsWith('/planificador') : true)
+    lockedEnUrl && (categoryEnUrl ? rutaPermitidaParaLinkEscopado(location.pathname) : true)
 
   const esLinkMagicoStaff = categoryLocked || soloLecturaGlobal || esEntradaPublicaPorUrl
 

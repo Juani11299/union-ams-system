@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 
 /**
  * Manual Metodológico Institucional — Área de Fuerza. Versión completa,
@@ -16,6 +17,7 @@ import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
  * consecutivas en vez de forzarlo en una sola.
  */
 export function ManualFuerzaView() {
+  const linkBloqueado = useLinkBloqueado()
   function handleDescargarPdf() {
     window.print()
   }
@@ -29,13 +31,15 @@ export function ManualFuerzaView() {
           </Link>
           <span className="text-sm font-medium">🏋️ Manual Metodológico — Área de Fuerza</span>
         </div>
-        <button
-          type="button"
-          onClick={handleDescargarPdf}
-          className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
-        >
-          🖨️ Descargar Manual (PDF)
-        </button>
+        {!linkBloqueado && (
+          <button
+            type="button"
+            onClick={handleDescargarPdf}
+            className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
+          >
+            🖨️ Descargar Manual (PDF)
+          </button>
+        )}
       </div>
 
       <div className="print-area flex flex-col items-center gap-8">

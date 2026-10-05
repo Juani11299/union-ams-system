@@ -1,3 +1,4 @@
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 import { useMemo, useState } from 'react'
 import { fdate, fmt } from '@/features/nordbord/calculations'
 import { LvlPill } from '@/features/nordbord/ui'
@@ -22,6 +23,7 @@ function Chips({ items, cls = '' }: { items: string[]; cls?: string }) {
 
 /** Datos & Calidad — smart parsing del test, cruce con antropometrías (peso corporal), panel para subir un CSV nuevo y tabla cruda de datos. */
 export function DatosTab({ ds, win, cat, catRef, onFile, arrastrando, puedeCargar, guardando }: Props) {
+  const linkBloqueado = useLinkBloqueado()
   const [sort, setSort] = useState<{ k: string; dir: 1 | -1 }>({ k: 'nombre', dir: 1 })
   const mt = ds.match
   const n = Object.keys(ds.atletas).length
@@ -107,7 +109,7 @@ export function DatosTab({ ds, win, cat, catRef, onFile, arrastrando, puedeCarga
             <h3>Tabla de datos (grupo filtrado)</h3>
             <p className="hint" style={{ margin: 0 }}>Un registro por atleta (último test de la ventana). Click en los encabezados para ordenar.</p>
           </div>
-          <button className="btn no-print" onClick={descargarCsv}>Descargar CSV procesado</button>
+          {!linkBloqueado && <button className="btn no-print" onClick={descargarCsv}>Descargar CSV procesado</button>}
         </div>
         <div className="tbl mt">
           <table>

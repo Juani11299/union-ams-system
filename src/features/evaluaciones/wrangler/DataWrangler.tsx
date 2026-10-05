@@ -1,3 +1,4 @@
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 import { useMemo, useState } from 'react'
 import { leerTabla } from '@/features/antropometrias/parser'
 import { Card } from '@/components/Card'
@@ -26,6 +27,7 @@ type Filtro = 'todas' | 'sospechosas' | 'rojas'
  * Todo ocurre en el navegador: no toca Supabase.
  */
 export function DataWrangler({ onBack }: { onBack: () => void }) {
+  const linkBloqueado = useLinkBloqueado()
   const showToast = useToastStore((s) => s.showToast)
   const [archivo, setArchivo] = useState<string | null>(null)
   const [columnas, setColumnas] = useState<string[]>([])
@@ -199,9 +201,11 @@ export function DataWrangler({ onBack }: { onBack: () => void }) {
               <button type="button" onClick={deshacer} disabled={historial.length === 0} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">
                 ↶ Deshacer{historial.length > 0 ? ` (${historial.length})` : ''}
               </button>
-              <button type="button" onClick={descargar} disabled={filas.length === 0} className="ml-auto rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700 disabled:opacity-50">
-                ⬇️ Descargar CSV Limpio
-              </button>
+              {!linkBloqueado && (
+                <button type="button" onClick={descargar} disabled={filas.length === 0} className="ml-auto rounded-lg bg-union-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-union-red-700 disabled:opacity-50">
+                  ⬇️ Descargar CSV Limpio
+                </button>
+              )}
             </div>
 
             <DataGrid key={`${archivo}-${filtro}`} columnas={auditoria.columnas} filas={filasVista} auditoria={auditoria} seleccion={seleccion} onSeleccion={setSeleccion} onEditar={editar} />

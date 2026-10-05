@@ -69,3 +69,30 @@ body {
   size: A4;
   margin: 12mm;
 }
+
+/*
+ * Blindaje anti-extracción (Fase 49, `AntiLeakWrapper`): reglas a nivel <html>
+ * porque algunos módulos (PantallaCompleta, modales) renderizan en un portal
+ * sobre `document.body`, fuera del contenedor del wrapper. Sólo existen
+ * mientras el visitante entró por un link `locked=true`.
+ */
+html[data-anti-leak] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html[data-anti-leak] input,
+html[data-anti-leak] textarea,
+html[data-anti-leak] [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+html[data-anti-leak] img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+@media print {
+  html[data-anti-leak-print] body {
+    display: none !important;
+  }
+}

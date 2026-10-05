@@ -19,7 +19,8 @@
  * No es seguridad real de backend (RLS sigue aceptando todo con la key
  * anon): es una barrera de UX/ruteo, no un control de acceso a datos.
  */
-const PREFIJOS_PERMITIDOS_STAFF = ['/planificador']
+/** Fase 49: se suman Evaluaciones de Rendimiento y todo `/metodologia` (Estructura de Trabajo), siempre de sólo lectura y con el blindaje anti-extracción activo. */
+const PREFIJOS_PERMITIDOS_STAFF = ['/planificador', '/evaluaciones', '/metodologia']
 
 function rutaPermitidaParaStaff(pathname: string): boolean {
   if (pathname === '/') return true

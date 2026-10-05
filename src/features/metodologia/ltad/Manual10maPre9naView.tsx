@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 
 /**
  * Manual Metodológico — Etapa de Alfabetización y Cimientos (10ma y Pre 9na
@@ -11,6 +12,7 @@ import { NOMBRE_AREA, FIRMA_AUTOR } from '@/constants/branding'
  * A4 de `ManualFuerzaView.tsx` / `MetodologiaIsometriaView.tsx`.
  */
 export function Manual10maPre9naView() {
+  const linkBloqueado = useLinkBloqueado()
   function handleDescargarPdf() {
     window.print()
   }
@@ -24,13 +26,15 @@ export function Manual10maPre9naView() {
           </Link>
           <span className="text-sm font-medium">📗 Etapa de Alfabetización y Cimientos — 10ma y Pre 9na</span>
         </div>
-        <button
-          type="button"
-          onClick={handleDescargarPdf}
-          className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
-        >
-          🖨️ Exportar a PDF
-        </button>
+        {!linkBloqueado && (
+          <button
+            type="button"
+            onClick={handleDescargarPdf}
+            className="rounded-lg bg-union-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-union-red-700"
+          >
+            🖨️ Exportar a PDF
+          </button>
+        )}
       </div>
 
       <div className="print-area flex flex-col items-center gap-8">

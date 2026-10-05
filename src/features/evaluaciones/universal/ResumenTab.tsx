@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 import { catOrder } from '@/features/nordbord/calculations'
 import { LvlPill } from '@/features/nordbord/ui'
 import { asymLvlGenerico, ASIM_VERDE, ASIM_ROJO } from './semaforo'
@@ -19,6 +20,7 @@ interface Props {
 
 /** Resumen DT — semáforo de vestuario + Ranking Top 5 / Bottom 5 de cada métrica clave del test. */
 export function ResumenTab({ ds, win, cat, onCat, catRef, openAthlete, onPrint, ventanas, onWin }: Props) {
+  const linkBloqueado = useLinkBloqueado()
   const [lvlSel, setLvlSel] = useState<LvlU | null>(null)
   const all = useMemo(() => poolU(ds, win, 'all'), [ds, win])
   const cats = useMemo(() => {
@@ -94,9 +96,11 @@ export function ResumenTab({ ds, win, cat, onCat, catRef, openAthlete, onPrint, 
               </option>
             ))}
           </select>
-          <button className="btn primary" onClick={onPrint}>
-            🖨️ Imprimir Resumen (A4)
-          </button>
+          {!linkBloqueado && (
+            <button className="btn primary" onClick={onPrint}>
+              🖨️ Imprimir Resumen (A4)
+            </button>
+          )}
         </div>
       </div>
 
