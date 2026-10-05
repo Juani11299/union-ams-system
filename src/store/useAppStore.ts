@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { registrarCategorias } from '@/features/workload/cargaEjecutada'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { idbStorage } from '@/utils/idbStorage'
@@ -2011,3 +2012,9 @@ export function useGymExternalLoadsActivos(): GymExternalLoad[] {
     return gymExternalLoads.filter((g) => idsActivos.has(g.sessionId))
   }, [gymExternalLoads, sessionPlans, activeSeasonId, activeCategoryId])
 }
+
+// El fallback de sRPE de los sábados necesita el nombre de la categoría (duración estándar de partido): se mantiene sincronizado.
+registrarCategorias(useAppStore.getState().categories)
+useAppStore.subscribe((state, prev) => {
+  if (state.categories !== prev.categories) registrarCategorias(state.categories)
+})

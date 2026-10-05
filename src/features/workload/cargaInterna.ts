@@ -1,6 +1,6 @@
 import type { SessionExecution, SessionPlan } from '@/types'
 import { diferenciaDias, fechaHoyLocal, inicioSemanaFecha, sumarDiasFecha } from '@/utils/fecha'
-import { calcularCargaEjecutadaReal, DURACION_CAMPO_BASE_MIN } from './cargaEjecutada'
+import { baseSinSesion, calcularCargaEjecutadaReal } from './cargaEjecutada'
 
 /**
  * Motor de Carga Interna (Fase 48) — todo en FECHAS CIVILES (YYYY-MM-DD, hora
@@ -52,8 +52,10 @@ export interface DesgloseCarga {
   minPartido: number
   minOtros: number
   rpe: number
-  /** Día sin sesión planificada: se aplicó la base del club (Campo, 90 min). */
+  /** Día sin sesión planificada: se aplicó la base del club por día de la semana (ver `baseSinSesion`). */
   baseClub?: boolean
+  /** Texto para mostrar de la base aplicada, ej. "Campo (Base 90m)" o "Partido (70m estándar de la categoría)". */
+  baseEtiqueta?: string
 }
 
 /**
@@ -68,8 +70,11 @@ export function desgloseEjecucion(ejecucion: SessionExecution, planesDelDia: Ses
   if (total === null) return null
   const d: DesgloseCarga = { campo: 0, gimnasio: 0, partido: 0, otros: 0, total, minCampo: 0, minGimnasio: 0, minPartido: 0, minOtros: 0, rpe: ejecucion.rpe }
   if (planesDelDia.length === 0) {
-    // Sin sesión planificada → Campo base del club (RPE × 90 min); ver `calcularCargaEjecutadaReal`.
-    return { ...d, campo: total, minCampo: DURACION_CAMPO_BASE_MIN, baseClub: true }
+    // Sin sesión planificada → base del club según el día (Lun–Vie campo 90′ · Sáb partido · Dom 60′); ver `baseSinSesion`.
+    const b = baseSinSesion(ejecucion)
+    return b.tipo === 'partido'
+      ? { ...d, partido: total, minPartido: b.minutos, baseClub: true, baseEtiqueta: b.etiqueta }
+      : { ...d, campo: total, minCampo: b.minutos, baseClub: true, baseEtiqueta: b.etiqueta }
   }
   const partido = planesDelDia.find((p) => p.tipo === 'Partido')
   if (partido) {
@@ -184,7 +189,7 @@ export function serieDiariaAtleta(ctx: ContextoCarga, athleteId: string, hasta: 
         : d
     }
     const rpeReportado = ejecs.length > 0 ? ejecs[ejecs.length - 1].rpe : null
-    // RPE en un día SIN sesión planificada: entrenó en cancha igual → Campo base del club (RPE × 90 min).
+    // RPE en un día SIN sesión planificada: entrenó igual → base del club según el día (Lun–Vie 90′ · Sáb partido · Dom 60′).
     if (real !== null) base.push({ fecha, carga: real, origen: planificado ? 'real' : 'base-club', planificado, rpe, desglose })
     else if (!planificado) base.push({ fecha, carga: 0, origen: 'descanso', planificado, rpe: null, desglose: null })
     else if (!dosSesionesDeEntrenamiento(planes)) base.push({ fecha, carga: 0, origen: 'partido-sin-minutos', planificado, rpe: null, desglose: null })

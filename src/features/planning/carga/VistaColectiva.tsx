@@ -115,7 +115,7 @@ export function VistaColectiva({ onAbrirAtleta }: { onAbrirAtleta: (id: string) 
           <span aria-hidden>⚠️</span>
           <span>
             <b>{kpis.rpeSinCarga} RPE de los últimos 28 días ({kpis.jugadoresConRpeSinCarga} jugadores) no suman carga</b>: se reportaron en sesiones planificadas a las que todavía les falta el
-            "Tiempo Total de Trabajo". Cargándolo en el Planificador esos RPE entran solos al ACWR y la cobertura sube. (Los RPE de días sin sesión planificada ya suman como Campo base de 90 min.)
+            "Tiempo Total de Trabajo". Cargándolo en el Planificador esos RPE entran solos al ACWR y la cobertura sube. (Los RPE de días sin sesión planificada ya suman con la base del club: Lun–Vie campo 90 min, sábado partido, domingo 60 min.)
           </span>
         </div>
       )}
