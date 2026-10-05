@@ -169,10 +169,14 @@ h2 em{font-style:normal;color:var(--red)}
 
 /* ───────── 10. Síntesis ───────── */
 .syn{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.syn .card{display:flex;gap:20px;align-items:center;padding:26px 28px;min-height:204px}
+.syn .card{display:flex;gap:20px;align-items:center;padding:22px 28px;min-height:150px}
 .syn .badge{width:52px;height:52px;font-size:25px;border-radius:15px}
 .syn h3{font-size:25px;margin-bottom:8px}.syn p{font-size:19px}
 
+.qband{margin-top:18px;background:var(--ink);color:#fff;border-radius:14px;padding:16px 26px;border-left:6px solid var(--red);display:flex;align-items:center;gap:20px}
+.qband .qm{font-size:64px;line-height:.7;font-weight:900;color:var(--red2);font-family:Georgia,serif;height:34px}
+.qband p{font-size:22px;line-height:1.35;font-style:italic;font-weight:500}
+.qband cite{display:block;margin-top:6px;font-size:15px;font-style:normal;font-weight:600;letter-spacing:.3px;color:#FCA5A5}
 /* ───────── 11. Cierre ───────── */
 .closing .stripes{position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 2px,transparent 2px 28px),radial-gradient(ellipse at 92% 108%,rgba(211,47,47,.38),transparent 55%),linear-gradient(200deg,#1B1E25,#0F1115)}
 .closing .wrap{position:absolute;left:84px;right:420px;top:50%;transform:translateY(-54%);text-align:left}
@@ -537,7 +541,8 @@ h2 em{font-style:normal;color:var(--red)}
     <div class="card red-l"><div class="badge">3</div><div><h3>Cultura del rendimiento</h3><p>El jugador tatengue aprende a <b>entrenar duro</b> y con <b>sentido de juego</b>.</p></div></div>
     <div class="card red-l"><div class="badge">4</div><div><h3>Especificidad vectorial</h3><p>Toda repetición en el gimnasio tiene <b>transferencia al campo de juego</b>.</p></div></div>
   </div>
-  <div class="num">10</div>
+    <div class="qband"><span class="qm" aria-hidden="true">“</span><div><p>Ningún viento es favorable para quien no sabe a qué puerto se dirige.</p><cite>— Séneca, Cartas a Lucilio (71)</cite></div></div>
+<div class="num">10</div>
   <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
 </section>
 
