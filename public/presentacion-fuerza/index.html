@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}</style>
+<title>Modelo de Desarrollo de la Fuerza</title>
+<style>
+:root{
+  --red:#D32F2F; --red2:#E53935; --red-dk:#B71C1C; --red-lt:#FDECEC;
+  --ink:#0F172A; --ink2:#1E293B; --slate:#475569; --mute:#64748B;
+  --pearl:#F8FAFC; --line:#E2E8F0; --white:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{color-scheme:dark}
+html,body{height:100%;background:#0C0E12;font-family:"Segoe UI",Inter,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;color:#F8FAFC;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* ───────── Escenario 16:9 (diseño base 1280×720, escala al viewport) ───────── */
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center center;transform:translate(-50%,-50%) scale(var(--s,1));background:var(--pearl);overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.6)}
+.slide{position:absolute;inset:0;padding:54px 64px 62px;background:var(--pearl);color:var(--ink);opacity:0;visibility:hidden;transform:translateX(24px);transition:opacity .45s ease,transform .45s ease,visibility 0s .45s}
+.slide.active{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease,transform .45s ease,visibility 0s}
+.slide.prev{transform:translateX(-24px)}
+.slide.dark{background:#15171C;color:#fff}
+
+/* Cabecera, pie y firma (en CADA diapositiva) */
+.top-band{position:absolute;left:0;top:0;right:0;height:8px;background:linear-gradient(90deg,var(--red) 0 33.3%,#fff 33.3% 66.6%,var(--red) 66.6% 100%)}
+.dark .top-band{background:linear-gradient(90deg,var(--red) 0 33.3%,#fff 33.3% 66.6%,var(--red) 66.6% 100%)}
+.sig{position:absolute;right:64px;bottom:20px;font-size:13px;letter-spacing:.2px;color:var(--mute);text-align:right;display:flex;align-items:center;gap:8px}
+.sig::before{content:"";width:22px;height:2px;background:var(--red);display:inline-block}
+.sig b{color:var(--ink);font-weight:700}
+.dark .sig{color:#CBD5E1}.dark .sig b{color:#fff}
+.num{position:absolute;left:64px;bottom:20px;font-size:13px;color:var(--mute);font-weight:600;letter-spacing:.5px}
+.dark .num{color:#94A3B8}
+.crest-mini{position:absolute;right:64px;top:26px;width:46px;height:46px;opacity:.95}
+
+.crest-bg{background:url(data:image/png;base64,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) center/contain no-repeat}
+.crest-who{width:104px;height:104px;flex:none}
+/* Tipografía */
+.kicker{font-size:13px;font-weight:800;letter-spacing:2.2px;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+h2{font-size:34px;line-height:1.12;font-weight:800;letter-spacing:-.4px;color:var(--ink);max-width:1000px}
+h2 em{font-style:normal;color:var(--red)}
+.lead{font-size:17px;line-height:1.5;color:var(--slate);margin-top:10px;max-width:980px}
+.dark h2{color:#fff}
+.head{margin-bottom:22px;min-height:96px}
+
+/* Tarjetas */
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:0 2px 10px rgba(15,23,42,.06);position:relative}
+.card.red-l{border-left:5px solid var(--red)}
+.card h3{font-size:18px;font-weight:800;color:var(--ink);line-height:1.2;margin-bottom:6px}
+.card p,.card li{font-size:16.5px;line-height:1.45;color:var(--slate)}
+.card ul{padding-left:18px}.card li{margin-top:3px}
+.card li::marker{color:var(--red)}
+.tag{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 10px;border-radius:99px;background:var(--red-lt);color:var(--red);margin-bottom:8px}
+.tag.solid{background:var(--red);color:#fff}
+.badge{width:40px;height:40px;border-radius:12px;background:var(--red);color:#fff;font-weight:800;font-size:19px;display:grid;place-items:center;flex:none}
+.ico{width:46px;height:46px;border-radius:14px;background:var(--red-lt);color:var(--red);display:grid;place-items:center;flex:none}
+.ico svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}.g4{grid-template-columns:repeat(4,1fr)}
+
+/* ───────── 1. Portada ───────── */
+.cover{padding:0}
+.cover .stripes{position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 2px,transparent 2px 28px),radial-gradient(ellipse at 8% 108%,rgba(211,47,47,.38),transparent 55%),linear-gradient(160deg,#1B1E25,#0F1115)}
+.cover .glow{position:absolute;right:-180px;top:-180px;width:640px;height:640px;border-radius:50%;background:radial-gradient(circle,rgba(229,57,53,.42),transparent 66%)}
+.cover .wrap{position:absolute;left:84px;top:50%;transform:translateY(-52%);width:820px}
+.cover .crest{position:absolute;right:92px;top:50%;transform:translateY(-52%);width:300px;height:300px;filter:drop-shadow(0 14px 40px rgba(0,0,0,.55))}
+.cover h1{font-size:60px;line-height:1.04;font-weight:900;letter-spacing:-1.2px;margin:14px 0 18px}
+.cover h1 em{font-style:normal;color:#fff;background:linear-gradient(transparent 70%,var(--red) 70%)}
+.cover .sub{font-size:23px;color:#E2E8F0;font-weight:300;line-height:1.35;max-width:700px}
+.cover .inst{margin-top:34px;display:flex;gap:30px;align-items:center}
+.cover .inst div{font-size:15px;color:#CBD5E1;line-height:1.5}
+.cover .inst b{display:block;color:#fff;font-size:18px}
+.cover .inst .sep{width:2px;height:46px;background:var(--red)}
+
+/* ───────── 2. Pirámide ───────── */
+.pyr{display:grid;grid-template-columns:600px 1fr;gap:34px;align-items:center}
+.pyr-wrap{position:relative;height:370px}
+.lv{position:absolute;left:50%;transform:translateX(-50%);height:88px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;color:#fff;font-weight:800;line-height:1.15;transition:filter .2s,transform .2s;border:0}
+.lv small{display:block;font-weight:600;opacity:.9;font-size:12.5px}
+.lv span{display:block;font-size:15px}
+.lv:hover,.lv.sel{filter:brightness(1.12) saturate(1.1);transform:translateX(-50%) scale(1.03);z-index:3}
+.lv.sel{box-shadow:0 0 0 3px #fff,0 0 0 6px var(--red)}
+.lv1{top:0;width:200px;clip-path:polygon(50% 0,100% 100%,0 100%);height:92px;background:var(--red-dk);padding-top:34px}
+.lv2{top:94px;width:360px;clip-path:polygon(28% 0,72% 0,100% 100%,0 100%);background:var(--red)}
+.lv3{top:184px;width:480px;clip-path:polygon(18.5% 0,81.5% 0,100% 100%,0 100%);background:#E2615F}
+.lv4{top:274px;width:600px;clip-path:polygon(14.5% 0,85.5% 0,100% 100%,0 100%);background:#F0A3A1;color:var(--ink)}
+.lv1 span{font-size:13px}
+.lv .ph{display:table;margin:5px auto 0;padding:2px 9px;border-radius:99px;background:rgba(255,255,255,.22);font-size:11.5px;font-weight:800;letter-spacing:.8px}
+.lv4 .ph{background:rgba(15,23,42,.14)}
+.lv1 .ph{font-size:10px;padding:1px 7px;margin-top:3px}
+.pyr-det .meter{display:flex;height:44px;border-radius:12px;overflow:hidden;margin:12px 0 6px;box-shadow:0 2px 10px rgba(15,23,42,.12)}
+.pyr-det .meter div{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;transition:width .5s ease;white-space:nowrap;overflow:hidden;min-width:56px}
+.m-r{background:var(--red)}.m-a{background:var(--ink2)}
+.legend{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--slate);margin-bottom:12px}
+.concl{position:absolute;left:64px;right:64px;bottom:58px;background:var(--ink);color:#fff;border-radius:12px;padding:12px 20px;font-size:16px;line-height:1.4;display:flex;gap:14px;align-items:center;border-left:6px solid var(--red)}
+.concl b{color:#fff}
+
+/* ───────── 3. Pilares ───────── */
+.pillar{display:flex;flex-direction:column;gap:14px;min-height:318px}
+.pillar .row{display:flex;gap:12px;align-items:center}
+.pillar h3{font-size:19px}
+.pillar .sub{font-size:13px;font-weight:800;letter-spacing:1.2px;color:var(--red);text-transform:uppercase}
+.pillar p{font-size:17px;line-height:1.5}
+.pillar .foot{margin-top:auto;font-size:13px;font-weight:700;color:var(--ink);background:var(--pearl);border-radius:8px;padding:8px 10px;border:1px dashed #CBD5E1}
+
+/* ───────── 4. Dos bloques ───────── */
+.blocks{display:grid;grid-template-columns:1fr 70px 1fr;gap:0;align-items:stretch;margin-top:6px}
+.bigblock{border-radius:18px;padding:34px 34px;color:#fff;position:relative;overflow:hidden;min-height:410px}
+.bigblock.b1{background:linear-gradient(145deg,var(--red),var(--red-dk))}
+.bigblock.b2{background:linear-gradient(145deg,var(--ink2),var(--ink))}
+.bigblock .n{font-size:150px;font-weight:900;line-height:.9;position:absolute;right:26px;bottom:-6px;opacity:.14}
+.bigblock h3{font-size:34px;font-weight:900;margin:8px 0 10px;line-height:1.1}
+.bigblock .t{font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#FECACA}
+.b2 .t{color:#FCA5A5}
+.bigblock p{font-size:20px;line-height:1.45;color:#F1F5F9;max-width:430px}
+.bigblock ul{margin-top:14px;list-style:none}
+.bigblock li{font-size:19px;font-weight:600;padding:11px 0;border-top:1px solid rgba(255,255,255,.22)}
+.arrow-mid{display:grid;place-items:center}
+.arrow-mid svg{width:48px;height:48px;stroke:var(--red);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+
+/* ───────── 5/6. Secuencia de 4 pasos ───────── */
+.seq{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;position:relative;margin-top:6px}
+.seq::before{content:"";position:absolute;left:8%;right:8%;top:20px;height:3px;background:repeating-linear-gradient(90deg,var(--red) 0 10px,transparent 10px 18px)}
+.step{position:relative;padding-top:0}
+.step .badge{position:relative;z-index:1;margin:0 auto 12px;box-shadow:0 0 0 6px var(--pearl)}
+.step .card{min-height:370px;padding:20px 20px}
+.step h3{font-size:21px;text-align:left;margin-bottom:10px}
+.step .sig-t{font-size:13px;font-weight:800;letter-spacing:1px;color:var(--red);text-transform:uppercase;margin-bottom:6px}
+.step p{font-size:17.5px;line-height:1.5}
+.step li{font-size:17px}
+.step.vit .card{background:linear-gradient(180deg,#fff,var(--red-lt));border-color:#F4B6B6}
+
+/* ───────── 7. 10ma / Pre-9na ───────── */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.duo .card{padding:28px 30px;min-height:430px}
+.duo .card h3{font-size:27px;margin-bottom:4px}
+.duo .card .tag{margin-bottom:10px}
+.sublist{margin-top:14px;display:flex;flex-direction:column;gap:12px}
+.sublist .it{display:flex;gap:14px;align-items:center;background:var(--pearl);border-radius:10px;padding:13px 14px}
+.sublist .it i{width:26px;height:26px;border-radius:8px;background:var(--red);color:#fff;font-style:normal;font-weight:800;display:grid;place-items:center;flex:none;font-size:13px}
+.sublist .it span{font-size:17.5px;line-height:1.4;color:var(--slate)}
+.sublist .it b{color:var(--ink)}
+
+/* ───────── 8. Microciclo ───────── */
+.mc{display:grid;grid-template-columns:210px 1fr;gap:12px;align-items:stretch}
+.mc .cat{background:var(--ink);color:#fff;border-radius:12px;padding:12px 16px;display:flex;flex-direction:column;justify-content:center;border-left:6px solid var(--red)}
+.mc .cat b{font-size:21px;white-space:nowrap;line-height:1.1;font-weight:900}
+.mc .cat small{font-size:13px;color:#CBD5E1;margin-top:4px;line-height:1.3}
+.mc .body{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 18px;display:flex;align-items:center;font-size:17.5px;line-height:1.42;color:var(--slate);box-shadow:0 2px 10px rgba(15,23,42,.05)}
+.mc .body b{color:var(--ink)}
+.mc3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.mc3 .d{border-radius:10px;padding:9px 12px;background:var(--pearl);border-top:4px solid var(--red)}
+.mc3 .d .md{font-size:13px;font-weight:800;letter-spacing:1px;color:var(--red);text-transform:uppercase}
+.mc3 .d .tt{font-size:17px;font-weight:800;color:var(--ink);margin:2px 0}
+.mc3 .d p{font-size:15px;line-height:1.38;color:var(--slate)}
+.mc-rows{display:grid;gap:12px;grid-template-rows:168px 96px 112px 80px}
+
+/* ───────── 9. Logística ───────── */
+.mx{display:grid;grid-template-columns:170px 1fr 1fr;gap:12px;font-size:17px;grid-template-rows:46px;grid-auto-rows:minmax(92px,auto)}
+.mx .h{align-self:start}
+.mx .h{background:var(--ink);color:#fff;border-radius:10px;padding:12px 16px;font-weight:800;font-size:13.5px;letter-spacing:1px;text-transform:uppercase}
+.mx .h.r{background:var(--red)}
+.mx .c{background:var(--red-lt);border-radius:10px;padding:10px 14px;font-weight:900;font-size:22px;color:var(--red-dk);display:flex;align-items:center;border-left:5px solid var(--red)}
+.mx .t{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px;line-height:1.42;display:flex;align-items:center;color:var(--slate);box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.mx .t b{color:var(--ink)}
+.mx .tx{display:block}
+.mx .span2{grid-column:span 2}
+.mx .t.foc{background:var(--pearl);border-style:dashed}
+
+/* ───────── 10. Síntesis ───────── */
+.syn{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.syn .card{display:flex;gap:20px;align-items:center;padding:26px 28px;min-height:204px}
+.syn .badge{width:52px;height:52px;font-size:25px;border-radius:15px}
+.syn h3{font-size:25px;margin-bottom:8px}.syn p{font-size:19px}
+
+/* ───────── 11. Cierre ───────── */
+.closing .stripes{position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 2px,transparent 2px 28px),radial-gradient(ellipse at 92% 108%,rgba(211,47,47,.38),transparent 55%),linear-gradient(200deg,#1B1E25,#0F1115)}
+.closing .wrap{position:absolute;left:84px;right:420px;top:50%;transform:translateY(-54%);text-align:left}
+.closing h2{font-size:44px;max-width:780px;line-height:1.08;margin:6px 0 24px;font-weight:900}
+.closing .who{display:flex;gap:22px;align-items:center}
+.closing .who .sep{width:3px;height:84px;background:var(--red)}
+.closing .who b{display:block;font-size:30px;font-weight:900}
+.closing .who span{font-size:19px;color:#E2E8F0}
+.closing .crest{position:absolute;right:84px;top:50%;transform:translateY(-52%);width:280px;height:280px;filter:drop-shadow(0 14px 40px rgba(0,0,0,.55))}
+.closing .quote{margin-top:30px;padding:16px 22px;border-left:5px solid var(--red);background:rgba(255,255,255,.07);font-size:20px;font-style:italic;line-height:1.4;max-width:760px;color:#fff;border-radius:0 12px 12px 0}
+
+
+/* ───────── PHV ───────── */
+.phv-top{display:grid;grid-template-columns:1fr 380px;gap:14px;margin-bottom:12px}
+.phv-key{background:var(--ink);color:#fff;border-radius:12px;padding:12px 20px;border-left:6px solid var(--red)}
+.phv-key .k{font-size:12px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#FCA5A5}
+.phv-key .v{font-size:21px;line-height:1.3;font-weight:700;margin-top:2px}
+.phv-key em{font-style:normal;color:#FCA5A5}
+.phv-stat{background:var(--red-lt);border:1px solid #F4B6B6;border-radius:12px;padding:10px 18px;display:flex;align-items:center;gap:14px}
+.phv-stat b{font-size:34px;font-weight:900;color:var(--red-dk);line-height:1;white-space:nowrap}
+.phv-stat span{font-size:14px;line-height:1.35;color:var(--slate)}
+.phv-curve{position:relative;height:150px;border-radius:12px 12px 0 0;overflow:hidden;border:1px solid var(--line);border-bottom:0}
+.phv-curve svg{display:block;width:100%;height:100%}
+.phv-pk{position:absolute;left:calc(37.5% + 14px);top:6px;font-size:12px;font-weight:800;color:var(--red-dk)}
+.phv-cap{position:absolute;left:12px;top:8px;font-size:11.5px;font-weight:700;color:var(--mute);letter-spacing:.3px}
+.phv-cards{display:grid;grid-template-columns:repeat(4,1fr)}
+.phv-c{padding:14px 16px 12px;background:#fff;border:1px solid var(--line)}
+.phv-c:first-child{border-radius:0 0 0 12px}.phv-c:last-child{border-radius:0 0 12px 0}
+.phv-c+.phv-c{border-left:0}
+.phv-c.hot{background:linear-gradient(180deg,#fff,var(--red-lt))}
+.phv-c h3{font-size:17.5px;font-weight:800;line-height:1.15;margin:2px 0 2px}
+.phv-c .cats{font-size:13px;font-weight:800;color:var(--red);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px}
+.phv-c p{font-size:15.5px;line-height:1.45;color:var(--slate)}
+.phv-c p b{color:var(--ink)}
+.phv-c .tag{font-size:11px;margin-bottom:6px}
+
+/* ───────── Diagnóstico ───────── */
+.dg{display:grid;grid-template-columns:1.45fr 1fr 1fr;gap:12px;margin-top:6px}
+.dg .card{padding:14px 16px}
+.dg-a{border-top:5px solid var(--red)}
+.dg-h{display:flex;gap:12px;align-items:center;margin-bottom:6px}
+.dg-h .badge{width:34px;height:34px;font-size:17px;border-radius:10px}
+.dg-h h3{font-size:16.5px;margin:0;line-height:1.18}
+.dg li{font-size:14.5px;line-height:1.4;margin-top:6px}
+.dg-err,.dg-ok{border-radius:10px;padding:10px 14px;font-size:14.5px;line-height:1.42;color:var(--slate)}
+.dg-err b:first-child,.dg-ok b:first-child{display:block;font-size:12px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:3px}
+.dg-err{background:var(--red-lt);border-left:5px solid var(--red);margin-bottom:8px}
+.dg-err b:first-child{color:var(--red-dk)}
+.dg-ok{background:var(--ink);color:#E2E8F0;border-left:5px solid #fff}
+.dg-ok b:first-child{color:#FCA5A5}.dg-ok b{color:#fff}.dg-ok u{text-decoration-color:var(--red);text-decoration-thickness:2px;text-underline-offset:3px;font-weight:800;color:#fff}
+.dg-wide{grid-column:1 / -1;border-top:5px solid var(--ink)}
+.dg-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.dg-3>div{background:var(--pearl);border-radius:10px;padding:8px 14px;font-size:14.5px;line-height:1.4;color:var(--slate);border-top:3px solid var(--red)}
+.dg-3 b{display:block;color:var(--ink);font-size:15.5px;margin-bottom:2px}
+
+/* ───────── Controles ───────── */
+#progress{position:fixed;left:0;top:0;height:5px;background:linear-gradient(90deg,var(--red2),var(--red));width:0;z-index:50;transition:width .35s ease}
+.nav{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;width:44px;height:44px;border-radius:50%;border:0;background:rgba(15,23,42,.62);color:#fff;cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(6px);opacity:.38;transition:opacity .2s,background .2s}
+.nav:hover{opacity:1;background:var(--red)}
+.nav svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+#prev{left:16px}#next{right:16px}
+#hud{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:50;font-size:12px;color:#fff;letter-spacing:.4px;white-space:nowrap;background:rgba(15,23,42,.78);padding:5px 12px;border-radius:99px;transition:opacity 1s;pointer-events:none}
+#hud kbd{background:rgba(255,255,255,.12);border-radius:4px;padding:1px 6px;font-family:inherit;color:#E2E8F0}
+
+#rot{position:fixed;inset:0;z-index:100;background:#15171C;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px 28px}
+#rot svg{width:64px;height:64px;stroke:#E53935;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#rot b{font-size:20px;line-height:1.3}#rot span{font-size:15px;color:#CBD5E1;line-height:1.45;max-width:320px}
+#rot button{margin-top:6px;border:1px solid #475569;background:transparent;color:#fff;border-radius:99px;padding:10px 20px;font-size:15px;cursor:pointer}
+@media (max-width:700px) and (orientation:portrait){#rot:not([hidden]){display:flex}}
+
+/* ───────── Impresión / exportar a PDF (1 diapositiva = 1 página 16:9) ───────── */
+@page{size:1280px 720px;margin:0}
+@media print{
+  html,body{height:auto;overflow:visible;background:#fff}
+  #progress,.nav,#hud{display:none!important}
+  #stage{position:static;transform:none;width:1280px;height:auto;box-shadow:none;overflow:visible}
+  .slide{position:relative;inset:auto;width:1280px;height:720px;opacity:1;visibility:visible;transform:none;transition:none;page-break-after:always;break-after:page;overflow:hidden}
+  .slide:last-child{page-break-after:auto;break-after:auto}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div id="rot"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M3 9a9 9 0 0 1 3-4M21 15a9 9 0 0 1-3 4M3 5v4h4M21 19v-4h-4"/></svg><b>Girá el celular en horizontal</b><span>La presentación está pensada en formato panorámico 16:9.</span><button type="button" id="rotok">Verla igual</button></div>
+
+<main id="stage" aria-live="polite">
+
+<!-- 1 ───────── PORTADA ───────── -->
+<section class="slide dark cover" data-title="Portada">
+  <div class="stripes"></div><div class="glow"></div><div class="top-band"></div>
+  <div class="wrap">
+    <div class="kicker" style="color:#FCA5A5">Club Atlético Unión de Santa Fe · Fútbol Juvenil</div>
+    <h1>Modelo de Desarrollo de la <em>Fuerza</em> en Divisiones Formativas</h1>
+    <p class="sub">Metodología y Organización Operativa del Gimnasio de Pesas</p>
+    <div class="inst">
+      <div><b>Mg. Juan Ignacio Robles</b>Responsable del área y autor de la metodología</div>
+      <span class="sep"></span>
+      <div><b>Club Atlético Unión de Santa Fe</b>Fútbol Juvenil · Área de Fuerza y Rendimiento</div>
+    </div>
+  </div>
+  <div class="crest crest-bg" role="img" aria-label="Escudo del Club Atlético Unión de Santa Fe"></div>
+  <div class="num">01</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 2 ───────── LTAD / PIRÁMIDE ───────── -->
+<section class="slide" data-title="Marco LTAD">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">Marco teórico · LTAD</div>
+    <h2>Long-Term Athletic Development en la <em>pirámide formativa</em> tatengue</h2>
+    <p class="lead">Tiempo de gimnasio entre <b>aprendizaje</b> y <b>rendimiento</b> y etapa de <b>maduración biológica</b> por nivel. Tocá un peldaño.</p>
+  </div>
+  <div class="pyr">
+    <div class="pyr-wrap" id="pyr">
+      <button class="lv lv1" data-k="0"><span>4ta y 5ta<small class="ph">[POST-PHV]</small></span></button>
+      <button class="lv lv2" data-k="1"><span>7ma y 6ta<small class="ph">[POST-PHV]</small></span></button>
+      <button class="lv lv3" data-k="2"><span>9na y 8va<small class="ph">[CIRCA-PHV]</small></span></button>
+      <button class="lv lv4" data-k="3"><span>10ma y Pre-9na<small class="ph">[PRE-PHV]</small></span></button>
+    </div>
+    <div class="card red-l pyr-det">
+      <span class="tag solid" id="pd-tag">Cúspide</span> <span class="tag" id="pd-ph" style="background:var(--ink);color:#fff">[POST-PHV]</span>
+      <h3 id="pd-t" style="font-size:26px">4ta y 5ta División</h3>
+      <div class="meter"><div class="m-r" id="pd-r" style="width:80%">80% Rendimiento</div><div class="m-a" id="pd-a" style="width:20%">20%</div></div>
+      <div class="legend"><span>Rendimiento</span><span>Aprendizaje</span></div>
+      <div id="pd-f" style="font-weight:800;color:var(--red);font-size:17px;margin-bottom:4px">Post-PHV consolidado</div>
+      <p id="pd-p">Madurez cercana al adulto. Tolerancia a mayores volúmenes e intensidades, preparación para la exigencia del fútbol profesional.</p>
+    </div>
+  </div>
+  <div class="concl"><span class="badge" style="width:34px;height:34px;font-size:16px">→</span><div><b>Conclusión pedagógica:</b> la fuerza se construye desde la <b>competencia motriz</b> hacia la manifestación de <b>potencia máxima</b>.</div></div>
+  <div class="num">02</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 3 ───────── MADURACIÓN BIOLÓGICA / PHV ───────── -->
+<section class="slide" data-title="Maduración biológica (PHV)">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head" style="min-height:76px;margin-bottom:12px">
+    <div class="kicker">LTAD · Edad biológica vs. edad cronológica</div>
+    <h2 style="font-size:31px">Maduración y <em>Peak Height Velocity (PHV)</em></h2>
+  </div>
+  <div class="phv-top">
+    <div class="phv-key"><div class="k">Eje conceptual</div><div class="v">Se entrena por <em>maduración biológica</em>, no por el año de nacimiento (DNI).</div></div>
+    <div class="phv-stat"><b>3–4 años</b><span>de diferencia de maduración biológica entre dos chicos de la misma categoría.</span></div>
+  </div>
+  <div class="phv-curve">
+    <svg viewBox="0 0 1152 128" preserveAspectRatio="none" aria-hidden="true">
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D32F2F" stop-opacity=".55"/><stop offset="1" stop-color="#D32F2F" stop-opacity=".05"/></linearGradient></defs>
+      <rect x="0" width="288" height="128" fill="#F1F5F9"/><rect x="288" width="288" height="128" fill="#FDECEC"/><rect x="576" width="288" height="128" fill="#F1F5F9"/><rect x="864" width="288" height="128" fill="#E8EDF3"/>
+      <path d="M0,118 C120,117 240,104 320,54 C370,22 396,12 432,12 C468,12 494,22 544,54 C620,98 760,116 900,119 L1152,120 L1152,128 L0,128 Z" fill="url(#g1)"/>
+      <path d="M0,118 C120,117 240,104 320,54 C370,22 396,12 432,12 C468,12 494,22 544,54 C620,98 760,116 900,119 L1152,120" fill="none" stroke="#B71C1C" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="432" cy="12" r="7" fill="#fff" stroke="#B71C1C" stroke-width="3.5"/>
+    </svg>
+    <span class="phv-pk">PHV · pico de velocidad de crecimiento</span>
+    <span class="phv-cap">Velocidad de crecimiento (esquema conceptual)</span>
+  </div>
+  <div class="phv-cards">
+    <div class="phv-c"><span class="tag solid">[PRE-PHV]</span><h3>Fase prepuberal</h3><div class="cats">10ma y Pre-9na</div><p><b>Foco:</b> alfabetización motriz, patrones base, aprendizaje motor sin estrés estructural excesivo.</p></div>
+    <div class="phv-c hot"><span class="tag solid">[CIRCA-PHV]</span><h3>Transición</h3><div class="cats">9na y 8va</div><p>Pico de velocidad de crecimiento. <b>Monitoreo estricto</b> del crecimiento óseo / apófisis, reentrenamiento de posturas ante la pérdida momentánea de coordinación e <b>inicio del aprendizaje de carga / RIR</b>.</p></div>
+    <div class="phv-c"><span class="tag solid">[POST-PHV]</span><h3>Post-PHV temprano</h3><div class="cats">7ma y 6ta</div><p>Ventana de adaptaciones <b>neurales y estructurales / hipertróficas</b> aceleradas por el entorno hormonal favorable. Consolidación de la fuerza basal y del RFD.</p></div>
+    <div class="phv-c"><span class="tag solid">[POST-PHV]</span><h3>Post-PHV consolidado</h3><div class="cats">5ta y 4ta</div><p>Madurez cercana al adulto. <b>Mayor tolerancia</b> a volúmenes e intensidades; preparación para la exigencia del fútbol profesional.</p></div>
+  </div>
+  <div class="num"></div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 4 ───────── MODELO BIOMECÁNICO ───────── -->
+<section class="slide" data-title="Modelo biomecánico">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">El deporte como eje</div>
+    <h2>El modelo biomecánico del fútbol <em>determina la selección de ejercicios</em></h2>
+    <p class="lead">Cuatro pilares biomecánicos organizan qué se entrena en el gimnasio y por qué.</p>
+  </div>
+  <div class="grid g4">
+    <div class="card pillar red-l">
+      <div class="row"><div class="ico"><svg viewBox="0 0 24 24"><path d="M3 12h15M13 6l6 6-6 6"/><path d="M3 7h5M3 17h5"/></svg></div><div><div class="sub">Pilar 1</div><h3>Aceleración (Acc)</h3></div></div>
+      <p>Dominancia de <b>cadera</b> y <b>empuje horizontal</b>.</p>
+      <div class="foot">Vector: horizontal</div>
+    </div>
+    <div class="card pillar red-l">
+      <div class="row"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3v13M6 11l6 6 6-6"/><path d="M5 21h14"/></svg></div><div><div class="sub">Pilar 2</div><h3>Frenos / Deceleración</h3></div></div>
+      <p>Fuerza <b>excéntrica</b>, absorción y control postural.</p>
+      <div class="foot">Régimen: excéntrico</div>
+    </div>
+    <div class="card pillar red-l">
+      <div class="row"><div class="ico"><svg viewBox="0 0 24 24"><path d="M4 19l5-12 6 9 5-12"/></svg></div><div><div class="sub">Pilar 3</div><h3>Cambios de Dirección (COD)</h3></div></div>
+      <p>Resistencia a <b>vectores laterales</b>, rigidez frontal y pélvica.</p>
+      <div class="foot">Vector: lateral / frontal</div>
+    </div>
+    <div class="card pillar red-l">
+      <div class="row"><div class="ico"><svg viewBox="0 0 24 24"><path d="M12 20V5M7 10l5-5 5 5"/><path d="M6 20h12"/></svg></div><div><div class="sub">Pilar 4</div><h3>Velocidad Máxima (Vmax)</h3></div></div>
+      <p>Rigidez del complejo tobillo-pie (<b>stiffness</b>), ciclos acortamiento-estiramiento (CEA) verticales y mecánicas erectas.</p>
+      <div class="foot">Vector: vertical</div>
+    </div>
+  </div>
+  <div class="concl"><span class="badge" style="width:34px;height:34px;font-size:16px">→</span><div>Cada ejercicio del gimnasio se elige para <b>transferir a una de estas cuatro acciones</b> del juego.</div></div>
+  <div class="num">03</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 4 ───────── ESTRUCTURA 2 BLOQUES ───────── -->
+<section class="slide" data-title="Dos bloques">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">De 9na a 4ta División</div>
+    <h2>Estructura de la sesión de pesas en <em>2 bloques</em></h2>
+    <p class="lead">División estratégica del tiempo en el gimnasio.</p>
+  </div>
+  <div class="blocks">
+    <div class="bigblock b1">
+      <div class="n">1</div><div class="t"><span class="tx">Bloque 1</span></div>
+      <h3>Fuerza – Velocidad</h3>
+      <p>Manifestación neural, balística y reactiva.</p>
+      <ul><li>FIMax · Fuerza isométrica máxima</li><li>Potencia dinámica</li><li>Zona media y reactividad</li><li>Ejercicio “Vitamina”</li></ul>
+    </div>
+    <div class="arrow-mid"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+    <div class="bigblock b2">
+      <div class="n">2</div><div class="t"><span class="tx">Bloque 2</span></div>
+      <h3>Fuerza Estructural / Máxima</h3>
+      <p>Tensión mecánica, hipertrofia funcional y base de fuerza.</p>
+      <ul><li>Dinámico pesado</li><li>Empuje de tren superior</li><li>Tracción de tren superior</li><li>Vitamina complementario</li></ul>
+    </div>
+  </div>
+  <div class="num">04</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 5 ───────── BLOQUE 1 ───────── -->
+<section class="slide" data-title="Bloque 1">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">Bloque 1 · Fuerza – Velocidad</div>
+    <h2>Desglose operativo: <em>4 componentes</em> secuenciales</h2>
+  </div>
+  <div class="seq">
+    <div class="step"><div class="badge">1</div><div class="card red-l"><div class="sig-t">FIMax</div><h3>Fuerza Isométrica Máxima</h3><p>Fijación de posturas biomecánicas críticas (<b>Acc, Freno, COD, Vmax</b>) y potenciación del <b>RFD</b> (Rate of Force Development) en edades maduras.</p></div></div>
+    <div class="step"><div class="badge">2</div><div class="card red-l"><div class="sig-t">Potencia</div><h3>Ejercicio Dinámico de Potencia</h3><p>Derivados del levantamiento olímpico (<b>DLO</b>), saltos bipodales / unipodales y lanzamientos balísticos.</p></div></div>
+    <div class="step"><div class="badge">3</div><div class="card red-l"><div class="sig-t">Reactividad</div><h3>Zona Media Dinámica</h3><p>Transmisión de fuerza <b>lumbo-pélvica</b> y rigidez tendinosa (<b>stiffness</b>).</p></div></div>
+    <div class="step vit"><div class="badge">4</div><div class="card red-l"><div class="sig-t">Vitamina</div><h3>Ejercicio “Vitamina”</h3><p>Estímulo analítico y preventivo de la musculatura clave de la acción diana.</p><ul style="margin-top:8px"><li>Día de <b>COD</b>: aductores / abductores.</li><li>Día de <b>freno</b>: cadena posterior excéntrica.</li></ul></div></div>
+  </div>
+  <div class="num">05</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 6 ───────── BLOQUE 2 ───────── -->
+<section class="slide" data-title="Bloque 2">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">Bloque 2 · Fuerza Estructural / Máxima</div>
+    <h2>Desglose operativo: <em>4 componentes</em> secuenciales</h2>
+  </div>
+  <div class="seq">
+    <div class="step"><div class="badge">1</div><div class="card red-l"><div class="sig-t">Sobrecarga</div><h3>Dinámico Pesado</h3><p>Sentadillas, Peso Muerto, Estocadas y Subidas al cajón. <b>Sobrecarga axial y unilateral pesada.</b></p></div></div>
+    <div class="step"><div class="badge">2</div><div class="card red-l"><div class="sig-t">Tren superior</div><h3>Empuje</h3><p>Press de banca, Press militar y empujes a <b>1 brazo / 1 pierna</b>.</p></div></div>
+    <div class="step"><div class="badge">3</div><div class="card red-l"><div class="sig-t">Tren superior</div><h3>Tracción</h3><p>Dominadas, remos libres y apoyados (bilaterales y unilaterales).</p></div></div>
+    <div class="step vit"><div class="badge">4</div><div class="card red-l"><div class="sig-t">Vitamina</div><h3>Ejercicio Vitamina Complementario</h3><p>Compensa la <b>otra acción biomecánica</b>.</p><p style="margin-top:12px;font-size:15.5px"><i>Ejemplo: si en el Bloque 1 se trabajó Vitamina de Freno, aquí se realiza Vitamina de Aceleración o trabajo complementario de zona media.</i></p></div></div>
+  </div>
+  <div class="num">06</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 7 ───────── 10ma / PRE-9na ───────── -->
+<section class="slide" data-title="10ma y Pre-9na">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">Modelo formativo especial</div>
+    <h2><em>10ma y Pre-9na:</em> estructura diferencial para la edad sensible</h2>
+  </div>
+  <div class="duo">
+    <div class="card red-l">
+      <span class="tag solid">Bloque A</span>
+      <h3>Alfabetización Motora y Básicos</h3>
+      <p>Enseñanza rigurosa de los patrones fundamentales, con peso corporal y barras pedagógicas.</p>
+      <div class="sublist">
+        <div class="it"><i>1</i><span><b>Bisagra de cadera</b></span></div>
+        <div class="it"><i>2</i><span><b>Sentadilla</b></span></div>
+        <div class="it"><i>3</i><span><b>Tracciones y empujes básicos</b></span></div>
+      </div>
+    </div>
+    <div class="card red-l">
+      <span class="tag solid">Bloque B</span>
+      <h3>Trabajo a 1 Hemicuerpo y Habilidades Fundamentales</h3>
+      <div class="sublist">
+        <div class="it"><i>1</i><span>Empujes y tracciones de <b>tren inferior a 1 pierna</b>.</span></div>
+        <div class="it"><i>2</i><span>Empujes y tracciones de <b>tren superior a 1 brazo</b>.</span></div>
+        <div class="it"><i>3</i><span>Activación de <b>musculatura profunda</b> y control del tronco.</span></div>
+        <div class="it"><i>4</i><span>Aprendizaje de <b>caídas, mecánicas de frenado, amortiguación y aterrizajes</b> de saltos.</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="num">07</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 8 ───────── MICROCICLO ───────── -->
+<section class="slide" data-title="Microciclo">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head" style="min-height:78px;margin-bottom:12px">
+    <div class="kicker">Periodización</div>
+    <h2 style="font-size:31px">Microciclo semanal <em>por categorías</em></h2>
+  </div>
+  <div class="mc-rows">
+    <div class="mc">
+      <div class="cat"><b>4ta y 5ta</b><small>Microciclo estructurado</small></div>
+      <div class="body"><div class="mc3">
+        <div class="d"><div class="md">MD+1 / MD+2</div><div class="tt">Post-partido</div><p>Regenerativo y recuperación funcional.</p></div>
+        <div class="d"><div class="md">MD-4 / MD-3</div><div class="tt">Mitad de semana</div><p>Sesión principal de desarrollo de <b>fuerza máxima</b> y tensión mecánica.</p></div>
+        <div class="d"><div class="md">MD-1</div><div class="tt">Pre-partido</div><p>Activación neuromuscular / <b>priming</b>: alta velocidad, mínimo volumen, sin fatiga residual.</p></div>
+      </div></div>
+    </div>
+    <div class="mc"><div class="cat"><b>6ta y 7ma</b><small>2 días de desarrollo neto</small></div><div class="body"><span>Elevación de la <b>fuerza basal</b> y optimización de la aplicación de fuerza en suelo (<b>isométricos rápidos y fuertes</b>).</span></div></div>
+    <div class="mc"><div class="cat"><b>8va y 9na</b><small>2 días de aprendizaje + viernes</small></div><div class="body"><span><b>Aprendizaje técnico</b> y vivencia de cargas altas (noción de <b>RIR</b>; aprender a empujar pesado de forma segura e independiente) + <b>viernes</b> de activación / priming para desmitificar las pesas previas al partido.</span></div></div>
+    <div class="mc"><div class="cat"><b>10ma y Pre-9na</b><small>2 días semanales</small></div><div class="body"><span>100% abocados al <b>control postural</b> y los <b>patrones motrices</b>.</span></div></div>
+  </div>
+  <div class="num">08</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 9 ───────── LOGÍSTICA ───────── -->
+<section class="slide" data-title="Logística de piso">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head" style="min-height:78px;margin-bottom:12px">
+    <div class="kicker">Logística de piso</div>
+    <h2 style="font-size:31px">Ubicación y roles del staff en la <em>sala de pesas</em></h2>
+  </div>
+  <div class="mx">
+    <div class="h">Categoría</div><div class="h r">Encargado de Fuerza · Mg. Robles</div><div class="h">Preparador Físico de Categoría</div>
+
+    <div class="c">4ta y 5ta</div>
+    <div class="t"><span class="tx"><b>Foco:</b> autonomía del atleta e intensidad real. Ante <b>técnica específica o debutante</b>, el Mg. Robles toma el <b>1 a 1</b>.</span></div>
+    <div class="t"><span class="tx">Corrección técnica general y <b>coordinación del resto de las estaciones</b>.</span></div>
+
+    <div class="c">6ta y 7ma</div>
+    <div class="t"><span class="tx"><b>Bloque 1</b> (Fuerza-Velocidad): FIMax, posturas y DLO.</span></div>
+    <div class="t"><span class="tx"><b>Bloque 2</b> (Fuerza Máxima): fiscaliza ejercicios básicos con <b>criterio unificado</b>.</span></div>
+
+    <div class="c">8va y 9na</div>
+    <div class="t foc span2"><span class="tx">Misma distribución física, con <b>ROL DOCENTE PROACTIVO</b>: corrección minuciosa de los 4 ejercicios para consolidar la técnica global de todos los patrones.</span></div>
+
+    <div class="c">Pre-9na y 10ma</div>
+    <div class="t"><span class="tx"><b>Bloque de Enseñanza</b> de ejercicios básicos.</span></div>
+    <div class="t"><span class="tx"><b>Bloque de 1 Hemicuerpo</b>: postura de espalda, apoyos unilaterales, alineación y caídas.</span></div>
+  </div>
+  <div class="num">09</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 10 ───────── SÍNTESIS ───────── -->
+<section class="slide" data-title="Síntesis">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head">
+    <div class="kicker">Síntesis metodológica</div>
+    <h2>Principios <em>no negociables</em></h2>
+    <p class="lead">Los cuatro pilares rectores del modelo.</p>
+  </div>
+  <div class="syn">
+    <div class="card red-l"><div class="badge">1</div><div><h3>Criterio unificado en todo el club</h3><p>Desde <b>Pre-9na hasta 4ta división</b>: un mismo lenguaje técnico y metodológico.</p></div></div>
+    <div class="card red-l"><div class="badge">2</div><div><h3>Calidad sobre cantidad</h3><p><b>Postura biomecánica</b> antes que carga externa.</p></div></div>
+    <div class="card red-l"><div class="badge">3</div><div><h3>Cultura del rendimiento</h3><p>El jugador tatengue aprende a <b>entrenar duro</b> y con <b>sentido de juego</b>.</p></div></div>
+    <div class="card red-l"><div class="badge">4</div><div><h3>Especificidad vectorial</h3><p>Toda repetición en el gimnasio tiene <b>transferencia al campo de juego</b>.</p></div></div>
+  </div>
+  <div class="num">10</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 12 ───────── DIAGNÓSTICO CRÍTICO ───────── -->
+<section class="slide" data-title="Diagnóstico crítico y próximos pasos">
+  <div class="top-band"></div><div class="crest-mini crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="head" style="min-height:62px;margin-bottom:10px">
+    <div class="kicker">Diagnóstico crítico</div>
+    <h2 style="font-size:30px">Cultura de fuerza y <em>próximos pasos</em></h2>
+  </div>
+  <div class="dg">
+    <div class="card dg-a">
+      <div class="dg-h"><span class="badge">A</span><h3>Cambio de paradigma: la fuerza como capacidad madre</h3></div>
+      <div class="dg-err"><b>El error actual</b>Subordinar el gimnasio al «microciclo estructurado» de campo copiado de primera división.</div>
+      <div class="dg-ok"><b>La corrección</b>En etapas formativas <u>la fuerza es la capacidad madre</u>: sin un desarrollo oportuno, todas las demás cualidades físicas y técnico-tácticas quedan condicionadas y limitadas a futuro. Se gestiona el <b>volumen de entrenamiento en campo</b> para dar lugar al estímulo de fuerza; no se vacía ni se recorta el gimnasio por fatiga de campo.</div>
+    </div>
+    <div class="card">
+      <div class="dg-h"><span class="badge">B</span><h3>Una verdadera «Cultura del Gimnasio»</h3></div>
+      <ul>
+        <li>El futbolista de Unión aprende a entrenar la fuerza de forma <b>autónoma y responsable</b>.</li>
+        <li><b>Autorregulación:</b> hacer de menos está mal, pero hacer de más también. Fin del «cumplir por cumplir» y del sobreentrenamiento sin sentido.</li>
+        <li><b>Comprender el propósito:</b> jugador y cuerpo técnico saben <i>para qué</i> se hace cada repetición y cada serie.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="dg-h"><span class="badge">C</span><h3>Liderazgo y rol del Preparador Físico</h3></div>
+      <ul>
+        <li><b>Cero tolerancia a la dispersión:</b> el gimnasio es un espacio de máxima concentración y rigor técnico.</li>
+        <li>El PF de la categoría <b>impone el orden</b> y la cultura de trabajo: no es un espectador pasivo ni se acopla a la distracción.</li>
+        <li>El orden es un pilar <b>no negociable</b> del rendimiento.</li>
+      </ul>
+    </div>
+    <div class="card dg-d dg-wide">
+      <div class="dg-h"><span class="badge">D</span><h3>Metas basadas en datos y próximos pasos operativos</h3></div>
+      <div class="dg-3">
+        <div><b>Estandarización de evaluaciones</b>Corregir los protocolos de testeo: evaluar siempre bajo las mismas condiciones para que el dato sea fiable.</div>
+        <div><b>Bio-Banding</b>Clasificar y agrupar a los jugadores por maduración biológica dentro de cada categoría, individualizando la prescripción de carga.</div>
+        <div><b>Alineación integral</b>Todo el club habla el mismo idioma biomecánico y metodológico.</div>
+      </div>
+    </div>
+  </div>
+  <div class="num"></div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+<!-- 13 ───────── CIERRE ───────── -->
+<section class="slide dark closing" data-title="Cierre">
+  <div class="stripes"></div><div class="top-band"></div>
+  <div class="crest crest-bg" role="img" aria-label="Escudo C.A. Unión"></div>
+  <div class="wrap">
+    <div class="kicker" style="color:#FCA5A5">Cierre y preguntas</div>
+    <h2>C.A. Unión de Santa Fe — Formando Atletas de Alto Rendimiento</h2>
+    <div class="who">
+      <span class="sep"></span>
+      <div><b>Mg. Juan Ignacio Robles</b><span>Encargado del Área de Fuerza y Rendimiento</span></div>
+    </div>
+    <div class="quote">“El rendimiento del domingo se construye con la constancia y la precisión técnica de la semana.”</div>
+  </div>
+  <div class="num">11</div>
+  <div class="sig"><b>Club Atlético Unión de Santa Fe</b> | Departamento de Preparación Física | <b>Mg. Juan Ignacio Robles</b></div>
+</section>
+
+</main>
+
+<button class="nav" id="prev" aria-label="Diapositiva anterior"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+<button class="nav" id="next" aria-label="Diapositiva siguiente"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+<div id="hud"><kbd>←</kbd> <kbd>→</kbd> navegar · <kbd>F</kbd> pantalla completa</div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide')),stage=document.getElementById('stage'),
+      bar=document.getElementById('progress'),cur=0;
+
+  function fit(){var s=Math.min(innerWidth/1280,innerHeight/720);stage.style.setProperty('--s',s)}
+  addEventListener('resize',fit);fit();
+
+  slides.forEach(function(el,i){var n=el.querySelector('.num');if(n)n.textContent=('0'+(i+1)).slice(-2)+' / '+('0'+slides.length).slice(-2)});
+  function go(n,fromHash){
+    n=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(el,i){el.classList.toggle('active',i===n);el.classList.toggle('prev',i<n)});
+    cur=n;bar.style.width=((n+1)/slides.length*100)+'%';
+    document.title=slides[n].dataset.title+' — Modelo de Desarrollo de la Fuerza · C.A. Unión';
+    if(!fromHash){try{history.replaceState(null,'','#'+(n+1))}catch(e){}}
+  }
+  document.getElementById('next').onclick=function(){go(cur+1)};
+  document.getElementById('prev').onclick=function(){go(cur-1)};
+  addEventListener('keydown',function(e){
+    var k=e.key;
+    if(k==='ArrowRight'||k==='PageDown'||k===' '||k==='Enter'){e.preventDefault();go(cur+1)}
+    else if(k==='ArrowLeft'||k==='PageUp'||k==='Backspace'){e.preventDefault();go(cur-1)}
+    else if(k==='Home'){go(0)}else if(k==='End'){go(slides.length-1)}
+    else if(k==='f'||k==='F'){try{var p=document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();if(p&&p.catch)p.catch(function(){})}catch(e){}}
+  });
+  document.getElementById('rotok').onclick=function(){document.getElementById('rot').hidden=true};
+  stage.addEventListener('click',function(){try{window.focus()}catch(e){}});
+  var tx=null;
+  addEventListener('touchstart',function(e){tx=e.touches[0].clientX},{passive:true});
+  addEventListener('touchend',function(e){if(tx===null)return;var d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)go(cur+(d<0?1:-1));tx=null},{passive:true});
+  addEventListener('hashchange',function(){var n=parseInt(location.hash.slice(1),10);if(n)go(n-1,true)});
+
+  /* Pirámide interactiva (diapositiva 2) */
+  var NIV=[
+    {tag:'Cúspide',ph:'[POST-PHV]',f:'Post-PHV consolidado',t:'4ta y 5ta División',r:80,p:'Madurez cercana al adulto. Tolerancia a mayores volúmenes e intensidades, preparación para la exigencia del fútbol profesional.'},
+    {tag:'Nivel medio-alto',ph:'[POST-PHV]',f:'Post-PHV temprano',t:'7ma y 6ta División',r:50,p:'Ventana de adaptaciones neurales y estructurales / hipertróficas aceleradas por un entorno hormonal favorable. Consolidación de la fuerza basal y del RFD.'},
+    {tag:'Nivel medio-bajo',ph:'[CIRCA-PHV]',f:'Circa-PHV · Transición',t:'9na y 8va División',r:25,p:'Pico de velocidad de crecimiento. Monitoreo estricto del crecimiento óseo / apófisis, reentrenamiento de posturas ante la pérdida momentánea de coordinación motriz e inicio del aprendizaje de carga y RIR.'},
+    {tag:'Base de la pirámide',ph:'[PRE-PHV]',f:'Pre-PHV · Fase prepuberal',t:'10ma y Pre-9na División',r:5,p:'Alfabetización motriz, patrones base y aprendizaje motor sin estrés estructural excesivo.'}
+  ];
+  var lv=[].slice.call(document.querySelectorAll('#pyr .lv'));
+  function pick(i){
+    var d=NIV[i];
+    lv.forEach(function(b,j){b.classList.toggle('sel',i===j)});
+    document.getElementById('pd-tag').textContent=d.tag;
+    document.getElementById('pd-t').textContent=d.t;
+    var r=document.getElementById('pd-r'),a=document.getElementById('pd-a');
+    r.style.width=Math.max(d.r,0)+'%';a.style.width=(100-d.r)+'%';
+    r.textContent=d.r>=30?d.r+'% Rendimiento':d.r+'%';
+    a.textContent=(100-d.r)>=30?(100-d.r)+'% Aprendizaje':(100-d.r)+'%';
+    document.getElementById('pd-p').textContent=d.p;
+    document.getElementById('pd-ph').textContent=d.ph;document.getElementById('pd-f').textContent=d.f;
+  }
+  lv.forEach(function(b){b.addEventListener('click',function(){pick(+b.dataset.k)});b.addEventListener('mouseenter',function(){pick(+b.dataset.k)})});
+  pick(0);
+
+  var hud=document.getElementById('hud');setTimeout(function(){hud.style.opacity=0},5000);
+  var h=parseInt(location.hash.slice(1),10);go(h?h-1:0,true);
+})();
+</script>
+
+
+</body>
+</html>

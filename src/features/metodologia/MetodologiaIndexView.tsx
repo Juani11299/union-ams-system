@@ -10,7 +10,7 @@ interface ManualBiblioteca {
 
 /**
  * Biblioteca de Manuales Metodológicos (Paso 1) — índice de los 6 documentos
- * exportables a PDF A4 del Área de Fuerza: el Manual General, la Escuela de
+ * exportables a PDF A4 del Área de Fuerza (más la presentación institucional): el Manual General, la Escuela de
  * Movimiento (Isometría) y los 4 tomos del modelo LTAD, uno por franja
  * etaria. Cada tarjeta linkea directo a la vista del manual (misma ruta que
  * ya usa el Sidebar, grupo "Estructura de Trabajo" — ver `navConfig.ts`);
@@ -32,6 +32,14 @@ const MANUALES: ManualBiblioteca[] = [
     subtitulo: 'Marco general — todas las categorías',
     descripcion:
       'Clasificación biomecánica de la isometría aplicada al fútbol: Overcoming, Yielding e isometría específica de sprint y cambio de dirección.',
+  },
+  {
+    to: '/metodologia/presentacion-fuerza',
+    icon: '🎞️',
+    titulo: 'Presentación — Modelo de Fuerza',
+    subtitulo: 'Diapositivas · 13 láminas',
+    descripcion:
+      'Presentación institucional: pirámide LTAD y maduración (PHV), modelo biomecánico, sesión en 2 bloques, microciclo, roles del staff y cultura de fuerza.',
   },
   {
     to: '/metodologia/ltad-10ma-pre9na',
@@ -77,7 +85,7 @@ export function MetodologiaIndexView() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Marco teórico oficial del Área de Fuerza — 6 documentos exportables a PDF, uno por
           etapa del modelo de Desarrollo Atlético a Largo Plazo (LTAD) más los dos manuales
-          generales.
+          generales, y la presentación institucional del modelo.
         </p>
       </div>
 

@@ -44,6 +44,13 @@ export const navItems: NavItem[] = [
     group: 'Estructura de Trabajo',
   },
   {
+    to: '/metodologia/presentacion-fuerza',
+    label: 'Presentación — Modelo de Fuerza',
+    shortLabel: 'Presentación',
+    icon: '🎞️',
+    group: 'Estructura de Trabajo',
+  },
+  {
     to: '/metodologia/ltad-10ma-pre9na',
     label: 'LTAD — 10ma y Pre 9na (12-13 años)',
     shortLabel: '10ma-Pre9na',

@@ -14,6 +14,7 @@ import { MedicalView } from '@/features/medical/MedicalView'
 import { MetodologiaIndexView } from '@/features/metodologia/MetodologiaIndexView'
 import { MetodologiaIsometriaView } from '@/features/metodologia/MetodologiaIsometriaView'
 import { ManualFuerzaView } from '@/features/metodologia/ManualFuerzaView'
+import { PresentacionFuerzaView } from '@/features/metodologia/PresentacionFuerzaView'
 import { TerminalFuerzaView } from '@/features/terminal-fuerza/TerminalFuerzaView'
 import { Manual10maPre9naView } from '@/features/metodologia/ltad/Manual10maPre9naView'
 import { Manual9na8vaView } from '@/features/metodologia/ltad/Manual9na8vaView'
@@ -48,6 +49,7 @@ function App() {
           <Route path="/metodologia" element={<MetodologiaIndexView />} />
           <Route path="/metodologia/isometria" element={<MetodologiaIsometriaView />} />
           <Route path="/metodologia/manual-fuerza" element={<ManualFuerzaView />} />
+          <Route path="/metodologia/presentacion-fuerza" element={<PresentacionFuerzaView />} />
           <Route path="/metodologia/ltad-10ma-pre9na" element={<Manual10maPre9naView />} />
           <Route path="/metodologia/ltad-9na-8va" element={<Manual9na8vaView />} />
           <Route path="/metodologia/ltad-7ma-6ta" element={<Manual7ma6taView />} />
