@@ -1,4 +1,4 @@
-import type { TipoSesion } from '@/types'
+import type { SessionPlan, TipoSesion } from '@/types'
 import { diaSemanaFecha } from '@/utils/fecha'
 
 /**
@@ -55,4 +55,26 @@ export function defaultsSesionParaFecha(fecha: string): DefaultsSesionDia {
     return { tipo: 'Partido', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo, esBaseDelClub: true }
   }
   return { tipo: 'Campo', duracionEstimadaMin: DURACION_CAMPO_BASE_MIN, rpeEsperado: rpeCampo, esBaseDelClub: true }
+}
+
+/**
+ * Campo base IMPLÍCITO (Fase 52). En la metodología del club los días con
+ * gimnasio los jugadores TAMBIÉN hacen campo: el gimnasio es un estímulo
+ * complementario, no sustitutivo. De lunes a viernes, si el día tiene una sesión
+ * de Gimnasio planificada y ninguna de Campo (ni Partido), el bloque de Campo
+ * existe igual: 90 min con el RPE de la matriz del club.
+ *
+ * Si el día ya tiene su propia sesión de Campo planificada, esa sesión ES el
+ * bloque de campo (con su duración real) y no se agrega nada; sin gimnasio
+ * planificado el día no se toca (el fallback de `baseSinSesion` cubre los días
+ * sin ninguna sesión). Sábado y domingo no aplican.
+ */
+export function campoBaseImplicito(planesDelDia: SessionPlan[]): { minutos: number; rpe: number } | null {
+  if (planesDelDia.length === 0) return null
+  const dia = diaSemanaFecha(planesDelDia[0].fecha)
+  if (dia < 1 || dia > 5) return null
+  const hayGimnasio = planesDelDia.some((p) => p.tipo === 'Gimnasio')
+  const hayCampoOPartido = planesDelDia.some((p) => p.tipo === 'Campo' || p.tipo === 'Partido')
+  if (!hayGimnasio || hayCampoOPartido) return null
+  return { minutos: DURACION_CAMPO_BASE_MIN, rpe: RPE_CAMPO_POR_DIA[dia] }
 }

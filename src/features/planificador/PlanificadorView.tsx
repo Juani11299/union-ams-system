@@ -27,6 +27,7 @@ import {
   calcularCargaEjecutadaReal,
   calcularCargaInterna,
   calcularCargaEsperadaDia,
+  minutosEsperadosDia,
   defaultsSesionParaFecha,
 } from '@/features/workload/calculations'
 import { diasDeLaSemanaActual, formatFechaCorta, fechaHoyLocal } from '@/utils/fecha'
@@ -102,7 +103,8 @@ function ResumenDiaCard({
   // minutos totales del día × RPE predominante (estándar sRPE de Foster,
   // un solo bloque de estrés). Ver `calcularCargaEsperadaDia`.
   const cargaObjetivoTotal = calcularCargaEsperadaDia(sesiones)
-  const duracionEstimadaTotal = sesiones.reduce((sum, s) => sum + s.duracionEstimadaMin, 0)
+  // Incluye el Campo base de 90 min de los días con gimnasio (Fase 52).
+  const duracionEstimadaTotal = minutosEsperadosDia(sesiones)
   const tituloCombinado = sesiones.map((s) => s.titulo).join(' + ')
   const hayPartido = sesiones.some((s) => s.tipo === 'Partido')
 

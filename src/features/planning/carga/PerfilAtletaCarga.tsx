@@ -149,7 +149,7 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Histórico de respuestas · RPE y duración</h3>
-            <p className="text-xs text-slate-400">Últimos 28 días con sesión planificada o RPE. UA = RPE × minutos totales (Campo + Gimnasio). Si el jugador mandó RPE en un día sin sesión planificada se aplica la base del club: "Campo (Base 90m)" de lunes a viernes, sábado los minutos jugados (o la duración estándar de partido de la categoría) y domingo 60m regenerativos.</p>
+            <p className="text-xs text-slate-400">Últimos 28 días con sesión planificada o RPE. UA = RPE × minutos totales (Campo + Gimnasio). De lunes a viernes los días con gimnasio también incluyen el Campo base de 90m (gimnasio = bloque adicional). Si el jugador mandó RPE en un día sin sesión planificada se aplica la base del club: "Campo (Base 90m)" de lunes a viernes, sábado los minutos jugados (o la duración estándar de partido de la categoría) y domingo 60m regenerativos.</p>
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={verTodos} onChange={(e) => setVerTodos(e.target.checked)} />
@@ -181,9 +181,14 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
                     <td className="py-1.5 pr-3 text-right tabular-nums">{d.desglose ? fmtNum(d.desglose.minGimnasio) : '—'}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums">{d.desglose ? fmtNum(d.desglose.campo + d.desglose.partido) : '—'}</td>
                     <td className="py-1.5 pr-3 text-right tabular-nums">{d.desglose ? fmtNum(d.desglose.gimnasio) : '—'}</td>
-                    <td className="py-1.5 pr-3 text-right font-semibold tabular-nums">{fmtNum(d.carga)}</td>
+                    <td
+                      className="py-1.5 pr-3 text-right font-semibold tabular-nums"
+                      title={d.desglose ? `Campo: ${fmtNum(d.desglose.campo + d.desglose.partido)} UA | Gimnasio: ${fmtNum(d.desglose.gimnasio)} UA | Total: ${fmtNum(d.carga)} UA` : undefined}
+                    >
+                      {fmtNum(d.carga)}
+                    </td>
                     <td className="py-1.5">
-                      <Badge tone={ORIGEN[d.origen].tone}>{d.origen === 'imputado' && d.rpeSinCarga ? 'Imputado (falta el tiempo de la sesión)' : d.origen === 'base-club' ? (d.desglose?.baseEtiqueta ?? ORIGEN[d.origen].label) : ORIGEN[d.origen].label}</Badge>
+                      <Badge tone={ORIGEN[d.origen].tone}>{d.origen === 'imputado' && d.rpeSinCarga ? 'Imputado (falta el tiempo de la sesión)' : d.origen === 'base-club' || (d.origen === 'real' && d.desglose?.baseClub) ? (d.desglose?.baseEtiqueta ?? ORIGEN[d.origen].label) : ORIGEN[d.origen].label}</Badge>
                     </td>
                   </tr>
                 ))}

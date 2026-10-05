@@ -2,7 +2,7 @@ import type { SessionExecution, SessionPlan, WellnessEntry } from '@/types'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { fechaHoyLocal, diferenciaDias as diferenciaDiasLocal, inicioSemanaFecha, sumarDiasFecha } from '@/utils/fecha'
 import { calcularCargaEjecutadaReal } from './cargaEjecutada'
-import { DURACION_CAMPO_BASE_MIN } from './matrizClub'
+import { campoBaseImplicito, DURACION_CAMPO_BASE_MIN } from './matrizClub'
 import { construirContexto, resumenCarga, type EstadoDato } from './cargaInterna'
 
 export function calcularCargaInterna(rpe: number, duracionMin: number): number {
@@ -45,6 +45,19 @@ export { defaultsSesionParaFecha, type DefaultsSesionDia } from './matrizClub'
  */
 export function calcularCargaEsperadaDia(sesiones: SessionPlan[]): number {
   const sumaSimple = sesiones.reduce((sum, s) => sum + s.cargaObjetivo, 0)
+
+  // Fase 52 — Lun–Vie con Gimnasio y sin Campo planificado: el Campo base (90 min, RPE de la matriz) existe
+  // igual. Foster: minutos totales (90 + gimnasio) × RPE predominante (el más alto de los bloques).
+  const campoImplicito = campoBaseImplicito(sesiones)
+  if (campoImplicito) {
+    const minutos = campoImplicito.minutos + sesiones.reduce((sum, s) => sum + s.duracionEstimadaMin, 0)
+    const rpe = Math.max(
+      campoImplicito.rpe,
+      ...sesiones.map((s) => s.rpeEsperado ?? (s.duracionEstimadaMin > 0 ? s.cargaObjetivo / s.duracionEstimadaMin : 0)),
+    )
+    return Math.round(minutos * rpe)
+  }
+
   if (sesiones.length <= 1) return sumaSimple
 
   const tienePartido = sesiones.some((s) => s.tipo === 'Partido')
@@ -429,4 +442,9 @@ export function calcularVolumenIntensidadPorSemana(
       intensidadRpe: rpes.length > 0 ? Number((rpes.reduce((s, v) => s + v, 0) / rpes.length).toFixed(2)) : null,
     }))
     .sort((a, b) => a.semanaInicio.localeCompare(b.semanaInicio))
+}
+
+/** Minutos totales esperados del día: los de las sesiones planificadas + el Campo base implícito de los días con gimnasio (Fase 52). */
+export function minutosEsperadosDia(sesiones: SessionPlan[]): number {
+  return sesiones.reduce((sum, s) => sum + s.duracionEstimadaMin, 0) + (campoBaseImplicito(sesiones)?.minutos ?? 0)
 }

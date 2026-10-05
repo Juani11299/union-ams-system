@@ -1,6 +1,7 @@
 import type { SessionExecution, SessionPlan } from '@/types'
 import { diferenciaDias, fechaHoyLocal, inicioSemanaFecha, sumarDiasFecha } from '@/utils/fecha'
 import { baseSinSesion, calcularCargaEjecutadaReal } from './cargaEjecutada'
+import { campoBaseImplicito } from './matrizClub'
 
 /**
  * Motor de Carga Interna (Fase 48) — todo en FECHAS CIVILES (YYYY-MM-DD, hora
@@ -81,6 +82,14 @@ export function desgloseEjecucion(ejecucion: SessionExecution, planesDelDia: Ses
     d.partido = total
     d.minPartido = ejecucion.duracionMin
     return d
+  }
+  // Lun–Vie con Gimnasio y sin Campo planificado: el Campo base (90′) aparece como bloque propio debajo del gimnasio.
+  const campoImplicito = campoBaseImplicito(planesDelDia)
+  if (campoImplicito) {
+    d.campo += ejecucion.rpe * campoImplicito.minutos
+    d.minCampo += campoImplicito.minutos
+    d.baseClub = true
+    d.baseEtiqueta = `Campo (Base ${campoImplicito.minutos}m) + Gimnasio`
   }
   for (const p of planesDelDia) {
     if (p.duracionRealMin === undefined) continue
@@ -359,6 +368,8 @@ export interface PuntoHistorial {
   campo: number
   gimnasio: number
   partido: number
+  /** UA imputadas (jugadores sin RPE en un día planificado): completan el total para que las barras apiladas sumen `carga`. */
+  imputado: number
   /** Líneas (UA/semana): carga aguda (suma 7d) y crónica (promedio semanal 28d) al cierre del período. */
   aguda: number
   cronica: number
@@ -373,6 +384,8 @@ interface DiaEquipo {
   campo: number
   gimnasio: number
   partido: number
+  /** UA imputadas (día planificado sin RPE; no tienen desglose Campo/Gimnasio). */
+  imputado: number
   aguda: number
   cronica: number
   n: number
@@ -392,10 +405,12 @@ function serieEquipoDiaria(ctx: ContextoCarga, athleteIds: string[], hasta: stri
     let campo = 0
     let gimnasio = 0
     let partido = 0
+    let imputado = 0
     let n = 0
     for (const s of porAtleta) {
       const d = s[i]
       carga += d.carga
+      if (d.origen === 'imputado') imputado += d.carga
       if ((d.origen === 'real' || d.origen === 'base-club') && d.desglose) {
         campo += d.desglose.campo
         gimnasio += d.desglose.gimnasio
@@ -404,7 +419,7 @@ function serieEquipoDiaria(ctx: ContextoCarga, athleteIds: string[], hasta: stri
       }
     }
     const k = Math.max(athleteIds.length, 1)
-    dEq.push({ fecha: sumarDiasFecha(hasta, i - total + 1), carga: carga / k, campo: campo / k, gimnasio: gimnasio / k, partido: partido / k, aguda: 0, cronica: 0, n })
+    dEq.push({ fecha: sumarDiasFecha(hasta, i - total + 1), carga: carga / k, campo: campo / k, gimnasio: gimnasio / k, partido: partido / k, imputado: imputado / k, aguda: 0, cronica: 0, n })
   }
   for (let i = 0; i < total; i++) {
     dEq[i].aguda = dEq.slice(Math.max(0, i - VENTANA_AGUDA + 1), i + 1).reduce((s, d) => s + d.carga, 0)
@@ -432,7 +447,7 @@ export function historialCarga(ctx: ContextoCarga, athleteIds: string[], hasta: 
 
   const etiquetaDia = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}`
   if (rango !== 'temporada') {
-    return vis.map((d) => ({ fecha: d.fecha, etiqueta: etiquetaDia(d.fecha), carga: d.carga, campo: d.campo, gimnasio: d.gimnasio, partido: d.partido, aguda: d.aguda, cronica: d.cronica, acwr: d.cronica > 0 ? d.aguda / d.cronica : null, n: d.n }))
+    return vis.map((d) => ({ fecha: d.fecha, etiqueta: etiquetaDia(d.fecha), carga: d.carga, campo: d.campo, gimnasio: d.gimnasio, partido: d.partido, imputado: d.imputado, aguda: d.aguda, cronica: d.cronica, acwr: d.cronica > 0 ? d.aguda / d.cronica : null, n: d.n }))
   }
   // Temporada: barras semanales (suma de la semana), curvas al último día de cada semana.
   const semanas = new Map<string, DiaEquipo[]>()
@@ -444,8 +459,8 @@ export function historialCarga(ctx: ContextoCarga, athleteIds: string[], hasta: 
   }
   return [...semanas.entries()].map(([lunes, ds]) => {
     const ult = ds[ds.length - 1]
-    const suma = (k: 'carga' | 'campo' | 'gimnasio' | 'partido') => ds.reduce((s, d) => s + d[k], 0)
-    return { fecha: lunes, etiqueta: `Sem ${etiquetaDia(lunes)}`, carga: suma('carga'), campo: suma('campo'), gimnasio: suma('gimnasio'), partido: suma('partido'), aguda: ult.aguda, cronica: ult.cronica, acwr: ult.cronica > 0 ? ult.aguda / ult.cronica : null, n: Math.max(...ds.map((d) => d.n)) }
+    const suma = (k: 'carga' | 'campo' | 'gimnasio' | 'partido' | 'imputado') => ds.reduce((s, d) => s + d[k], 0)
+    return { fecha: lunes, etiqueta: `Sem ${etiquetaDia(lunes)}`, carga: suma('carga'), campo: suma('campo'), gimnasio: suma('gimnasio'), partido: suma('partido'), imputado: suma('imputado'), aguda: ult.aguda, cronica: ult.cronica, acwr: ult.cronica > 0 ? ult.aguda / ult.cronica : null, n: Math.max(...ds.map((d) => d.n)) }
   })
 }
 
@@ -511,9 +526,9 @@ export function zContraGrupo(valor: number, grupo: number[]): { z: number | null
 
 /** Carga esperada del día desglosada en Campo / Gimnasio proporcionalmente a los minutos (Campo + Gimnasio = Total integrado, Foster). */
 export function desgloseEsperadoDia(planesDelDia: SessionPlan[], totalEsperado: number): { campo: number; gimnasio: number; otros: number; minCampo: number; minGimnasio: number } {
-  const minCampo = planesDelDia.filter((p) => p.tipo === 'Campo').reduce((s, p) => s + p.duracionEstimadaMin, 0)
+  const minCampo = planesDelDia.filter((p) => p.tipo === 'Campo').reduce((s, p) => s + p.duracionEstimadaMin, 0) + (campoBaseImplicito(planesDelDia)?.minutos ?? 0)
   const minGimnasio = planesDelDia.filter((p) => p.tipo === 'Gimnasio').reduce((s, p) => s + p.duracionEstimadaMin, 0)
-  const minTotal = planesDelDia.reduce((s, p) => s + p.duracionEstimadaMin, 0)
+  const minTotal = planesDelDia.reduce((s, p) => s + p.duracionEstimadaMin, 0) + (campoBaseImplicito(planesDelDia)?.minutos ?? 0)
   if (minTotal <= 0) return { campo: 0, gimnasio: 0, otros: totalEsperado, minCampo, minGimnasio }
   const porMin = (m: number) => Math.round((totalEsperado * m) / minTotal)
   const campo = porMin(minCampo)

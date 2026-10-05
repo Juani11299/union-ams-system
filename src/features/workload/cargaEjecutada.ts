@@ -1,6 +1,6 @@
 import type { SessionExecution, SessionPlan } from '@/types'
 import { diaSemanaFecha } from '@/utils/fecha'
-import { defaultsSesionParaFecha, DURACION_CAMPO_BASE_MIN } from './matrizClub'
+import { campoBaseImplicito, defaultsSesionParaFecha, DURACION_CAMPO_BASE_MIN } from './matrizClub'
 
 export { DURACION_CAMPO_BASE_MIN }
 
@@ -92,8 +92,12 @@ export function baseSinSesion(ejecucion: SessionExecution): BaseSinSesion {
  * categoría, Domingo 60′ regenerativos — en vez de descartar el RPE. Si el día SÍ tiene sesión planificada se mantiene la lógica integrada
  * de siempre (Campo + Gimnasio, sin tocar nada).
  *
+ * Días de Gimnasio (Fase 52): de lunes a viernes, si el día tiene Gimnasio y no tiene
+ * Campo planificado, se suman 90 min de Campo base a los minutos del gimnasio (ver
+ * `campoBaseImplicito`): sRPE = RPE × (90 + minutos de gimnasio).
+ *
  * Devuelve `null` ("Falta tiempo") si el día tiene sesión planificada pero
- * ninguna tiene todavía la duración real cargada.
+ * ninguna tiene todavía la duración real cargada (y no hay Campo base implícito).
  */
 export function calcularCargaEjecutadaReal(
   ejecucion: SessionExecution,
@@ -113,7 +117,10 @@ export function calcularCargaEjecutadaReal(
     return ejecucion.rpe * ejecucion.duracionMin
   }
 
+  // Lun–Vie con Gimnasio y sin Campo planificado: el Campo base (90 min) existe igual y se suma al gimnasio.
+  const campoImplicito = campoBaseImplicito(planesDelDia)
   const sesionesConDuracion = planesDelDia.filter((p) => p.duracionRealMin !== undefined)
-  if (sesionesConDuracion.length === 0) return null
-  return sesionesConDuracion.reduce((sum, p) => sum + ejecucion.rpe * (p.duracionRealMin ?? 0), 0)
+  if (sesionesConDuracion.length === 0 && campoImplicito === null) return null
+  const minutos = sesionesConDuracion.reduce((sum, p) => sum + (p.duracionRealMin ?? 0), 0) + (campoImplicito?.minutos ?? 0)
+  return ejecucion.rpe * minutos
 }
