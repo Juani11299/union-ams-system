@@ -9,13 +9,13 @@ import { ACWR_LABEL, ACWR_TONE, ESTADO_BADGE, fmtNum, fmtPct } from './etiquetas
 import { HistorialCarga } from './HistorialCarga'
 import { useCargaInterna } from './useCargaInterna'
 
-const ORIGEN: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'orange' }> = {
+const ORIGEN: Record<string, { label: string; tone: 'green' | 'yellow' | 'gray' | 'orange' | 'blue' }> = {
   real: { label: 'RPE real', tone: 'green' },
   imputado: { label: 'Imputado', tone: 'yellow' },
   descanso: { label: 'Descanso', tone: 'gray' },
   faltante: { label: 'Sin dato', tone: 'orange' },
   'partido-sin-minutos': { label: 'No jugó', tone: 'gray' },
-  'sin-plan': { label: 'RPE sin sesión planificada', tone: 'orange' },
+  'base-club': { label: 'Campo (Base 90m)', tone: 'blue' },
 }
 
 /**
@@ -48,7 +48,7 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
   const detalle = useMemo(() => {
     if (!id) return []
     return serieDiariaAtleta(ctx, id, hoy, 28)
-      .filter((d) => d.planificado || d.origen === 'real' || d.origen === 'sin-plan')
+      .filter((d) => d.planificado || d.origen === 'real' || d.origen === 'base-club')
       .reverse()
   }, [ctx, id, hoy])
 
@@ -147,7 +147,7 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Histórico de respuestas · RPE y duración</h3>
-            <p className="text-xs text-slate-400">Últimos 28 días con sesión planificada o RPE. UA = RPE × minutos totales (Campo + Gimnasio).</p>
+            <p className="text-xs text-slate-400">Últimos 28 días con sesión planificada o RPE. UA = RPE × minutos totales (Campo + Gimnasio). "Campo (Base 90m)": el jugador mandó RPE en un día sin sesión planificada y se aplicó la base del club (RPE × 90 min).</p>
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
             <input type="checkbox" checked={verTodos} onChange={(e) => setVerTodos(e.target.checked)} />
@@ -170,7 +170,7 @@ export function PerfilAtletaCarga({ atletaId, onElegir }: { atletaId: string; on
             </thead>
             <tbody>
               {detalle
-                .filter((d) => verTodos || d.origen === 'real' || d.origen === 'imputado' || d.origen === 'sin-plan')
+                .filter((d) => verTodos || d.origen === 'real' || d.origen === 'base-club' || d.origen === 'imputado')
                 .map((d) => (
                   <tr key={d.fecha} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
                     <td className="py-1.5 pr-3 text-slate-700 dark:text-slate-300">{formatFechaCorta(d.fecha)}</td>

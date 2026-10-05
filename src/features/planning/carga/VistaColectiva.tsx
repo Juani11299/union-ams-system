@@ -114,8 +114,8 @@ export function VistaColectiva({ onAbrirAtleta }: { onAbrirAtleta: (id: string) 
         <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
           <span aria-hidden>⚠️</span>
           <span>
-            <b>{kpis.rpeSinCarga} RPE de los últimos 28 días ({kpis.jugadoresConRpeSinCarga} jugadores) no suman carga</b>: se reportaron en días sin sesión planificada o en sesiones a las que todavía les falta el
-            "Tiempo Total de Trabajo". Cargando esa sesión en el Planificador esos RPE entran solos al ACWR y la cobertura sube. No se inventan duraciones.
+            <b>{kpis.rpeSinCarga} RPE de los últimos 28 días ({kpis.jugadoresConRpeSinCarga} jugadores) no suman carga</b>: se reportaron en sesiones planificadas a las que todavía les falta el
+            "Tiempo Total de Trabajo". Cargándolo en el Planificador esos RPE entran solos al ACWR y la cobertura sube. (Los RPE de días sin sesión planificada ya suman como Campo base de 90 min.)
           </span>
         </div>
       )}

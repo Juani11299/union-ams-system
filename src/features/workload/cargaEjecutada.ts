@@ -1,6 +1,14 @@
 import type { SessionExecution, SessionPlan } from '@/types'
 
 /**
+ * Duración base del trabajo de campo del club (minutos). Es la misma base de 90
+ * min de la matriz de `defaultsSesionParaFecha` (Fase 40, `calculations.ts`); se
+ * define acá para que `calcularCargaEjecutadaReal` no tenga que importar
+ * `calculations.ts` (import circular).
+ */
+export const DURACION_CAMPO_BASE_MIN = 90
+
+/**
  * Carga interna real ejecutada por un jugador — Fase 9.2: el jugador sólo
  * manda su RPE, la duración ("Tiempo Total de Trabajo") la carga el profe en
  * el plan de ese día (`SessionPlan.duracionRealMin`). Cruza ambos dinámicamente
@@ -21,8 +29,15 @@ import type { SessionExecution, SessionPlan } from '@/types'
  * regla de Partido tiene prioridad y el resto de las sesiones de ese día se
  * ignoran (evita mezclar "minutos jugados" con "duración de equipo").
  *
- * Devuelve `null` ("Falta tiempo") si ninguna sesión del día tiene todavía la
- * duración real cargada.
+ * Fallback a la sesión BASE del club (Fase 49): si el día NO tiene ninguna sesión
+ * planificada para esa temporada+categoría, el jugador igual entrenó en cancha
+ * (el trabajo de campo nunca es cero; que no haya sesión cargada significa que
+ * no hubo pesas). Se calcula como Campo base: `RPE × 90 min`, en vez de descartar
+ * el RPE. Si el día SÍ tiene sesión planificada se mantiene la lógica integrada
+ * de siempre (Campo + Gimnasio, sin tocar nada).
+ *
+ * Devuelve `null` ("Falta tiempo") si el día tiene sesión planificada pero
+ * ninguna tiene todavía la duración real cargada.
  */
 export function calcularCargaEjecutadaReal(
   ejecucion: SessionExecution,
@@ -34,7 +49,7 @@ export function calcularCargaEjecutadaReal(
       p.season_id === ejecucion.season_id &&
       p.category_id === ejecucion.category_id,
   )
-  if (planesDelDia.length === 0) return null
+  if (planesDelDia.length === 0) return ejecucion.rpe * DURACION_CAMPO_BASE_MIN
 
   const partido = planesDelDia.find((p) => p.tipo === 'Partido')
   if (partido) {

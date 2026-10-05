@@ -1,6 +1,6 @@
 import type { SessionExecution, SessionPlan } from '@/types'
 import { diferenciaDias, fechaHoyLocal, inicioSemanaFecha, sumarDiasFecha } from '@/utils/fecha'
-import { calcularCargaEjecutadaReal } from './cargaEjecutada'
+import { calcularCargaEjecutadaReal, DURACION_CAMPO_BASE_MIN } from './cargaEjecutada'
 
 /**
  * Motor de Carga Interna (Fase 48) — todo en FECHAS CIVILES (YYYY-MM-DD, hora
@@ -52,6 +52,8 @@ export interface DesgloseCarga {
   minPartido: number
   minOtros: number
   rpe: number
+  /** Día sin sesión planificada: se aplicó la base del club (Campo, 90 min). */
+  baseClub?: boolean
 }
 
 /**
@@ -65,6 +67,10 @@ export function desgloseEjecucion(ejecucion: SessionExecution, planesDelDia: Ses
   const total = calcularCargaEjecutadaReal(ejecucion, planesDelDia)
   if (total === null) return null
   const d: DesgloseCarga = { campo: 0, gimnasio: 0, partido: 0, otros: 0, total, minCampo: 0, minGimnasio: 0, minPartido: 0, minOtros: 0, rpe: ejecucion.rpe }
+  if (planesDelDia.length === 0) {
+    // Sin sesión planificada → Campo base del club (RPE × 90 min); ver `calcularCargaEjecutadaReal`.
+    return { ...d, campo: total, minCampo: DURACION_CAMPO_BASE_MIN, baseClub: true }
+  }
   const partido = planesDelDia.find((p) => p.tipo === 'Partido')
   if (partido) {
     d.partido = total
@@ -126,7 +132,7 @@ export function construirContexto(ejecuciones: SessionExecution[], planes: Sessi
 // Serie diaria de un atleta
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type OrigenDia = 'real' | 'descanso' | 'imputado' | 'faltante' | 'partido-sin-minutos' | 'sin-plan'
+export type OrigenDia = 'real' | 'base-club' | 'descanso' | 'imputado' | 'faltante' | 'partido-sin-minutos'
 
 export interface DiaCarga {
   fecha: string
@@ -137,7 +143,7 @@ export interface DiaCarga {
   planificado: boolean
   rpe: number | null
   desglose: DesgloseCarga | null
-  /** El jugador mandó un RPE ese día pero no se pudo convertir en UA (sin sesión planificada, o falta el Tiempo Total de Trabajo). */
+  /** El jugador mandó un RPE ese día pero no se pudo convertir en UA (la sesión planificada todavía no tiene el Tiempo Total de Trabajo). */
   rpeSinCarga?: boolean
 }
 
@@ -178,14 +184,13 @@ export function serieDiariaAtleta(ctx: ContextoCarga, athleteId: string, hasta: 
         : d
     }
     const rpeReportado = ejecs.length > 0 ? ejecs[ejecs.length - 1].rpe : null
-    if (real !== null) base.push({ fecha, carga: real, origen: 'real', planificado, rpe, desglose })
-    // Reportó RPE en un día SIN sesión planificada: no se puede calcular la carga (no se inventa una duración) pero tampoco es "descanso".
-    else if (!planificado && rpeReportado !== null) base.push({ fecha, carga: 0, origen: 'sin-plan', planificado, rpe: rpeReportado, desglose: null, rpeSinCarga: true })
+    // RPE en un día SIN sesión planificada: entrenó en cancha igual → Campo base del club (RPE × 90 min).
+    if (real !== null) base.push({ fecha, carga: real, origen: planificado ? 'real' : 'base-club', planificado, rpe, desglose })
     else if (!planificado) base.push({ fecha, carga: 0, origen: 'descanso', planificado, rpe: null, desglose: null })
     else if (!dosSesionesDeEntrenamiento(planes)) base.push({ fecha, carga: 0, origen: 'partido-sin-minutos', planificado, rpe: null, desglose: null })
     else base.push({ fecha, carga: 0, origen: 'faltante', planificado, rpe: rpeReportado, desglose: null, rpeSinCarga: rpeReportado !== null })
   }
-  const reales = base.filter((d) => d.origen === 'real' && d.carga > 0)
+  const reales = base.filter((d) => (d.origen === 'real' || d.origen === 'base-club') && d.carga > 0)
   const mediaReal = reales.length > 0 ? reales.reduce((s, d) => s + d.carga, 0) / reales.length : null
   if (mediaReal === null) return base
   return base.map((d) => (d.origen === 'faltante' ? { ...d, carga: mediaReal, origen: 'imputado' as const } : d))
@@ -240,7 +245,7 @@ export interface ResumenCarga {
   spikeSemanal: 'alto' | 'medio' | 'ok' | null
   /** Semana monótona de riesgo: monotonía > 2 con carga semanal igual o superior a la crónica. */
   semanaMonotona: boolean
-  /** Días de la ventana de 28 con RPE reportado que NO suman carga (día sin sesión planificada o sesión sin "Tiempo Total de Trabajo"). */
+  /** Días de la ventana de 28 con RPE reportado que NO suman carga (sesión planificada sin "Tiempo Total de Trabajo"). */
   rpeSinCarga: number
   reportoHoy: boolean
   /** Había sesión de entrenamiento planificada en `hasta`. */
@@ -290,12 +295,14 @@ export function resumenCarga(ctx: ContextoCarga, athleteId: string, hasta: strin
   const ewmaCronica = ec[ec.length - 1] ?? 0
   const acwrEwma = ewmaCronica > 0 ? ewmaAguda / ewmaCronica : null
 
-  const planificados = serie.filter((d) => d.planificado && d.origen !== 'partido-sin-minutos' && d.origen !== 'descanso')
+  // Días de entrenamiento conocidos: los planificados + los que el propio jugador reportó sin sesión planificada
+  // (Campo base del club). Estos últimos suman al numerador Y al denominador: son días en que se entrenó seguro.
+  const planificados = serie.filter((d) => d.origen === 'base-club' || (d.planificado && d.origen !== 'partido-sin-minutos' && d.origen !== 'descanso'))
   const diasPlanificados = planificados.length
-  const diasReales = serie.filter((d) => d.origen === 'real' && d.planificado).length
+  const diasReales = serie.filter((d) => d.origen === 'base-club' || (d.origen === 'real' && d.planificado)).length
   const diasImputados = serie.filter((d) => d.origen === 'imputado').length
   const cobertura = diasPlanificados > 0 ? diasReales / diasPlanificados : null
-  const conReal = serie.filter((d) => d.origen === 'real' && d.carga > 0).length
+  const conReal = serie.filter((d) => (d.origen === 'real' || d.origen === 'base-club') && d.carga > 0).length
 
   let estado: EstadoDato
   let motivoEstado: string
@@ -323,7 +330,7 @@ export function resumenCarga(ctx: ContextoCarga, athleteId: string, hasta: strin
     monotonia: mono, strain, variacionSemanal, spikeSemanal,
     semanaMonotona: mono !== null && mono > 2 && aguda >= cronica,
     rpeSinCarga: serie.filter((d) => d.rpeSinCarga).length,
-    reportoHoy: hoy?.origen === 'real' || hoy?.rpeSinCarga === true,
+    reportoHoy: hoy?.origen === 'real' || hoy?.origen === 'base-club' || hoy?.rpeSinCarga === true,
     sesionHoy: hoy !== null && hoy.planificado && hoy.origen !== 'partido-sin-minutos' && hoy.origen !== 'descanso',
     hoy,
     serie,
@@ -389,7 +396,7 @@ export function historialCarga(ctx: ContextoCarga, athleteIds: string[], hasta: 
     for (const s of porAtleta) {
       const d = s[i]
       carga += d.carga
-      if (d.origen === 'real' && d.desglose) {
+      if ((d.origen === 'real' || d.origen === 'base-club') && d.desglose) {
         campo += d.desglose.campo
         gimnasio += d.desglose.gimnasio
         partido += d.desglose.partido

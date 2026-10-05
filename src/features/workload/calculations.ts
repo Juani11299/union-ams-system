@@ -1,7 +1,7 @@
 import type { SessionExecution, SessionPlan, TipoSesion, WellnessEntry } from '@/types'
 import { calcularWellnessScore20 } from '@/features/wellness/calculations'
 import { fechaHoyLocal, diaSemanaFecha, diferenciaDias as diferenciaDiasLocal, inicioSemanaFecha, sumarDiasFecha } from '@/utils/fecha'
-import { calcularCargaEjecutadaReal } from './cargaEjecutada'
+import { calcularCargaEjecutadaReal, DURACION_CAMPO_BASE_MIN } from './cargaEjecutada'
 import { construirContexto, resumenCarga, type EstadoDato } from './cargaInterna'
 
 export function calcularCargaInterna(rpe: number, duracionMin: number): number {
@@ -26,7 +26,6 @@ const RPE_CAMPO_POR_DIA: Record<number, number> = {
   6: 9, // Sábado — día de Partido
 }
 
-const DURACION_CAMPO_BASE_MIN = 90
 
 export interface DefaultsSesionDia {
   tipo: TipoSesion
@@ -112,7 +111,7 @@ export function calcularCargaEsperadaDia(sesiones: SessionPlan[]): number {
 }
 
 // `calcularCargaEjecutadaReal` vive en `cargaEjecutada.ts` (evita un import circular con el motor de `cargaInterna.ts`).
-export { calcularCargaEjecutadaReal }
+export { calcularCargaEjecutadaReal, DURACION_CAMPO_BASE_MIN }
 
 /** Color del semáforo de RPE (0-10), de verde a rojo. */
 export function colorRpe(rpe: number): string {
