@@ -703,7 +703,7 @@ export interface DesvioRpe {
 }
 
 /** RPE esperado de un día: el más alto de sus sesiones (RPE predominante, igual que `calcularCargaEsperadaDia`). */
-function rpeEsperadoDia(planes: SessionPlan[]): number | null {
+export function rpeEsperadoDia(planes: SessionPlan[]): number | null {
   const v = planes.map((p) => p.rpeEsperado).filter((x): x is number => typeof x === 'number' && x > 0)
   return v.length ? Math.max(...v) : null
 }

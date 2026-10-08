@@ -83,3 +83,8 @@ export function diasDeLaSemanaActual(referencia: Date = new Date()): string[] {
   const lunes = inicioSemanaFecha(fechaHoyLocal(referencia))
   return Array.from({ length: 7 }, (_, i) => sumarDiasFecha(lunes, i))
 }
+
+/** "miércoles, 7 de octubre de 2026" — formato largo de una fecha civil `YYYY-MM-DD` (sin corrimientos de zona). */
+export function formatFechaLarga(fecha: string): string {
+  return parsearFechaLocal(fecha).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}

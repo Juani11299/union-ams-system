@@ -20,7 +20,8 @@ export function nivelRpe(rpe: number): NivelRpe {
   return { id: 'maximo', emoji: '🔴', etiqueta: 'Esfuerzo Muy Duro / Máximo', clases: 'from-union-red-100 to-union-red-50 text-union-red-700 ring-union-red-400/50 dark:from-union-red-500/25 dark:to-union-red-500/5 dark:text-union-red-400 dark:ring-union-red-500/40', punto: 'bg-union-red-600' }
 }
 
-export function RpeBadge({ rpe, advertencia }: { rpe: number; advertencia?: string | null }) {
+/** `compacto`: sin etiqueta de texto (para tablas densas); el significado queda en el tooltip y en el color. */
+export function RpeBadge({ rpe, advertencia, compacto = false }: { rpe: number; advertencia?: string | null; compacto?: boolean }) {
   const n = nivelRpe(rpe)
   return (
     <span
@@ -34,8 +35,14 @@ export function RpeBadge({ rpe, advertencia }: { rpe: number; advertencia?: stri
           <span key={i} className={`h-2.5 w-0.5 rounded-sm ${i < rpe ? n.punto : 'bg-slate-300/60 dark:bg-slate-600/60'}`} />
         ))}
       </span>
-      <span className="hidden whitespace-nowrap xl:inline">{n.emoji} {n.etiqueta}</span>
-      <span className="xl:hidden">{n.emoji}</span>
+      {compacto ? (
+        <span>{n.emoji}</span>
+      ) : (
+        <>
+          <span className="hidden whitespace-nowrap xl:inline">{n.emoji} {n.etiqueta}</span>
+          <span className="xl:hidden">{n.emoji}</span>
+        </>
+      )}
       {advertencia && <span aria-hidden>⚠️</span>}
     </span>
   )
