@@ -82,8 +82,8 @@ export function estadoU(t: RegistroU, ds: DatasetU, catRef: CatRefU): EstadoU {
     const cruda = ((t.valores[p.key] - prev.valores[p.key]) / Math.abs(prev.valores[p.key])) * 100
     delta = p.menosEsMejor ? -cruda : cruda
   }
-  const aR = asimMax !== null && asymLvlGenerico(asimMax) === 'r'
-  const aA = asimMax !== null && asymLvlGenerico(asimMax) === 'a'
+  const aR = asimMax !== null && asymLvlGenerico(asimMax, ds.umbrales) === 'r'
+  const aA = asimMax !== null && asymLvlGenerico(asimMax, ds.umbrales) === 'a'
   const severe = zMin !== null && zMin <= -1.5
   const low = zMin !== null && zMin <= -1
   const drop = delta !== null && delta <= -15

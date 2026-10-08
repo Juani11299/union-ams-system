@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ReferenceArea, ReferenceLine, Respo
 import { fdShort, MONTHS } from '@/features/nordbord/calculations'
 import { zColor } from '@/features/nordbord/format'
 import { ICON, TipBox } from '@/features/nordbord/ui'
-import { ASIM_COLOR, ASIM_ROJO, ASIM_TXT, ASIM_VERDE, asymLvlGenerico } from './semaforo'
+import { ASIM_COLOR, ASIM_TXT, asymLvlGenerico } from './semaforo'
 import { enrichU, estadoU, fmt, fmtV, LVL_COLOR_U, monthKey, ok, ordenarMejorPrimero, poolU, prevU, stats } from './calculos'
 import type { CatRefU, DatasetU, MetricaU, RegistroU, RowU, Ventana } from './tipos'
 
@@ -77,7 +77,7 @@ export function GrupalTab({ ds, win, cat, met, catRef, winLabel, printing, openA
           <div className="accent">{ICON.flag}</div>
           <div className="lab">Atletas en zona roja</div>
           <div className="val">{rojos}<small>/ {pool.length}</small></div>
-          <div className="foot">Asimetría &gt; {ASIM_ROJO} %, déficit severo o caída ≥ 15 %</div>
+          <div className="foot">Asimetría &gt; {ds.umbrales.rojo} %, déficit severo o caída ≥ 15 %</div>
           <div className="tl">
             <span style={{ color: 'var(--g-tx)' }}><i style={{ background: LVL_COLOR_U.g }} />{verdes}</span>
             <span style={{ color: 'var(--a-tx)' }}><i style={{ background: LVL_COLOR_U.a }} />{ambar}</span>
@@ -140,7 +140,7 @@ function RankAsim({ ds, pool, openAthlete }: { ds: DatasetU; pool: RegistroU[]; 
           <span className="n">{i + 1}</span>
           <span className="nm">{t.ath.nombre}<small>{t.ath.cat}</small></span>
           <span className="v">{fmt(t.valores[m.key], 1)} %</span>
-          <div className="bar"><span style={{ width: `${Math.max(3, (t.valores[m.key] / mx) * 100)}%`, background: ASIM_COLOR[asymLvlGenerico(t.valores[m.key])] }} /></div>
+          <div className="bar"><span style={{ width: `${Math.max(3, (t.valores[m.key] / mx) * 100)}%`, background: ASIM_COLOR[asymLvlGenerico(t.valores[m.key], ds.umbrales)] }} /></div>
         </div>
       ))}
     </div>
@@ -155,15 +155,15 @@ function Insights({ ds, met, rows, s, estados }: { ds: DatasetU; met: MetricaU; 
   const rojos = estados.filter((x) => x.e.lvl === 'r')
   const ambar = estados.filter((x) => x.e.lvl === 'a')
   const bajos = rows.filter((r) => r.z !== null && r.z <= -1).sort((a, b) => (a.z as number) - (b.z as number))
-  const asimRojos = estados.filter((x) => x.e.asimMax !== null && asymLvlGenerico(x.e.asimMax) === 'r')
-  const asimAmbar = estados.filter((x) => x.e.asimMax !== null && asymLvlGenerico(x.e.asimMax) === 'a')
+  const asimRojos = estados.filter((x) => x.e.asimMax !== null && asymLvlGenerico(x.e.asimMax, ds.umbrales) === 'r')
+  const asimAmbar = estados.filter((x) => x.e.asimMax !== null && asymLvlGenerico(x.e.asimMax, ds.umbrales) === 'a')
   const deltas = stats(estados.map((x) => x.e.delta))
   const nom = (a: Array<{ t: RegistroU }>) => a.slice(0, 4).map((x) => x.t.ath.nombre).join(', ') + (a.length > 4 ? ` y ${a.length - 4} más` : '')
 
   const acciones: React.ReactNode[] = []
-  if (asimRojos.length) acciones.push(<><b>Trabajo unilateral correctivo</b> para {asimRojos.length} atleta{asimRojos.length > 1 ? 's' : ''} con asimetría &gt; {ASIM_ROJO} % ({nom(asimRojos)}). Re-test en 3–4 semanas.</>)
+  if (asimRojos.length) acciones.push(<><b>Trabajo unilateral correctivo</b> para {asimRojos.length} atleta{asimRojos.length > 1 ? 's' : ''} con asimetría &gt; {ds.umbrales.rojo} % ({nom(asimRojos)}). Re-test en 3–4 semanas.</>)
   if (bajos.length) acciones.push(<><b>Bloque específico de {met.label.toLowerCase()}</b> para {bajos.length} atleta{bajos.length > 1 ? 's' : ''} ≥ 1 DE por debajo de la media ({bajos.slice(0, 4).map((r) => r.t.ath.nombre).join(', ')}{bajos.length > 4 ? '…' : ''}).</>)
-  if (asimAmbar.length) acciones.push(<><b>Monitoreo de {asimAmbar.length} atleta{asimAmbar.length > 1 ? 's' : ''} en zona amarilla</b> ({ASIM_VERDE}–{ASIM_ROJO} %): incluir una serie extra unilateral del lado débil.</>)
+  if (asimAmbar.length) acciones.push(<><b>Monitoreo de {asimAmbar.length} atleta{asimAmbar.length > 1 ? 's' : ''} en zona amarilla</b> ({ds.umbrales.verde}–{ds.umbrales.rojo} %): incluir una serie extra unilateral del lado débil.</>)
   acciones.push(s.cv >= 20 ? <><b>Individualizar la dosis</b>: la variabilidad del grupo (CV {fmt(s.cv, 1)} %) desaconseja una única prescripción; armar niveles según terciles.</> : <><b>Prescripción grupal</b>: el grupo es homogéneo (CV {fmt(s.cv, 1)} %), se puede trabajar en bloque con ajustes puntuales.</>)
   if (acciones.length < 3) acciones.push(<><b>Re-evaluación</b> en 4–6 semanas con el mismo protocolo, dispositivo y horario para cuantificar la respuesta.</>)
 
@@ -176,7 +176,7 @@ function Insights({ ds, met, rows, s, estados }: { ds: DatasetU; met: MetricaU; 
       </p>
       <p>
         Estado del plantel: <b style={{ color: '#10b981' }}>{estados.length - rojos.length - ambar.length}</b> disponibles, <b style={{ color: '#f59e0b' }}>{ambar.length}</b> en observación y <b style={{ color: '#ef4444' }}>{rojos.length}</b> en zona de intervención.
-        {ds.asimetrias.length > 0 && <> Asimetrías (semáforo &lt; {ASIM_VERDE} % · {ASIM_VERDE}–{ASIM_ROJO} % · &gt; {ASIM_ROJO} %): <b style={{ color: '#f59e0b' }}>{asimAmbar.length}</b> en amarillo y <b style={{ color: '#ef4444' }}>{asimRojos.length}</b> en rojo.</>}
+        {ds.asimetrias.length > 0 && <> Asimetrías (semáforo &lt; {ds.umbrales.verde} % · {ds.umbrales.verde}–{ds.umbrales.rojo} % · &gt; {ds.umbrales.rojo} %): <b style={{ color: '#f59e0b' }}>{asimAmbar.length}</b> en amarillo y <b style={{ color: '#ef4444' }}>{asimRojos.length}</b> en rojo.</>}
       </p>
       <div className="actions">
         {acciones.slice(0, 3).map((a, i) => (
@@ -310,13 +310,13 @@ function AsimCard({ ds, pool, printing, openAthlete }: { ds: DatasetU; pool: Reg
   const m = ds.asimetrias.find((x) => x.key === ak) ?? ds.asimetrias[0]
   const datos = pool.filter((t) => ok(t.valores[m.key])).map((t) => ({ name: t.ath.nombre, v: t.valores[m.key], t })).sort((a, b) => b.v - a.v)
   const cnt = { g: 0, a: 0, r: 0 }
-  datos.forEach((d) => { const l = asymLvlGenerico(d.v); if (l !== 'n') cnt[l]++ })
+  datos.forEach((d) => { const l = asymLvlGenerico(d.v, ds.umbrales); if (l !== 'n') cnt[l]++ })
   return (
     <div className="card mt">
       <div className="evo-head">
         <div>
           <h3>Semáforo de asimetrías · {m.label}</h3>
-          <p className="hint">Valor absoluto del % de diferencia entre lados. Verde &lt; {ASIM_VERDE} % · Amarillo {ASIM_VERDE}–{ASIM_ROJO} % · Rojo &gt; {ASIM_ROJO} %.</p>
+          <p className="hint">Valor absoluto del % de diferencia entre lados. Verde &lt; {ds.umbrales.verde} % · Amarillo {ds.umbrales.verde}–{ds.umbrales.rojo} % · Rojo &gt; {ds.umbrales.rojo} %.</p>
         </div>
         {ds.asimetrias.length > 1 && (
           <div className="evo-ctl no-print">
@@ -341,12 +341,12 @@ function AsimCard({ ds, pool, printing, openAthlete }: { ds: DatasetU; pool: Reg
               <Tooltip cursor={{ fill: 'rgba(148,163,184,.15)' }} content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const d = payload[0].payload as { v: number; t: RegistroU }
-                return <TipBox title={`${d.t.ath.nombre} · ${d.t.ath.cat}`} lines={[`${m.label}: ${fmt(d.v, 1)} %`, `Semáforo: ${ASIM_TXT[asymLvlGenerico(d.v)]}`]} />
+                return <TipBox title={`${d.t.ath.nombre} · ${d.t.ath.cat}`} lines={[`${m.label}: ${fmt(d.v, 1)} %`, `Semáforo: ${ASIM_TXT[asymLvlGenerico(d.v, ds.umbrales)]}`]} />
               }} />
-              <ReferenceLine y={ASIM_VERDE} stroke="#f59e0b" strokeDasharray="5 4" label={{ value: `${ASIM_VERDE} %`, position: 'insideTopLeft', fill: '#b45309', fontSize: 10, fontWeight: 700 }} />
-              <ReferenceLine y={ASIM_ROJO} stroke="#ef4444" strokeDasharray="5 4" label={{ value: `${ASIM_ROJO} %`, position: 'insideTopLeft', fill: '#b91c1c', fontSize: 10, fontWeight: 700 }} />
+              <ReferenceLine y={ds.umbrales.verde} stroke="#f59e0b" strokeDasharray="5 4" label={{ value: `${ds.umbrales.verde} %`, position: 'insideTopLeft', fill: '#b45309', fontSize: 10, fontWeight: 700 }} />
+              <ReferenceLine y={ds.umbrales.rojo} stroke="#ef4444" strokeDasharray="5 4" label={{ value: `${ds.umbrales.rojo} %`, position: 'insideTopLeft', fill: '#b91c1c', fontSize: 10, fontWeight: 700 }} />
               <Bar dataKey="v" radius={4} isAnimationActive={!printing} cursor="pointer" onClick={(_d, i) => openAthlete(datos[i].t.key)}>
-                {datos.map((d) => <Cell key={d.t.key} fill={ASIM_COLOR[asymLvlGenerico(d.v)]} />)}
+                {datos.map((d) => <Cell key={d.t.key} fill={ASIM_COLOR[asymLvlGenerico(d.v, ds.umbrales)]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>

@@ -144,6 +144,7 @@ export function DashboardEquipo() {
   const gymExternalLoads = useGymExternalLoadsActivos()
   const categories = useAppStore((s) => s.categories)
   const activeCategoryId = useAppStore((s) => s.activeCategoryId)
+  const activeSeasonId = useAppStore((s) => s.activeSeasonId)
   const filtroNombre = useAppStore((s) => s.filtroNombre)
   const filtroPosicion = useAppStore((s) => s.filtroPosicion)
   const setFiltroNombre = useAppStore((s) => s.setFiltroNombre)
@@ -627,6 +628,8 @@ export function DashboardEquipo() {
           sessionPlans={sessionPlans}
           wellnessEntries={wellnessEntries}
           hoy={hoy}
+          seasonId={activeSeasonId}
+          categoryId={activeCategoryId}
           onClose={() => setAtletaDetalle(null)}
         />
       )}

@@ -131,7 +131,7 @@ export function DatosTab({ ds, win, cat, catRef, onFile, arrastrando, puedeCarga
                   <td>{fdate(t.fecha)}</td>
                   <td className="num">{fmt(t.ath.bw, 1)}</td>
                   {cols.map((m) => (
-                    <td key={m.key} className="num" style={m.esAsim && t.valores[m.key] !== undefined ? { color: ASIM_COLOR[asymLvlGenerico(t.valores[m.key])], fontWeight: 700 } : undefined}>
+                    <td key={m.key} className="num" style={m.esAsim && t.valores[m.key] !== undefined ? { color: ASIM_COLOR[asymLvlGenerico(t.valores[m.key], ds.umbrales)], fontWeight: 700 } : undefined}>
                       {fmt(t.valores[m.key], m.d)}
                     </td>
                   ))}

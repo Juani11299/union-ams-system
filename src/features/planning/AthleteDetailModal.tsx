@@ -12,6 +12,9 @@ import {
   Cell,
 } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
+import { useState } from 'react'
+import { generarLinkPersonal } from '@/features/wellness/personal/api'
+import { getErrorMessage } from '@/utils/errors'
 import { Avatar } from '@/components/Avatar'
 import { Badge, type BadgeTone } from '@/components/Badge'
 import { calcularSerieDiasAtleta, colorRpe } from '@/features/workload/calculations'
@@ -26,6 +29,9 @@ interface AthleteDetailModalProps {
   sessionPlans: SessionPlan[]
   wellnessEntries: WellnessEntry[]
   hoy: string
+  /** Para armar el link personal del jugador (Fase 53). */
+  seasonId?: string | null
+  categoryId?: string | null
   onClose: () => void
 }
 
@@ -118,8 +124,26 @@ export function AthleteDetailModal({
   sessionPlans,
   wellnessEntries,
   hoy,
+  seasonId,
+  categoryId,
   onClose,
 }: AthleteDetailModalProps) {
+  const [linkEstado, setLinkEstado] = useState<'idle' | 'generando' | 'copiado' | 'error'>('idle')
+  const [linkError, setLinkError] = useState<string | null>(null)
+  async function copiarLinkPersonal() {
+    if (!seasonId || !categoryId) return
+    setLinkEstado('generando')
+    setLinkError(null)
+    try {
+      const url = await generarLinkPersonal(athlete.id, seasonId, categoryId)
+      await navigator.clipboard.writeText(url)
+      setLinkEstado('copiado')
+      setTimeout(() => setLinkEstado('idle'), 2500)
+    } catch (err) {
+      setLinkEstado('error')
+      setLinkError(getErrorMessage(err, 'No se pudo generar el link (¿corriste la migración de la Fase 53?).'))
+    }
+  }
   const serieSRpe = calcularSerieDiasAtleta(sessionExecutions, sessionPlans, athlete.id, DIAS_TENDENCIA)
   const serieWellness = calcularSerieWellnessAtleta(wellnessEntries, athlete.id, DIAS_TENDENCIA)
   const datosTendencia: PuntoTendenciaDia[] = serieSRpe.map((punto, i) => ({
@@ -152,6 +176,20 @@ export function AthleteDetailModal({
               </div>
             </div>
           </div>
+          {seasonId && categoryId && (
+            <div className="ml-auto mr-2 flex flex-col items-end">
+              <button
+                type="button"
+                onClick={copiarLinkPersonal}
+                disabled={linkEstado === 'generando'}
+                title="Link con acceso a SUS evaluaciones y composición corporal. No lo compartas con otros jugadores."
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                {linkEstado === 'generando' ? 'Generando…' : linkEstado === 'copiado' ? '✅ Link copiado' : '🔗 Copiar link personal'}
+              </button>
+              {linkError && <span className="mt-0.5 max-w-[16rem] text-right text-[10px] text-rose-500">{linkError}</span>}
+            </div>
+          )}
           <button
             type="button"
             onClick={onClose}

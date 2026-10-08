@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useLinkBloqueado } from '@/hooks/useLinkBloqueado'
 import { catOrder } from '@/features/nordbord/calculations'
 import { LvlPill } from '@/features/nordbord/ui'
-import { asymLvlGenerico, ASIM_VERDE, ASIM_ROJO } from './semaforo'
+import { asymLvlGenerico } from './semaforo'
+import { KpisEjecutivos, PanelClinicoGrupal } from './ClinicoUi'
 import { enrichU, estadoU, fmt, fmtV, LVL_ICO_U, LVL_TXT_U, ordenarMejorPrimero, poolU } from './calculos'
 import type { CatRefU, DatasetU, LvlU, Ventana } from './tipos'
 
@@ -47,7 +48,7 @@ export function ResumenTab({ ds, win, cat, onCat, catRef, openAthlete, onPrint, 
     .filter((m) => !m.esAsim)
     .map((m) => ({ m, bajos: enrichU(pool, m).rows.filter((r) => r.z !== null && r.z <= -1).length }))
     .sort((a, b) => b.bajos - a.bajos)
-  const rojosAsim = rows.filter((r) => r.e.asimMax !== null && asymLvlGenerico(r.e.asimMax) === 'r')
+  const rojosAsim = rows.filter((r) => r.e.asimMax !== null && asymLvlGenerico(r.e.asimMax, ds.umbrales) === 'r')
   const nombres = (arr: typeof rows, max = 6) => (
     <>
       {arr.slice(0, max).map((r, i) => (
@@ -104,11 +105,15 @@ export function ResumenTab({ ds, win, cat, onCat, catRef, openAthlete, onPrint, 
         </div>
       </div>
 
-      <div className="avail">
-        {card('g', '🟢', 'Disponibles al 100 %', <>{hayAsim ? `Asimetrías < ${ASIM_VERDE} % y ` : ''}valores dentro de lo esperado para su categoría. <b>Entrenamiento normal.</b></>)}
-        {card('a', '🟡', 'En observación', <>{hayAsim ? `Asimetría ${ASIM_VERDE}–${ASIM_ROJO} %, ` : ''}algún valor 1 DE por debajo de su grupo o caída ≥ 8 % vs el test anterior. <b>Dosificar y monitorear.</b></>)}
-        {card('r', '🔴', 'Atención especial', <>{hayAsim ? `Asimetría > ${ASIM_ROJO} %, ` : ''}déficit severo (≤ −1,5 DE) o caída ≥ 15 % vs el test anterior. <b>Intervención y re-test.</b></>)}
+      <KpisEjecutivos ds={ds} pool={pool} />
+
+      <div className="avail mt">
+        {card('g', '🟢', 'Disponibles al 100 %', <>{hayAsim ? `Asimetrías < ${ds.umbrales.verde} % y ` : ''}valores dentro de lo esperado para su categoría. <b>Entrenamiento normal.</b></>)}
+        {card('a', '🟡', 'En observación', <>{hayAsim ? `Asimetría ${ds.umbrales.verde}–${ds.umbrales.rojo} %, ` : ''}algún valor 1 DE por debajo de su grupo o caída ≥ 8 % vs el test anterior. <b>Dosificar y monitorear.</b></>)}
+        {card('r', '🔴', 'Atención especial', <>{hayAsim ? `Asimetría > ${ds.umbrales.rojo} %, ` : ''}déficit severo (≤ −1,5 DE) o caída ≥ 15 % vs el test anterior. <b>Intervención y re-test.</b></>)}
       </div>
+
+      <PanelClinicoGrupal ds={ds} pool={pool} openAthlete={openAthlete} />
 
       <div className="card mt">
         <h3>Ranking Top 5 y Bottom 5 · métricas clave</h3>
@@ -220,9 +225,9 @@ export function ResumenTab({ ds, win, cat, onCat, catRef, openAthlete, onPrint, 
               <h4>{hayAsim ? 'Asimetrías' : 'Foco de trabajo'}</h4>
               {hayAsim ? (
                 rojosAsim.length ? (
-                  <>{rojosAsim.length} jugador{rojosAsim.length > 1 ? 'es' : ''} con asimetría &gt; {ASIM_ROJO} %: {nombres(rojosAsim)}. Trabajo unilateral correctivo y re-test en 3–4 semanas.</>
+                  <>{rojosAsim.length} jugador{rojosAsim.length > 1 ? 'es' : ''} con asimetría &gt; {ds.umbrales.rojo} %: {nombres(rojosAsim)}. Trabajo unilateral correctivo y re-test en 3–4 semanas.</>
                 ) : (
-                  <>Nadie supera el {ASIM_ROJO} % de asimetría: sostener el trabajo unilateral preventivo.</>
+                  <>Nadie supera el {ds.umbrales.rojo} % de asimetría: sostener el trabajo unilateral preventivo.</>
                 )
               ) : criticas[0] && criticas[0].bajos > 0 ? (
                 <>La métrica más comprometida es <b>{criticas[0].m.label}</b>: {criticas[0].bajos} jugador{criticas[0].bajos > 1 ? 'es' : ''} 1 DE por debajo de su categoría. Priorizarla en el próximo bloque.</>

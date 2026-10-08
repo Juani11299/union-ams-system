@@ -1,6 +1,7 @@
 import { matchRoster, tokenizarRoster } from '@/features/nordbord/roster'
 import type { RosterEntry } from '@/features/nordbord/types'
 import { catDeLabel } from '../categorias'
+import { METRICAS_TRONCALES, tipoDeTest, umbralesAsimDe } from './perfilClinico'
 import { unidadDe } from '../dinamicas'
 import type { ConfigTest, FilaEvaluacionDinamica } from '../dinamicas'
 import type { AtletaU, ConfigU, DatasetU, MetricaU, RegistroU } from './tipos'
@@ -77,6 +78,8 @@ function configDe(nombre: string, filas: FilaEvaluacionDinamica[], override?: Pa
 /** `override` permite que quien abre el dashboard pise partes de la config guardada (nombre, `key_metrics`, `less_is_better`). */
 export function construirDatasetU(nombre: string, filas: FilaEvaluacionDinamica[], roster: RosterEntry[], override?: Partial<ConfigTest>): DatasetU {
   const config = configDe(nombre, filas, override)
+  const tipo = tipoDeTest(nombre)
+  const umbrales = umbralesAsimDe(tipo)
 
   // ── claves numéricas del JSONB, en orden de aparición
   const claves: string[] = []
@@ -149,7 +152,13 @@ export function construirDatasetU(nombre: string, filas: FilaEvaluacionDinamica[
     ? []
     : completos.slice().sort((a, b) => prioridad(a[0]) - prioridad(b[0])).slice(0, 6).map(([base, p]) => ({ key: `Asim. ${base}`, label: `Asimetría ${limpiarLabel(base)}`, unidad: '%', L: p.L, R: p.R }))
   // Versión relativa al peso de las 2 primeras medias de fuerza.
-  const relativas = medias.filter((m) => esFuerza(m.unidad)).sort((a, b) => prioridad(a.base) - prioridad(b.base)).slice(0, 2).map((m) => ({ key: `${m.key} / kg`, label: `${m.label} / kg`, unidad: `${m.unidad}/kg`, media: m.key }))
+  // NordBord: fuerza pico y torque pico relativos al peso (N/kg y Nm/kg); resto: las 2 primeras medias de fuerza.
+  const candidatasRel = medias.filter((m) => esFuerza(m.unidad))
+  const elegidasRel =
+    tipo === 'nordbord'
+      ? [/max force/i, /max torque/i].map((re) => candidatasRel.find((m) => re.test(m.base))).filter((m): m is (typeof candidatasRel)[number] => !!m)
+      : [...candidatasRel].sort((a, b) => prioridad(a.base) - prioridad(b.base)).slice(0, 2)
+  const relativas = elegidasRel.map((m) => ({ key: `${m.key} / kg`, label: `${m.label} / kg`, unidad: `${m.unidad}/kg`, media: m.key }))
 
   // ── registros
   const registros: RegistroU[] = []
@@ -194,6 +203,13 @@ export function construirDatasetU(nombre: string, filas: FilaEvaluacionDinamica[
   // ── métricas clave: las del config; si no hay, las 6 más representativas (relativas → medias → propias)
   const existentes = new Set(conDatos.map((m) => m.key))
   let keyMetrics = config.keyMetrics.filter((k) => existentes.has(k))
+  // Sin métricas clave definidas: las troncales de la familia clínica del test (si las hay en los datos).
+  if (keyMetrics.length === 0 && tipo !== 'generico') {
+    const troncales = METRICAS_TRONCALES[tipo]
+      .map((re) => conDatos.find((m) => !m.lateral && re.test(m.key)))
+      .filter((m): m is (typeof conDatos)[number] => !!m)
+    keyMetrics = [...new Set(troncales.map((m) => m.key))]
+  }
   if (keyMetrics.length === 0) {
     const cand = [
       ...conDatos.filter((m) => m.derivada && m.key.endsWith('/ kg')),
@@ -215,6 +231,8 @@ export function construirDatasetU(nombre: string, filas: FilaEvaluacionDinamica[
   const archivo = config.archivo
 
   return {
+    tipo,
+    umbrales,
     config,
     metricas,
     visibles,

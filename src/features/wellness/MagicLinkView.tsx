@@ -8,6 +8,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { colorRpe } from '@/features/workload/calculations'
 import { parsearNumero, SERIES_DEFAULT, REPS_DEFAULT } from '@/features/terminal-fuerza/RegistroModal'
+import { BarraNavegacionJugador, Bloqueado, MiComposicion, MisEvaluaciones, type VistaJugador } from './personal/VistasJugador'
 import { getErrorMessage } from '@/utils/errors'
 import { fechaHoyLocal } from '@/utils/fecha'
 import type { Athlete, GymSheetEjercicio, WellnessRating } from '@/types'
@@ -140,7 +141,8 @@ interface FormularioProps {
   athleteId: string
   nombre: string
   categoriaNombre: string | null
-  onCambiarJugador: () => void
+  /** Ausente en el link personal: el jugador ya está identificado por su token. */
+  onCambiarJugador?: () => void
 }
 
 /**
@@ -174,7 +176,7 @@ function RecordatoriosBanner({ athleteId }: { athleteId: string }) {
   )
 }
 
-function EncabezadoJugador({ nombre, subtitulo, onCambiarJugador }: { nombre: string; subtitulo: string; onCambiarJugador: () => void }) {
+function EncabezadoJugador({ nombre, subtitulo, onCambiarJugador }: { nombre: string; subtitulo: string; onCambiarJugador?: () => void }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-3">
@@ -186,13 +188,15 @@ function EncabezadoJugador({ nombre, subtitulo, onCambiarJugador }: { nombre: st
           <p className="text-sm text-slate-500 dark:text-slate-400">{subtitulo}</p>
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onCambiarJugador}
-        className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-      >
-        No soy yo
-      </button>
+      {onCambiarJugador && (
+        <button
+          type="button"
+          onClick={onCambiarJugador}
+          className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+        >
+          No soy yo
+        </button>
+      )}
     </div>
   )
 }
@@ -583,6 +587,10 @@ export function MagicLinkView() {
   const rosters = useAppStore((s) => s.rosters)
   const categories = useAppStore((s) => s.categories)
   const [athleteId, setAthleteId] = useState<string | null>(null)
+  const [vista, setVista] = useState<VistaJugador>('carga')
+  // Link personal (Fase 53): `?athlete=<id>&t=<token>`. El token viaja en la URL; la identidad la valida la base.
+  const athletePersonal = searchParams.get('athlete')
+  const tokenPersonal = athletePersonal ? searchParams.get('t') : null
 
   const tipo: TipoFormulario = searchParams.get('type') === 'rpe' ? 'rpe' : 'wellness'
   const seasonId = searchParams.get('season')
@@ -614,7 +622,9 @@ export function MagicLinkView() {
   if (isLoading) return <PantallaCarga />
   if (!seasonId || !categoryId || jugadoresActivos.length === 0) return <PantallaLinkInvalido />
 
-  const athlete = athleteId ? (jugadoresActivos.find((a) => a.id === athleteId) ?? null) : null
+  const personal = Boolean(athletePersonal && tokenPersonal)
+  const athlete = (personal ? jugadoresActivos.find((a) => a.id === athletePersonal) : athleteId ? jugadoresActivos.find((a) => a.id === athleteId) : null) ?? null
+  if (personal && !athlete) return <PantallaLinkInvalido />
 
   if (!athlete) {
     return (
@@ -627,19 +637,28 @@ export function MagicLinkView() {
     )
   }
 
-  return tipo === 'rpe' ? (
-    <FormularioRpe
-      athleteId={athlete.id}
-      nombre={athlete.nombre}
-      categoriaNombre={categoriaNombre}
-      onCambiarJugador={() => setAthleteId(null)}
-    />
-  ) : (
-    <FormularioWellness
-      athleteId={athlete.id}
-      nombre={athlete.nombre}
-      categoriaNombre={categoriaNombre}
-      onCambiarJugador={() => setAthleteId(null)}
-    />
+  const cambiar = personal ? undefined : () => setAthleteId(null)
+  const nav = <BarraNavegacionJugador vista={vista} onVista={setVista} />
+
+  if (vista === 'evaluaciones' || vista === 'composicion') {
+    return (
+      <>
+        <Pantalla titulo={categoriaNombre ? `${athlete.nombre} · ${categoriaNombre}` : athlete.nombre}>
+          {!personal ? <Bloqueado /> : vista === 'evaluaciones' ? <MisEvaluaciones athleteId={athlete.id} token={tokenPersonal} /> : <MiComposicion athleteId={athlete.id} token={tokenPersonal} />}
+        </Pantalla>
+        {nav}
+      </>
+    )
+  }
+
+  return (
+    <>
+      {tipo === 'rpe' ? (
+        <FormularioRpe athleteId={athlete.id} nombre={athlete.nombre} categoriaNombre={categoriaNombre} onCambiarJugador={cambiar} />
+      ) : (
+        <FormularioWellness athleteId={athlete.id} nombre={athlete.nombre} categoriaNombre={categoriaNombre} onCambiarJugador={cambiar} />
+      )}
+      {nav}
+    </>
   )
 }

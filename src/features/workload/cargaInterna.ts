@@ -748,3 +748,33 @@ export function correlacionPlanificado(ctx: ContextoCarga, athleteId: string, ha
   const syy = ys.reduce((s, v) => s + (v - my) ** 2, 0)
   return { n, r: sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Última sesión completada de un jugador (Vista Colectiva)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UltimaSesion {
+  fecha: string
+  /** Días de calendario entre la sesión y `hasta` (0 = hoy). */
+  diasAtras: number
+  rpe: number
+  /** sRPE de esa sesión (UA); null si todavía no es calculable (falta el "Tiempo Total de Trabajo"). */
+  ua: number | null
+}
+
+/** Última sesión con RPE del jugador en o antes de `hasta` (la más reciente de todo su historial en la división activa). */
+export function ultimaSesionAtleta(ctx: ContextoCarga, athleteId: string, hasta: string): UltimaSesion | null {
+  const porFecha = ctx.ejecucionesPorAtleta.get(athleteId)
+  if (!porFecha) return null
+  let mejor: string | null = null
+  for (const f of porFecha.keys()) if (f <= hasta && (mejor === null || f > mejor)) mejor = f
+  if (mejor === null) return null
+  const ejecs = porFecha.get(mejor) ?? []
+  const planes = ctx.planesPorFecha.get(mejor) ?? []
+  let ua: number | null = null
+  for (const e of ejecs) {
+    const d = desgloseEjecucion(e, planes)
+    if (d) ua = (ua ?? 0) + d.total
+  }
+  return { fecha: mejor, diasAtras: diferenciaDias(hasta, mejor), rpe: ejecs[ejecs.length - 1].rpe, ua }
+}

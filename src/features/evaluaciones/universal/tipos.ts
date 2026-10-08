@@ -1,4 +1,5 @@
 import type { Stats } from '@/features/nordbord/types'
+import type { TipoTest, UmbralesAsim } from './perfilClinico'
 
 /**
  * Plantilla Universal de tests (Fase 47) — el dashboard de NordBord generalizado.
@@ -62,6 +63,10 @@ export interface ConfigU {
 }
 
 export interface DatasetU {
+  /** Familia clínica del test (NordBord / CMJ bilateral / CMJ unilateral / genérico): define cortes y métricas troncales. */
+  tipo: TipoTest
+  /** Cortes del semáforo de asimetría de este test (NordBord 10/20 %; el resto 5/10 %). */
+  umbrales: UmbralesAsim
   config: ConfigU
   metricas: MetricaU[]
   /** Métricas visibles en selectores (sin las laterales). */

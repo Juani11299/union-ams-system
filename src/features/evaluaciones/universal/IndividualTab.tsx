@@ -3,7 +3,8 @@ import { CartesianGrid, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Pola
 import { fdate, fdShort, initials, norm } from '@/features/nordbord/calculations'
 import { zColor } from '@/features/nordbord/format'
 import { Pill, TipBox } from '@/features/nordbord/ui'
-import { ASIM_COLOR, ASIM_ROJO, ASIM_TXT, ASIM_VERDE, asymLvlGenerico } from './semaforo'
+import { LecturaClinicaAtleta } from './ClinicoUi'
+import { ASIM_COLOR, ASIM_TXT, asymLvlGenerico } from './semaforo'
 import { estadoU, fmt, fmtV, LVL_COLOR_U, ok, pctOf, poolU, prevU, stats, zOf } from './calculos'
 import { CurveAnalysisModal } from '../curve/CurveAnalysisModal'
 import type { CatRefU, DatasetU, MetricaU, Ventana } from './tipos'
@@ -79,16 +80,10 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
   // Ejes del radar: las métricas clave (y, si son pocas, las asimetrías) hasta un máximo de 8.
   const ejes: MetricaU[] = [...ds.clave, ...ds.asimetrias.filter((m) => !m.clave)].slice(0, 8)
   const statsPorEje = Object.fromEntries(ejes.map((m) => [m.key, stats(comp.map((x) => x.valores[m.key]))]))
-  const rango = (m: MetricaU) => {
-    const v = [...statsPorEje[m.key].vals, t.valores[m.key], modo === 'prev' && pt ? pt.valores[m.key] : null].filter(ok)
-    return v.length ? { min: Math.min(...v), max: Math.max(...v) } : null
-  }
-  /** Min-Max 0–100 sobre el grupo de comparación; en las métricas de "menos es mejor" se invierte (afuera = mejor). */
+  /** Percentil 0–100 del valor dentro del grupo de comparación (la división o el plantel); 100 = mejor del grupo. En "menos es mejor" ya viene invertido. */
   const nv = (m: MetricaU, v: number | null | undefined): number => {
-    const r = rango(m)
-    if (!ok(v) || !r) return 0
-    const n = r.max > r.min ? ((v - r.min) / (r.max - r.min)) * 100 : 50
-    return m.menosEsMejor ? 100 - n : n
+    const p = ok(v) ? pctOf(v, statsPorEje[m.key], m.menosEsMejor) : null
+    return p ?? 0
   }
   const refLbl = modo === 'prev' && pt ? `Anterior (${fdShort(pt.fecha)})` : modo === 'all' ? 'Media del plantel total' : `Media ${a.cat}`
   const curLbl = `Actual (${fdShort(t.fecha)})`
@@ -167,11 +162,13 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
             {ds.asimetrias.length > 0 && E.asimMetrica && E.asimMax !== null && (
               <div className="mini">
                 <div className="lab">Asimetría máx.</div>
-                <div className="val" style={{ color: ASIM_COLOR[asymLvlGenerico(E.asimMax)] }}>{fmt(E.asimMax, 1)}<small>%</small></div>
-                <div className="foot"><Pill lvl={asymLvlGenerico(E.asimMax) === 'n' ? 'n' : (asymLvlGenerico(E.asimMax) as 'g' | 'a' | 'r')}>{ASIM_TXT[asymLvlGenerico(E.asimMax)]}</Pill> {E.asimMetrica.label}</div>
+                <div className="val" style={{ color: ASIM_COLOR[asymLvlGenerico(E.asimMax, ds.umbrales)] }}>{fmt(E.asimMax, 1)}<small>%</small></div>
+                <div className="foot"><Pill lvl={asymLvlGenerico(E.asimMax, ds.umbrales) === 'n' ? 'n' : (asymLvlGenerico(E.asimMax, ds.umbrales) as 'g' | 'a' | 'r')}>{ASIM_TXT[asymLvlGenerico(E.asimMax, ds.umbrales)]}</Pill> {E.asimMetrica.label}</div>
               </div>
             )}
           </div>
+
+          <LecturaClinicaAtleta ds={ds} reg={t} />
 
           {/* Dos columnas: izquierda Radar + Evolución histórica (debajo del radar); derecha Z-scores + Diagnóstico */}
           <div className="grid g-2 mt" style={{ alignItems: 'start' }}>
@@ -179,9 +176,9 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                 <div>
-                  <h3>Radar de métricas clave (0–100)</h3>
+                  <h3>Radar de métricas clave (percentil 0–100)</h3>
                   <p className="hint">
-                    {modo === 'prev' ? `Test actual vs. test anterior, normalizados sobre el rango de ${compLbl}.` : `Min-Max vs ${compLbl}.`} En las métricas marcadas con ↓ (menos es mejor) la escala está invertida: más afuera siempre es mejor.
+                    {modo === 'prev' ? `Test actual vs. test anterior, como percentil dentro de ${compLbl}.` : `Percentil dentro de ${compLbl} (la media del grupo ≈ P50).`} En las métricas marcadas con ↓ (menos es mejor) la escala está invertida: más afuera siempre es mejor.
                   </p>
                 </div>
                 <div className="no-print" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -281,7 +278,7 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <div className="card">
               <h3>Tabla de Z-Scores</h3>
-              <p className="hint">Valor del atleta contra {compLbl}. Z: desvíos estándar respecto de la media (ajustado por el sentido de la métrica).{ds.asimetrias.length > 0 ? ` Las asimetrías llevan el semáforo clínico: < ${ASIM_VERDE} % verde, ${ASIM_VERDE}–${ASIM_ROJO} % amarillo, > ${ASIM_ROJO} % rojo.` : ''}</p>
+              <p className="hint">Valor del atleta contra {compLbl}. Z: desvíos estándar respecto de la media (ajustado por el sentido de la métrica).{ds.asimetrias.length > 0 ? ` Las asimetrías llevan el semáforo clínico: < ${ds.umbrales.verde} % verde, ${ds.umbrales.verde}–${ds.umbrales.rojo} % amarillo, > ${ds.umbrales.rojo} % rojo.` : ''}</p>
               <div className="tbl" style={{ maxHeight: 420 }}>
                 <table>
                   <thead>
@@ -304,7 +301,7 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
                         {pt && <td className="num" style={{ color: dl === null || dl === 0 ? undefined : (m.menosEsMejor ? dl < 0 : dl > 0) ? 'var(--g-tx)' : 'var(--r-tx)' }}>{dl === null ? '—' : `${sg(dl)}${fmt(Math.abs(dl), m.d)}`}</td>}
                         <td className="num" style={{ color: zColor(z), fontWeight: 700 }}>{fmt(z, 2)}</td>
                         <td className="num">{p === null ? '—' : `P${fmt(p, 0)}`}</td>
-                        {ds.asimetrias.length > 0 && <td>{m.esAsim ? <Pill lvl={asymLvlGenerico(v) === 'n' ? 'n' : (asymLvlGenerico(v) as 'g' | 'a' | 'r')}>{ASIM_TXT[asymLvlGenerico(v)]}</Pill> : ''}</td>}
+                        {ds.asimetrias.length > 0 && <td>{m.esAsim ? <Pill lvl={asymLvlGenerico(v, ds.umbrales) === 'n' ? 'n' : (asymLvlGenerico(v, ds.umbrales) as 'g' | 'a' | 'r')}>{ASIM_TXT[asymLvlGenerico(v, ds.umbrales)]}</Pill> : ''}</td>}
                       </tr>
                     ))}
                   </tbody>
@@ -329,12 +326,12 @@ export function IndividualTab({ ds, win, cat, catRef, sel, onSel, printing }: Pr
                   <ul>
                     {ds.asimetrias.length === 0 ? (
                       <li>Este test no trae métricas de asimetría: no aplica el semáforo lateral.</li>
-                    ) : E.asimMax !== null && E.asimMax > ASIM_ROJO ? (
-                      <li><b>Derivar a Kinesiología</b>: {E.asimMetrica?.label} con {fmt(E.asimMax, 1)} % de diferencia entre lados. Descartar antecedente de lesión y controlar la exposición a esfuerzos máximos hasta bajar de {ASIM_ROJO} %.</li>
-                    ) : E.asimMax !== null && E.asimMax >= ASIM_VERDE ? (
+                    ) : E.asimMax !== null && E.asimMax > ds.umbrales.rojo ? (
+                      <li><b>Derivar a Kinesiología</b>: {E.asimMetrica?.label} con {fmt(E.asimMax, 1)} % de diferencia entre lados. Descartar antecedente de lesión y controlar la exposición a esfuerzos máximos hasta bajar de {ds.umbrales.rojo} %.</li>
+                    ) : E.asimMax !== null && E.asimMax >= ds.umbrales.verde ? (
                       <li><b>Zona amarilla</b> ({fmt(E.asimMax, 1)} % en {E.asimMetrica?.label}): sumar trabajo unilateral del lado débil y re-testear en 3–4 semanas.</li>
                     ) : (
-                      <li><b>Simetría aceptable</b> (máx. {fmt(E.asimMax, 1)} % &lt; {ASIM_VERDE} %): sostener el programa preventivo general.</li>
+                      <li><b>Simetría aceptable</b> (máx. {fmt(E.asimMax, 1)} % &lt; {ds.umbrales.verde} %): sostener el programa preventivo general.</li>
                     )}
                     {!a.bw && <li>Cargar el peso corporal en la ficha antropométrica para habilitar las métricas relativas al peso.</li>}
                   </ul>
