@@ -99,7 +99,7 @@ export function EvaluacionesHub() {
       {error && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
           <span>
-            ⚠️ {error} NordBord y los tests propios se guardan en Supabase y sólo los ve el Staff con sesión iniciada.
+            ⚠️ {error} NordBord y los tests propios se guardan en Supabase. Si abriste un link mágico, falta habilitar la lectura en la base (migración Fase 54).
           </span>
           <button type="button" onClick={() => void fetchEvaluaciones()} className="rounded-lg bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700">
             Reintentar

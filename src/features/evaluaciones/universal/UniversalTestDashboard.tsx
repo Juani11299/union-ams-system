@@ -244,7 +244,7 @@ export function UniversalTestDashboard({ nombre, onBack, backLabel = '⬅ Volver
       <h3>{titulo}</h3>
       {errorDb ? (
         <p className="hint" style={{ color: 'var(--r-tx)' }}>
-          ⚠️ {errorDb} Los tests viven en Supabase y sólo los ve el Staff con sesión iniciada.
+          ⚠️ {errorDb} Los tests viven en Supabase; si abriste un link mágico, falta habilitar la lectura en la base (migración Fase 54).
         </p>
       ) : (
         <p className="hint">Todavía no hay evaluaciones cargadas para este test. {soloLectura ? '' : 'Subí un CSV o Excel para armar el tablero.'}</p>
